@@ -1,0 +1,9 @@
+*.log
+.gradle/
+.settings/
+.project
+.classpath
+*.class
+.DS_Store*
+.idea/
+*.iml
