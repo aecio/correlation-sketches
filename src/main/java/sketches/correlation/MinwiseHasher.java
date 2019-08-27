@@ -92,7 +92,7 @@ public class MinwiseHasher {
 
         @Override
         public String toString() {
-            return "Signatures{" + "hashes[" + this.hashes.length + "], positions="
+            return "Signatures{" + "murmur3_32[" + this.hashes.length + "], positions="
                     + this.positions.length + '}';
         }
 
