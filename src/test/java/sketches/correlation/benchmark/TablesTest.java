@@ -1,9 +1,10 @@
 package sketches.correlation.benchmark;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import java.util.Arrays;
 import java.util.List;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class TablesTest {
 
@@ -27,14 +28,14 @@ public class TablesTest {
         ColumnPair columnD = new ColumnPair("D", "fk_d", keyD, "values_d", valuesD);
 
         double delta = 0.0001;
-        Assert.assertEquals(1.000, Tables.computePearsonAfterJoin(columnA, columnB), delta);
-        Assert.assertEquals(1.000, Tables.computePearsonAfterJoin(columnB, columnA), delta);
+        assertEquals(1.000, Tables.computePearsonAfterJoin(columnA, columnB), delta);
+        assertEquals(1.000, Tables.computePearsonAfterJoin(columnB, columnA), delta);
 
-        Assert.assertEquals(0.866, Tables.computePearsonAfterJoin(columnB, columnC), delta);
-        Assert.assertEquals(0.866, Tables.computePearsonAfterJoin(columnC, columnB), delta);
+        assertEquals(0.866, Tables.computePearsonAfterJoin(columnB, columnC), delta);
+        assertEquals(0.866, Tables.computePearsonAfterJoin(columnC, columnB), delta);
 
-        Assert.assertEquals(-1.000, Tables.computePearsonAfterJoin(columnB, columnD), delta);
-        Assert.assertEquals(-1.000, Tables.computePearsonAfterJoin(columnD, columnB), delta);
+        assertEquals(-1.000, Tables.computePearsonAfterJoin(columnB, columnD), delta);
+        assertEquals(-1.000, Tables.computePearsonAfterJoin(columnD, columnB), delta);
     }
 
 }

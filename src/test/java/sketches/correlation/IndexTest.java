@@ -1,10 +1,11 @@
 package sketches.correlation;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class IndexTest {
 
@@ -38,10 +39,10 @@ public class IndexTest {
         System.out.println(hits.get(2));
 
         double delta = 0.1;
-        Assert.assertEquals(1.000, qsk.correlationTo(qsk), delta);
-        Assert.assertEquals(1.000, qsk.correlationTo(c0sk), delta);
-        Assert.assertEquals(0.985, qsk.correlationTo(c1sk), delta);
-        Assert.assertEquals(0.845, qsk.correlationTo(c2sk), delta);
+        assertEquals(1.000, qsk.correlationTo(qsk), delta);
+        assertEquals(1.000, qsk.correlationTo(c0sk), delta);
+        assertEquals(0.985, qsk.correlationTo(c1sk), delta);
+        assertEquals(0.845, qsk.correlationTo(c2sk), delta);
     }
 
     @Test
@@ -50,7 +51,7 @@ public class IndexTest {
         byte[] bytes = SketchIndex.toByteArray(doubles);
         double[] decoded = SketchIndex.toDoubleArray(bytes);
         for (int i = 0; i < decoded.length; i++) {
-            Assert.assertEquals(decoded[i], doubles[i], 0.001);
+            assertEquals(decoded[i], doubles[i], 0.001);
         }
     }
 

@@ -1,10 +1,11 @@
 package sketches.correlation;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import sketches.correlation.benchmark.Tables;
 import tech.tablesaw.api.NumericColumn;
 import tech.tablesaw.api.Table;
@@ -65,10 +66,10 @@ public class CorrelationHashingTest {
         KMVCorrelationSketch c2sk = new KMVCorrelationSketch(fk, c2);
 
         double delta = 0.1;
-        Assert.assertEquals(1.000, qsk.correlationTo(qsk), delta);
-        Assert.assertEquals(1.000, qsk.correlationTo(c0sk), delta);
-        Assert.assertEquals(0.9895, qsk.correlationTo(c1sk), delta);
-        Assert.assertEquals(0.9558, qsk.correlationTo(c2sk), delta);
+        assertEquals(1.000, qsk.correlationTo(qsk), delta);
+        assertEquals(1.000, qsk.correlationTo(c0sk), delta);
+        assertEquals(0.9895, qsk.correlationTo(c1sk), delta);
+        assertEquals(0.9558, qsk.correlationTo(c2sk), delta);
     }
 
     @Test
@@ -87,10 +88,10 @@ public class CorrelationHashingTest {
         MinhashCorrelationSketch c2sk = new MinhashCorrelationSketch(fk, c2);
 
         double delta = 0.005;
-        Assert.assertEquals(1.000, q1sk.correlationTo(q1sk), delta);
-        Assert.assertEquals(1.000, q1sk.correlationTo(c0sk), delta);
-        Assert.assertEquals(0.987, q1sk.correlationTo(c1sk), delta);
-        Assert.assertEquals(0.947, q1sk.correlationTo(c2sk), delta);
+        assertEquals(1.000, q1sk.correlationTo(q1sk), delta);
+        assertEquals(1.000, q1sk.correlationTo(c0sk), delta);
+        assertEquals(0.987, q1sk.correlationTo(c1sk), delta);
+        assertEquals(0.947, q1sk.correlationTo(c2sk), delta);
     }
 
     @Test
