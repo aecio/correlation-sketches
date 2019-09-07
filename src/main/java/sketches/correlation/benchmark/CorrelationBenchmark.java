@@ -9,20 +9,22 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.MinwiseHasher;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.benchmark.BenchmarkUtils.Result;
 
 
 public class CorrelationBenchmark {
 
+    @SuppressWarnings("unused")
     private static final Logger logger = LoggerFactory.getLogger(CorrelationBenchmark.class);
 
     public static void main(String[] args) throws IOException {
 
-        String basePath = "/home/aeciosantos/workspace/d3m/datasets/seed_datasets_current/";
+        String basePath = "/home/aeciosantos/workdata/socrata/data/finances.worldbank.org";
+//        String basePath = "/home/aeciosantos/workspace/d3m/datasets/seed_datasets_current/";
 
         List<String> allFiles = BenchmarkUtils.findAllCSVs(basePath);
+        System.out.printf("Found %d files\n", allFiles.size());
 
         Set<ColumnPair> allColumns = BenchmarkUtils.readAllColumnPairs(allFiles);
 
@@ -32,7 +34,7 @@ public class CorrelationBenchmark {
 
             int nhf = (int) Math.pow(2, k);
             System.out.printf("\nCorrelation Sketch with %d hash functions:\n\n", nhf);
-            MinwiseHasher minHasher = new MinwiseHasher(nhf);
+            // MinwiseHasher minHasher = new MinwiseHasher(nhf);
 
             System.out.println(Result.header());
 

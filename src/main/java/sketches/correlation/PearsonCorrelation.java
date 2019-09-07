@@ -120,6 +120,7 @@ public class PearsonCorrelation {
         return t;
     }
 
+    @SuppressWarnings("unused")
     private static double criticalR(int degreesOfFreedom, double criticalT) {
         double criticalT2 = criticalT * criticalT;
         return Math.sqrt(criticalT2 / (criticalT2 + degreesOfFreedom));

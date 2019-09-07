@@ -6,8 +6,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import sketches.correlation.SketchIndex.Hit;
 
-public class IndexTest {
+public class SketchIndexTest {
 
     @Test
     public void shouldIndexSketches() throws IOException {
@@ -33,16 +34,12 @@ public class IndexTest {
         index.index("c1", c1sk);
         index.index("c2", c2sk);
 
-        List<KMVCorrelationSketch> hits = index.search(qsk, 5);
-        System.out.println(hits.get(0));
-        System.out.println(hits.get(1));
-        System.out.println(hits.get(2));
+        List<Hit> hits = index.search(qsk, 5);
 
-        double delta = 0.1;
-        assertEquals(1.000, qsk.correlationTo(qsk), delta);
-        assertEquals(1.000, qsk.correlationTo(c0sk), delta);
-        assertEquals(0.985, qsk.correlationTo(c1sk), delta);
-        assertEquals(0.845, qsk.correlationTo(c2sk), delta);
+        assertEquals(hits.size(), 3);
+        assertEquals(hits.get(0).id, "c0");
+        assertEquals(hits.get(1).id, "c1");
+        assertEquals(hits.get(2).id, "c2");
     }
 
     @Test

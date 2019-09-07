@@ -5,11 +5,11 @@ import java.util.Objects;
 
 public class ColumnPair {
 
-    protected String datasetId;
-    protected String keyName;
-    protected List<String> keyValues;
-    protected String columnName;
-    protected double[] columnValues;
+    public final String datasetId;
+    public final String keyName;
+    public final List<String> keyValues;
+    public final String columnName;
+    public final double[] columnValues;
 
     public ColumnPair(String datasetId, String keyName, List<String> keyValues,
             String columnName, double[] columnValues) {

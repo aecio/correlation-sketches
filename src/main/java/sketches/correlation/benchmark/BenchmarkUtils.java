@@ -22,69 +22,48 @@ public class BenchmarkUtils {
     public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles)
             throws IOException {
         Set<ColumnPair> allPairs = new HashSet<>();
-
         for (int i = 0; i < allFiles.size(); i++) {
             String dataset = allFiles.get(i);
-
-            System.err.println("dataset: " + dataset);
-            Table df = Table.read().csv(CsvReadOptions.builder(dataset).maxCharsPerColumn(10000));
-//            df.columnNames().contains("d3mIndex")
-
-            System.out.printf("Row count: %d  File: %s\n", df.rowCount(), dataset);
-
-            List<StringColumn> categoricalColumns = Arrays.asList(df.stringColumns());
-            System.out.println("Categorical columns: " + categoricalColumns.size());
-
-            List<NumericColumn<?>> numericColumns = df.numericColumns();
-            System.out.println("Numeric columns: " + numericColumns.size());
-
-            for (CategoricalColumn<?> key : categoricalColumns) {
-
-                String keyName = key.name();
-                List<String> keyValues = key.asStringColumn().asList();
-
-                for (NumericColumn column : numericColumns) {
-                    try {
-                        double[] columnValues = Tables.doubleArray(column);
-                        String columnName = column.name();
-                        ColumnPair columnPair = new ColumnPair(dataset,
-                                keyName,
-                                keyValues,
-                                columnName,
-                                columnValues
-                        );
-                        allPairs.add(columnPair);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        continue;
-                    }
-                }
-            }
+            allPairs.addAll(readColumnPairs(dataset));
         }
         return allPairs;
     }
 
+    private static Set<ColumnPair> readColumnPairs(String dataset) throws IOException {
+        Set<ColumnPair> pairs = new HashSet<>();
+        System.err.println("dataset: " + dataset);
+        Table df = Table.read().csv(
+            CsvReadOptions.builder(dataset)
+                .maxCharsPerColumn(10000)
+                .missingValueIndicator("-")
+        );
+
+        System.out.printf("Row count: %d  File: %s\n", df.rowCount(), dataset);
+
+        List<StringColumn> categoricalColumns = Arrays.asList(df.stringColumns());
+        System.out.println("Categorical columns: " + categoricalColumns.size());
+
+        List<NumericColumn<?>> numericColumns = df.numericColumns();
+        System.out.println("Numeric columns: " + numericColumns.size());
+
+        for (CategoricalColumn<?> key : categoricalColumns) {
+            for (NumericColumn<?> column : numericColumns) {
+                try {
+                    pairs.add(Tables.createColumnPair(dataset, key, column));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    continue;
+                }
+            }
+        }
+        return pairs;
+    }
+
     public static List<String> findAllCSVs(String basePath) throws IOException {
-//        List<String> datasetsIDs = Arrays.asList(
-//                "534_cps_85_wages",
-//                "LL0_1100_popularkids",
-////                "26_radon_seed",
-//                "185_baseball",
-//                "LL0_207_autoPrice"
-//        );
-//        String template = "/home/aeciosantos/workspace/d3m/datasets/seed_datasets_current/%s/%s_dataset/tables/learningData.csv";
-//        String template = "/home/aeciosantos/workspace/d3m/demo-datasets/%s/%s_dataset/tables/learningData.csv";
 
-//        List<String> allFiles = datasetsIDs.stream().map(d -> String.format(template, d, d)).collect(Collectors
-//                .toList());
-
-//        List<String> allFiles = Files.walk(Paths.get(basePath))
-//                .filter(p -> p.endsWith(Paths.get(datasetTable)))
-//                .map(p -> p.toAbsolutePath().toString())
-//                .collect(Collectors.toList()
-//        );
         List<String> allFiles = Files.walk(Paths.get(basePath))
-                .filter(p -> Files.isRegularFile(p))
+                .filter(p -> p.toString().endsWith(".csv"))
+                .filter(Files::isRegularFile)
                 .map(p -> p.toAbsolutePath().toString())
                 .collect(Collectors.toList()
         );

@@ -3,32 +3,50 @@ package sketches.correlation.benchmark;
 import com.google.common.collect.ArrayListMultimap;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
+import java.util.ArrayList;
 import java.util.List;
 import sketches.correlation.PearsonCorrelation;
+import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
-import tech.tablesaw.columns.Column;
+import tech.tablesaw.api.NumericColumn;
 
 public class Tables {
 
-    public static double[] doubleArray(Column column) {
-        double[] array = new double[column.size()];
+    public static ColumnPair createColumnPair(String dataset, CategoricalColumn<?> key, NumericColumn<?> column) {
+
+        List<String> keyValues = new ArrayList<>();
+        DoubleArrayList columnValues = new DoubleArrayList();
+
         if (column.type() == ColumnType.INTEGER) {
             Integer[] ints = (Integer[]) column.asObjectArray();
             for (int i = 0; i < ints.length; i++) {
-                if (ints[i] == null) {
-                    throw new IllegalArgumentException("Cannot convert missing int value (null) to double type.");
-                } else {
-                    array[i] = ints[i];
+                if (ints[i] != null) {
+                    columnValues.add(ints[i]);
+                    keyValues.add(key.getString(i));
+                }
+            }
+        } else if (column.type() == ColumnType.LONG) {
+            Long[] longs = (Long[]) column.asObjectArray();
+            for (int i = 0; i < longs.length; i++) {
+                if (longs[i] != null) {
+                    columnValues.add(longs[i]);
+                    keyValues.add(key.getString(i));
+                }
+            }
+        } else if(column.type() == ColumnType.FLOAT) {
+            Float[] floats = (Float[]) column.asObjectArray();
+            for (int i = 0; i < floats.length; i++) {
+                if (floats[i] != null) {
+                    columnValues.add(floats[i]);
+                    keyValues.add(key.getString(i));
                 }
             }
         } else if(column.type() == ColumnType.DOUBLE) {
             Double[] doubles = (Double[]) column.asObjectArray();
             for (int i = 0; i < doubles.length; i++) {
-                if (doubles[i] == null) {
-                    array[i] = Double.NaN;
-//                    throw new IllegalArgumentException("Cannot convert missing value (null) to double type.");
-                } else {
-                    array[i] = doubles[i];
+                if (doubles[i] != null) {
+                    columnValues.add(doubles[i]);
+                    keyValues.add(key.getString(i));
                 }
             }
         } else {
@@ -36,7 +54,12 @@ public class Tables {
                     String.format("Column of type %s can't be cast to double[]", column.type().toString())
             );
         }
-        return array;
+        return new ColumnPair(dataset,
+                key.name(),
+                keyValues,
+                column.name(),
+                columnValues.toDoubleArray()
+        );
     }
 
     public static double computePearsonAfterJoin(ColumnPair query, ColumnPair column) {
@@ -60,7 +83,7 @@ public class Tables {
             if (rowsB != null && !rowsB.isEmpty()) {
                 for (Double valueB : rowsB) {
                     joinValuesA.add(valueA);
-                    joinValuesB.add(valueB);
+                    joinValuesB.add(valueB.doubleValue());
                 }
             }
         }

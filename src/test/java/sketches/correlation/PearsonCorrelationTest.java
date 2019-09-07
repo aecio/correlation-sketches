@@ -55,7 +55,6 @@ public class PearsonCorrelationTest {
                 .confidenceInterval(-0.654, 34, .95);
         assertEquals(-0.812, interval.lowerBound, delta);
         assertEquals(-0.406, interval.upperBound, delta);
-
     }
 
 }
