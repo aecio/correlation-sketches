@@ -1,28 +1,8 @@
-group 'vida-nyu'
-version '0.1-SNAPSHOT'
-
-apply plugin: 'java'
-
-sourceCompatibility = 1.8
+plugins {
+    id 'java'
+    id 'com.github.sherter.google-java-format' version '0.8'
+}
 
 repositories {
     mavenCentral()
-}
-
-test {
-    useJUnitPlatform()
-}
-
-dependencies {
-
-    compile group: 'com.google.guava', name: 'guava', version: '28.0-jre'
-    compile group: 'it.unimi.dsi', name: 'fastutil', version: '8.3.0'
-    compile group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
-    compile group: 'tech.tablesaw', name: 'tablesaw-core', version: '0.34.2'
-    compile group: 'com.github.haifengl', name: 'smile-core', version: '1.5.3'
-    compile group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
-
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.5.1")
-
 }
