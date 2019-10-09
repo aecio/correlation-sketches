@@ -1,4 +1,4 @@
-package sketches.correlation.benchmark;
+package benchmark;
 
 import static org.junit.jupiter.api.Assertions.*;
 
