@@ -66,14 +66,14 @@ public class IndexCorrelationBenchmark {
 
           Result result = new Result();
 
-          result.estimatedCorrelation = querySketch.correlationTo(columnSketch);
-          if (Double.isNaN(result.estimatedCorrelation)) {
+          result.corr_est = querySketch.correlationTo(columnSketch);
+          if (Double.isNaN(result.corr_est)) {
             continue;
           }
 
           ColumnPair column = idToColumnMap.get(hit.id);
-          result.actualCorrelation = Tables.computePearsonAfterJoin(query, column);
-          if (Double.isNaN(result.actualCorrelation)) {
+          result.corr_actual = Tables.computePearsonAfterJoin(query, column);
+          if (Double.isNaN(result.corr_actual)) {
             continue;
           }
 
@@ -84,8 +84,8 @@ public class IndexCorrelationBenchmark {
           int actualCardinalityQ = new HashSet<>(query.keyValues).size();
           int actualCardinalityC = new HashSet<>(column.keyValues).size();
 
-          BenchmarkUtils.computeStatistics(
-              nhf, result, querySketch, columnSketch, actualCardinalityQ, actualCardinalityC);
+//          BenchmarkUtils.computeStatistics(
+//              nhf, result, querySketch, columnSketch, actualCardinalityQ, actualCardinalityC);
           results.add(result);
         }
       }
@@ -100,15 +100,15 @@ public class IndexCorrelationBenchmark {
       //            results.sort((a, b) -> Double.compare(b.estimatedCorrelation,
       // a.estimatedCorrelation));
       results.sort(
-          (a, b) -> Double.compare(Math.abs(b.actualCorrelation), Math.abs(a.actualCorrelation)));
+          (a, b) -> Double.compare(Math.abs(b.corr_actual), Math.abs(a.corr_actual)));
 
       for (Result result : results) {
         System.out.printf(result.toString());
       }
 
-      double[] estimation = results.stream().mapToDouble(r -> r.estimatedCorrelation).toArray();
+      double[] estimation = results.stream().mapToDouble(r -> r.corr_est).toArray();
 
-      double[] actual = results.stream().mapToDouble(r -> r.actualCorrelation).toArray();
+      double[] actual = results.stream().mapToDouble(r -> r.corr_actual).toArray();
 
       estimationsCorrelations.add(PearsonCorrelation.coefficient(estimation, actual));
       System.out.println();

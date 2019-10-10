@@ -18,6 +18,8 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import benchmark.BenchmarkUtils.Result;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import utils.CliTool;
 
 @Command(
@@ -41,6 +43,11 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
   private int numHashes;
 
+  @Option(
+      name = "--intra-dataset-combinations",
+      description = "Whether to consider only intra-dataset column combinations")
+  private Boolean intraDatasetCombinations = false;
+
   public static void main(String[] args) {
     CliTool.run(args, new ComputePairwiseCorrelationJoinsThreads());
   }
@@ -56,19 +63,22 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     System.out.println("> Found  " + allCSVs.size() + " CSV files at " + inputPath);
 
     System.out.println("\n> Writing columns to key-value DB...");
-    Set<String> allColumns = new HashSet<>();
+    Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
       Set<ColumnPair> columnPairs = BenchmarkUtils.readColumnPairs(csv);
+      Set<String> columnIds = new HashSet<>();
       for (ColumnPair cp : columnPairs) {
         String id = cp.id();
         hashtable.put(id.getBytes(), KRYO.serializeObject(cp));
-        allColumns.add(id);
+        columnIds.add(id);
       }
+      allColumns.add(columnIds);
     }
 
     System.out.println("\n> Computing column statistics for all column combinations...");
+    Set<ColumnCombination> combinations =
+        createColumnCombinations(allColumns, intraDatasetCombinations);
 
-    Set<Set<String>> combinations = Sets.combinations(allColumns, 2);
     FileWriter f = new FileWriter(Paths.get(outputPath, "results.csv").toString());
     f.write(Result.csvHeader() + "\n");
 
@@ -78,48 +88,93 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     //    int cores = Runtime.getRuntime().availableProcessors();
     int cores = 4;
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-
     forkJoinPool
         .submit(
             () ->
-                combinations
-                    .stream()
+                combinations.stream()
                     .parallel()
-                    .map(
-                        (Set<String> columnPair) -> {
-                          Iterator<String> iterator = columnPair.iterator();
-                          byte[] cp1Id = iterator.next().getBytes();
-                          byte[] cp2Id = iterator.next().getBytes();
-                          ColumnPair columnPair1 = KRYO.unserializeObject(hashtable.get(cp1Id));
-                          ColumnPair columnPair2 = KRYO.unserializeObject(hashtable.get(cp2Id));
-                          Result result =
-                              BenchmarkUtils.computeStatistics(numHashes, columnPair1, columnPair2);
-
-                          int current = processed.incrementAndGet();
-                          if (current % 100 == 0) {
-                            double percent = 100 * current / (double) total;
-                            synchronized (System.out) {
-                              System.out.printf("Progress: %.3f%%\n", percent);
-                            }
-                          }
-                          return result == null ? "" : result.csvLine();
-                        })
-                    .forEach(
-                        (String line) -> {
-                          if (!line.isEmpty()) {
-                            synchronized (f) {
-                              try {
-                                f.write(line);
-                                f.write("\n");
-                                f.flush();
-                              } catch (IOException e) {
-                                throw new RuntimeException("Failed to write line to file: " + line);
-                              }
-                            }
-                          }
-                        }))
+                    .map(computeStatistics(hashtable, processed, total))
+                    .forEach(writeCSV(f)))
         .get();
     f.close();
     System.out.println(getClass().getSimpleName() + " finished successfully.");
+  }
+
+  private Set<ColumnCombination> createColumnCombinations(
+      Set<Set<String>> allColumns, Boolean intraDatasetCombinations) {
+
+    Set<ColumnCombination> result = new HashSet<>();
+
+    if (intraDatasetCombinations) {
+      for (Set<String> c : allColumns) {
+        Set<Set<String>> intraCombinations = Sets.combinations(c, 2);
+        for (Set<String> columnPair : intraCombinations) {
+          result.add(createColumnCombination(columnPair));
+        }
+      }
+    } else {
+      Set<String> columnsSet = new HashSet<>();
+      for (Set<String> c : allColumns) {
+        columnsSet.addAll(c);
+      }
+      Set<Set<String>> interCombinations = Sets.combinations(columnsSet, 2);
+      for (Set<String> columnPair : interCombinations) {
+        result.add(createColumnCombination(columnPair));
+      }
+    }
+    return result;
+  }
+
+  private ColumnCombination createColumnCombination(Set<String> columnPair) {
+    Iterator<String> it = columnPair.iterator();
+    String x = it.next();
+    String y = it.next();
+    return new ColumnCombination(x, y);
+  }
+
+  private Function<ColumnCombination, String> computeStatistics(
+      BytesBytesHashtable hashtable, AtomicInteger processed, double total) {
+    return (ColumnCombination columnPair) -> {
+      byte[] xId = columnPair.x.getBytes();
+      byte[] yId = columnPair.y.getBytes();
+      ColumnPair x = KRYO.unserializeObject(hashtable.get(xId));
+      ColumnPair y = KRYO.unserializeObject(hashtable.get(yId));
+      Result result = BenchmarkUtils.computeStatistics(numHashes, x, y);
+
+      int current = processed.incrementAndGet();
+      if (current % 100 == 0) {
+        double percent = 100 * current / total;
+        synchronized (System.out) {
+          System.out.printf("Progress: %.3f%%\n", percent);
+        }
+      }
+      return result == null ? "" : result.csvLine();
+    };
+  }
+
+  private Consumer<String> writeCSV(FileWriter file) {
+    return (String line) -> {
+      if (!line.isEmpty()) {
+        synchronized (file) {
+          try {
+            file.write(line);
+            file.write("\n");
+            file.flush();
+          } catch (IOException e) {
+            throw new RuntimeException("Failed to write line to file: " + line);
+          }
+        }
+      }
+    };
+  }
+
+  public static class ColumnCombination {
+    public String x;
+    public String y;
+
+    public ColumnCombination(String x, String y) {
+      this.x = x;
+      this.y = y;
+    }
   }
 }
