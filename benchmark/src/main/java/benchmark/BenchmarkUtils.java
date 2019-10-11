@@ -5,8 +5,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,9 +18,7 @@ import sketches.correlation.PearsonCorrelation.ConfidenceInterval;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
-import tech.tablesaw.api.StringColumn;
 import tech.tablesaw.api.Table;
-import tech.tablesaw.columns.Column;
 import tech.tablesaw.io.csv.CsvReadOptions;
 
 public class BenchmarkUtils {
@@ -55,7 +54,7 @@ public class BenchmarkUtils {
 
     System.out.printf("Row count: %d  File: %s\n", df.rowCount(), datasetName);
 
-    List<CategoricalColumn<?>> categoricalColumns = getStringColumns(df);
+    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
     System.out.println("Categorical columns: " + categoricalColumns.size());
 
     List<NumericColumn<?>> numericColumns = df.numericColumns();
@@ -75,10 +74,31 @@ public class BenchmarkUtils {
     return pairs;
   }
 
-  private static List<CategoricalColumn<?>> getStringColumns(Table df) {
+  public static List<Set<String>> readAllKeyColumns(String dataset) throws IOException {
+    InputStream fileInputStream = new FileInputStream(dataset);
+    Table df =
+        Table.read()
+            .csv(
+                CsvReadOptions.builder(fileInputStream)
+                    .maxCharsPerColumn(10000)
+                    .missingValueIndicator("-"));
+    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
+    List<Set<String>> allColumns = new ArrayList<>();
+    for (CategoricalColumn<String> column : categoricalColumns) {
+      Set<String> keySet = new HashSet<>();
+      Iterator<String> it = column.iterator();
+      while (it.hasNext()) {
+        keySet.add(it.next());
+      }
+      allColumns.add(keySet);
+    }
+    return allColumns;
+  }
+
+  private static List<CategoricalColumn<String>> getStringColumns(Table df) {
     return df.columns().stream()
         .filter(e -> e.type() == ColumnType.STRING || e.type() == ColumnType.TEXT)
-        .map(e -> (CategoricalColumn<?>) e)
+        .map(e -> (CategoricalColumn<String>) e)
         .collect(Collectors.toList());
   }
 
