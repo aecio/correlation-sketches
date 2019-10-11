@@ -76,12 +76,14 @@ public class Tables {
       String keyA = columnA.keyValues.get(i);
       double valueA = columnA.columnValues[i];
       List<Double> rowsB = columnMapB.get(keyA);
-      // TODO: This join duplicates valueA entries when there are multiple matches in the dataset B.
       if (rowsB != null && !rowsB.isEmpty()) {
-        for (Double valueB : rowsB) {
-          joinValuesA.add(valueA);
-          joinValuesB.add(valueB.doubleValue());
-        }
+        // TODO: We should properly handle cases where 1:N relashionships happen.
+        // We could could consider the correlation of valueA with an any aggreation function of the
+        // list of values from B, e.g. mean, max, sum, count, etc.
+        // Currently we are considering only the first seen value, and ignoring everything else,
+        // similarly to the correlation sketch implemenation.
+        joinValuesA.add(valueA);
+        joinValuesB.add(rowsB.get(0).doubleValue());
       }
     }
 
