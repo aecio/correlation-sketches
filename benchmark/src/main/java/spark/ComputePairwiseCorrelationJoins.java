@@ -22,6 +22,8 @@ import scala.Tuple2;
 import benchmark.BenchmarkUtils;
 import benchmark.BenchmarkUtils.Result;
 import benchmark.ColumnPair;
+import sketches.correlation.Sketches.Type;
+import sketches.kmv.KMV;
 import utils.CliTool;
 
 @Command(
@@ -39,9 +41,15 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
   @Option(name = "--output-path", description = "Output path for results file")
   private String outputPath;
 
+  @Option(name = "--sketch-type", description = "The type sketch to be used")
+  private Type sketchType = Type.KMV;
+
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
-  private int numHashes;
+  private double numHashes = KMV.DEFAULT_K;
+
+  @Option(name = "--min-rows", description = "Minimum number of rows to consider table")
+  int minRows = 1;
 
   @Required
   @Option(
@@ -67,7 +75,7 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
               DataInputStream is = kv._2.open();
               try {
                 String datasetName = Paths.get(fileName).getFileName().toString();
-                Set<ColumnPair> s = BenchmarkUtils.readColumnPairs(datasetName, is);
+                Set<ColumnPair> s = BenchmarkUtils.readColumnPairs(datasetName, is, minRows);
                 return s;
               } finally {
                 closeQuietly(is);
@@ -86,7 +94,7 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
                 (kv) -> {
                   ColumnPair query = kv._1;
                   ColumnPair column = kv._2;
-                  Result result = BenchmarkUtils.computeStatistics(numHashes, query, column);
+                  Result result = BenchmarkUtils.computeStatistics(query, column, sketchType, numHashes);
                   return result == null ? Collections.emptyList() : Arrays.asList(result.csvLine());
                 });
 

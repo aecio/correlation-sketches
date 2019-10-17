@@ -14,6 +14,9 @@ import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.SketchIndex;
 import sketches.correlation.SketchIndex.Hit;
 import benchmark.BenchmarkUtils.Result;
+import sketches.correlation.Sketches;
+import sketches.kmv.IKMV;
+import sketches.kmv.KMV;
 
 public class IndexCorrelationBenchmark {
 
@@ -24,7 +27,8 @@ public class IndexCorrelationBenchmark {
     //        String basePath = "/home/aeciosantos/Downloads/chicago-data/";
 
     List<String> allFiles = BenchmarkUtils.findAllCSVs(basePath);
-    Set<ColumnPair> allColumns = BenchmarkUtils.readAllColumnPairs(allFiles);
+    int minRows = 1;
+    Set<ColumnPair> allColumns = BenchmarkUtils.readAllColumnPairs(allFiles, minRows);
 
     DoubleList estimationsCorrelations = new DoubleArrayList();
     int minHashFunctionsExp = 8;
@@ -38,8 +42,8 @@ public class IndexCorrelationBenchmark {
 
       SketchIndex index = new SketchIndex();
       for (ColumnPair column : allColumns) {
-        KMVCorrelationSketch columnSketch =
-            new KMVCorrelationSketch(column.keyValues, column.columnValues, nhf);
+        KMV kmv = KMV.create(column.keyValues, column.columnValues, nhf);
+        KMVCorrelationSketch columnSketch = new KMVCorrelationSketch(kmv);
         index.index(column.id(), columnSketch);
         idToColumnMap.put(column.id(), column);
       }
@@ -84,8 +88,9 @@ public class IndexCorrelationBenchmark {
           int actualCardinalityQ = new HashSet<>(query.keyValues).size();
           int actualCardinalityC = new HashSet<>(column.keyValues).size();
 
-//          BenchmarkUtils.computeStatistics(
-//              nhf, result, querySketch, columnSketch, actualCardinalityQ, actualCardinalityC);
+          //          BenchmarkUtils.computeStatistics(
+          //              nhf, result, querySketch, columnSketch, actualCardinalityQ,
+          // actualCardinalityC);
           results.add(result);
         }
       }
@@ -99,8 +104,7 @@ public class IndexCorrelationBenchmark {
       //            results.sort((a, b) -> Double.compare(b.containment, a.containment));
       //            results.sort((a, b) -> Double.compare(b.estimatedCorrelation,
       // a.estimatedCorrelation));
-      results.sort(
-          (a, b) -> Double.compare(Math.abs(b.corr_actual), Math.abs(a.corr_actual)));
+      results.sort((a, b) -> Double.compare(Math.abs(b.corr_actual), Math.abs(a.corr_actual)));
 
       for (Result result : results) {
         System.out.printf(result.toString());

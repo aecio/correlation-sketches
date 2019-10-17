@@ -20,6 +20,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import benchmark.BenchmarkUtils.Result;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import sketches.correlation.Sketches;
+import sketches.correlation.Sketches.Type;
+import sketches.kmv.KMV;
 import utils.CliTool;
 
 @Command(
@@ -39,9 +42,15 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   @Option(name = "--output-path", description = "Output path for results file")
   private String outputPath;
 
+  @Option(name = "--sketch-type", description = "The type sketch to be used")
+  private Type sketch = Type.KMV;
+
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
-  private int numHashes;
+  private double numHashes = KMV.DEFAULT_K;
+
+  @Option(name = "--min-rows", description = "Minimum number of rows to consider table")
+  int minRows = 1;
 
   @Option(
       name = "--intra-dataset-combinations",
@@ -54,7 +63,6 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
 
   @Override
   public void execute() throws Exception {
-
     Path db = Paths.get(outputPath, "db");
     BytesBytesHashtable hashtable = new BytesBytesHashtable(db.toString());
     System.out.println("Created DB at " + db.toString());
@@ -65,10 +73,11 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     System.out.println("\n> Writing columns to key-value DB...");
     Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
-      Set<ColumnPair> columnPairs = BenchmarkUtils.readColumnPairs(csv);
+      Set<ColumnPair> columnPairs = BenchmarkUtils.readColumnPairs(csv, minRows);
       Set<String> columnIds = new HashSet<>();
       for (ColumnPair cp : columnPairs) {
-        String id = cp.id();
+//        String id = cp.id();
+        String id = cp.toString();
         hashtable.put(id.getBytes(), KRYO.serializeObject(cp));
         columnIds.add(id);
       }
@@ -86,14 +95,14 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     final AtomicInteger processed = new AtomicInteger(0);
     final int total = combinations.size();
     //    int cores = Runtime.getRuntime().availableProcessors();
-    int cores = 4;
+    int cores = 8;
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
     forkJoinPool
         .submit(
             () ->
                 combinations.stream()
                     .parallel()
-                    .map(computeStatistics(hashtable, processed, total))
+                    .map(computeStatistics(hashtable, processed, total, this.sketch))
                     .forEach(writeCSV(f)))
         .get();
     f.close();
@@ -133,13 +142,14 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   }
 
   private Function<ColumnCombination, String> computeStatistics(
-      BytesBytesHashtable hashtable, AtomicInteger processed, double total) {
+      BytesBytesHashtable hashtable, AtomicInteger processed, double total, Type sketch) {
     return (ColumnCombination columnPair) -> {
       byte[] xId = columnPair.x.getBytes();
       byte[] yId = columnPair.y.getBytes();
       ColumnPair x = KRYO.unserializeObject(hashtable.get(xId));
       ColumnPair y = KRYO.unserializeObject(hashtable.get(yId));
-      Result result = BenchmarkUtils.computeStatistics(numHashes, x, y);
+
+      Result result = BenchmarkUtils.computeStatistics(x, y, sketch, numHashes);
 
       int current = processed.incrementAndGet();
       if (current % 100 == 0) {

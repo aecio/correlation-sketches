@@ -13,8 +13,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringEscapeUtils;
 import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.PearsonCorrelation.ConfidenceInterval;
+import sketches.correlation.Sketches;
+import sketches.correlation.Sketches.Type;
+import sketches.kmv.GKMV;
+import sketches.kmv.KMV;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
@@ -23,12 +26,12 @@ import tech.tablesaw.io.csv.CsvReadOptions;
 
 public class BenchmarkUtils {
 
-  public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles) {
+  public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles, int minRows) {
     Set<ColumnPair> allPairs = new HashSet<>();
     for (int i = 0; i < allFiles.size(); i++) {
       String dataset = allFiles.get(i);
       try {
-        allPairs.addAll(readColumnPairs(dataset));
+        allPairs.addAll(readColumnPairs(dataset, minRows));
       } catch (Exception e) {
         System.err.println("Failed to read dataset: " + dataset);
         System.err.println(e.toString());
@@ -37,14 +40,14 @@ public class BenchmarkUtils {
     return allPairs;
   }
 
-  public static Set<ColumnPair> readColumnPairs(String dataset) throws IOException {
+  public static Set<ColumnPair> readColumnPairs(String dataset, int minRows) throws IOException {
     InputStream fileInputStream = new FileInputStream(dataset);
-    return readColumnPairs(dataset, fileInputStream);
+    return readColumnPairs(dataset, fileInputStream, minRows);
   }
 
-  public static Set<ColumnPair> readColumnPairs(String datasetName, InputStream fileInputStream)
-      throws IOException {
-
+  public static Set<ColumnPair> readColumnPairs(
+      String datasetName, InputStream fileInputStream, int minRows) throws IOException {
+    System.out.println("\nDataset: " + datasetName);
     Table df =
         Table.read()
             .csv(
@@ -52,7 +55,7 @@ public class BenchmarkUtils {
                     .maxCharsPerColumn(10000)
                     .missingValueIndicator("-"));
 
-    System.out.printf("Row count: %d  File: %s\n", df.rowCount(), datasetName);
+    System.out.printf("Row count: %d \n", df.rowCount());
 
     List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
     System.out.println("Categorical columns: " + categoricalColumns.size());
@@ -61,6 +64,10 @@ public class BenchmarkUtils {
     System.out.println("Numeric columns: " + numericColumns.size());
 
     Set<ColumnPair> pairs = new HashSet<>();
+    if (df.rowCount() < minRows) {
+      System.out.println("Column pairs: " + pairs.size());
+      return pairs;
+    }
     for (CategoricalColumn<?> key : categoricalColumns) {
       for (NumericColumn<?> column : numericColumns) {
         try {
@@ -71,6 +78,7 @@ public class BenchmarkUtils {
         }
       }
     }
+    System.out.println("Column pairs: " + pairs.size());
     return pairs;
   }
 
@@ -114,62 +122,70 @@ public class BenchmarkUtils {
     return allFiles;
   }
 
-  public static Result computeStatistics(int nhf, ColumnPair x, ColumnPair y) {
+  public static Result computeStatistics(
+      ColumnPair x, ColumnPair y, Sketches.Type type, double nhf) {
 
     Result result = new Result();
 
     // compute ground-truth statistics
-    {
-      Set<String> xKeys = new HashSet<>(x.keyValues);
-      Set<String> yKeys = new HashSet<>(y.keyValues);
-      result.cardx_actual = xKeys.size();
-      result.cardy_actual = yKeys.size();
-
-      Set<String> intersection = new HashSet<>(xKeys);
-      intersection.retainAll(yKeys);
-      result.interxy_actual = intersection.size();
-
-      Set<String> union = new HashSet<>(xKeys);
-      union.addAll(yKeys);
-      result.unionxy_actual = union.size();
-
-      result.jcx_actual = intersection.size() / (double) xKeys.size();
-      result.jcy_actual = intersection.size() / (double) yKeys.size();
-
-      result.jsxy_actual = intersection.size() / (double) union.size();
-    }
+    computeSetStatisticsGroundTruth(x, y, result);
 
     // create correlation sketches for the data
-    KMVCorrelationSketch sketchX = new KMVCorrelationSketch(x.keyValues, x.columnValues, nhf);
-    KMVCorrelationSketch sketchY = new KMVCorrelationSketch(y.keyValues, y.columnValues, nhf);
-
-    // compute estimated values using the correlation sketches
-    result.jcx_est = sketchX.containment(sketchY);
-    result.jcy_est = sketchY.containment(sketchX);
-    result.jsxy_est = sketchX.jaccard(sketchY);
-    result.cardx_est = sketchX.cardinality();
-    result.cardy_est = sketchY.cardinality();
-    result.interxy_est = sketchX.intersectionSize(sketchY);
-    result.unionxy_est = sketchX.unionSize(sketchY);
-
-    int mininumIntersection = 10;
-    if (result.interxy_actual > mininumIntersection) {
-      result.corr_est = sketchX.correlationTo(sketchY);
-      //      if (Double.isNaN(result.corr_estimated)) {
-      //        return null;
-      //      }
-      result.corr_actual = Tables.computePearsonAfterJoin(x, y);
-      //      if (Double.isNaN(result.corr_actual)) {
-      //        return null;
-      //      }
+    KMVCorrelationSketch sketchX;
+    KMVCorrelationSketch sketchY;
+    if (type == Type.KMV) {
+      int k = (int) nhf;
+      result.parameters = "KMV(k=" + k + ")";
+      KMV kmvX = KMV.create(x.keyValues, x.columnValues, k);
+      KMV kmvY = KMV.create(y.keyValues, y.columnValues, k);
+      sketchX = new KMVCorrelationSketch(kmvX);
+      sketchY = new KMVCorrelationSketch(kmvY);
+    } else {
+      double t = nhf;
+      result.parameters = "GKMV(t=" + t + ")";
+      GKMV gkmvX = GKMV.create(x.keyValues, x.columnValues, t);
+      GKMV gkmvY = GKMV.create(y.keyValues, y.columnValues, t);
+      sketchX = new KMVCorrelationSketch(gkmvX);
+      sketchY = new KMVCorrelationSketch(gkmvY);
     }
 
-    // correlation statistics
-    result.corr_delta = result.corr_actual - result.corr_est;
-    result.corr_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_est, nhf);
-    result.corr_est_intervals = PearsonCorrelation.confidenceInterval(result.corr_est, nhf, 0.95);
-    result.corr_est_significance = PearsonCorrelation.isSignificant(result.corr_est, nhf, .05);
-    result.nhf = nhf;
+    synchronized (System.out) {
+      System.out.println();
+      System.out.printf("x=%s dataset=%s\n", x.columnName, x.datasetId);
+      System.out.printf("y=%s dataset=%s\n", y.columnName, y.datasetId);
+      System.out.printf("x.size=%d y.size=%d\n", x.keyValues.size(), y.keyValues.size());
+      System.out.printf(
+          "sketch.x.size=%d sketch.y.size=%d\n",
+          sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
+    }
+
+    int mininumIntersection = 1;
+    int mininumSetSize = 1;
+
+    // Some datasets have large column sizes, but all values can be empty strings (missing data),
+    // so we need to check weather the actual cardinality and sketch sizes are large enough.
+    if (result.interxy_actual > mininumIntersection
+        && result.cardx_actual > mininumSetSize
+        && result.cardy_actual > mininumSetSize
+        && sketchX.getKMinValues().size() > mininumSetSize
+        && sketchY.getKMinValues().size() > mininumSetSize) {
+      // set operations estimates (jaccard, cardinality, etc)
+      computeSetStatisticsEstimates(result, sketchX, sketchY);
+      // correlation estimates
+      result.corr_est = sketchX.correlationTo(sketchY);
+      result.corr_delta = result.corr_actual - result.corr_est;
+      // correlation ground-truth
+      result.corr_actual = Tables.computePearsonAfterJoin(x, y);
+    }
+
+    // TODO: get the actual number of hash matches between both sketches (i.e., number of samples
+    //       used for computing the estimation) and use it for computing the hypothesis testing
+    //
+    //    result.corr_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_est, nhf);
+    //    result.corr_est_intervals = PearsonCorrelation.confidenceInterval(result.corr_est, nhf,
+    // 0.95);
+    //    result.corr_est_significance = PearsonCorrelation.isSignificant(result.corr_est, nhf,
+    // .05);
 
     result.columnId =
         String.format(
@@ -179,9 +195,38 @@ public class BenchmarkUtils {
     return result;
   }
 
-  public static class Result {
+  private static void computeSetStatisticsGroundTruth(ColumnPair x, ColumnPair y, Result result) {
+    Set<String> xKeys = new HashSet<>(x.keyValues);
+    Set<String> yKeys = new HashSet<>(y.keyValues);
+    result.cardx_actual = xKeys.size();
+    result.cardy_actual = yKeys.size();
 
-    public String columnId;
+    Set<String> intersection = new HashSet<>(xKeys);
+    intersection.retainAll(yKeys);
+    result.interxy_actual = intersection.size();
+
+    Set<String> union = new HashSet<>(xKeys);
+    union.addAll(yKeys);
+    result.unionxy_actual = union.size();
+
+    result.jcx_actual = intersection.size() / (double) xKeys.size();
+    result.jcy_actual = intersection.size() / (double) yKeys.size();
+
+    result.jsxy_actual = intersection.size() / (double) union.size();
+  }
+
+  private static void computeSetStatisticsEstimates(
+      Result result, KMVCorrelationSketch sketchX, KMVCorrelationSketch sketchY) {
+    result.jcx_est = sketchX.containment(sketchY);
+    result.jcy_est = sketchY.containment(sketchX);
+    result.jsxy_est = sketchX.jaccard(sketchY);
+    result.cardx_est = sketchX.cardinality();
+    result.cardy_est = sketchY.cardinality();
+    result.interxy_est = sketchX.intersectionSize(sketchY);
+    result.unionxy_est = sketchX.unionSize(sketchY);
+  }
+
+  public static class Result {
 
     // kmv estimation statistics
     public double jcx_est;
@@ -200,15 +245,16 @@ public class BenchmarkUtils {
     public double unionxy_est;
     public int interxy_actual;
     public int unionxy_actual;
-
     // person estimation statistics
-    public int nhf;
     public double corr_actual;
     public double corr_est;
     public double corr_delta;
     public double corr_est_pvalue2t;
     public ConfidenceInterval corr_est_intervals;
     public boolean corr_est_significance;
+    // others
+    public String parameters;
+    public String columnId;
 
     public static String header() {
       return String.format(
@@ -242,7 +288,8 @@ public class BenchmarkUtils {
               + "corr_est_pvalue2t,"
               + "corr_est_intervals,"
               + "corr_est_significance,"
-              // column id
+              // others
+              + "parameters,"
               + "column");
     }
 
@@ -253,7 +300,7 @@ public class BenchmarkUtils {
               + "%.2f,%d,%.2f,%d,"
               + "%.2f,%d,%.2f,%d,"
               + "%.3f,%.3f,%.3f,%.3f,%s,%s,"
-              + "%s",
+              + "%s,%s",
           // jaccard
           jcx_est,
           jcy_est,
@@ -278,7 +325,8 @@ public class BenchmarkUtils {
           corr_est_pvalue2t,
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_intervals)),
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_significance)),
-          // column id
+          // others
+          StringEscapeUtils.escapeCsv(parameters),
           StringEscapeUtils.escapeCsv(columnId));
     }
 

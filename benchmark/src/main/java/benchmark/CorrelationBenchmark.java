@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sketches.correlation.PearsonCorrelation;
 import benchmark.BenchmarkUtils.Result;
+import sketches.correlation.Sketches.Type;
 
 public class CorrelationBenchmark {
 
@@ -24,12 +25,14 @@ public class CorrelationBenchmark {
     List<String> allFiles = BenchmarkUtils.findAllCSVs(basePath);
     System.out.printf("Found %d files\n", allFiles.size());
 
-    Set<ColumnPair> allColumns = BenchmarkUtils.readAllColumnPairs(allFiles);
+    int minRows = 1;
+    Set<ColumnPair> allColumns = BenchmarkUtils.readAllColumnPairs(allFiles, minRows);
 
     DoubleList estimationsCorrelations = new DoubleArrayList();
     int minHashFunctionsExp = 8;
     for (int k = minHashFunctionsExp; k <= 8; k++) {
 
+      Type sketchType = Type.KMV;
       int nhf = (int) Math.pow(2, k);
       System.out.printf("\nCorrelation Sketch with %d hash functions:\n\n", nhf);
       // MinwiseHasher minHasher = new MinwiseHasher(nhf);
@@ -43,7 +46,7 @@ public class CorrelationBenchmark {
             continue;
           }
 
-          Result result = BenchmarkUtils.computeStatistics(nhf, query, column);
+          Result result = BenchmarkUtils.computeStatistics(query, column, sketchType, nhf);
           if (result == null) {
             continue;
           }

@@ -1,21 +1,23 @@
 package sketches.correlation;
 
+import sketches.kmv.KMV;
+
 public class Sketches {
 
-  enum Type {
+  public enum Type {
     KMV,
-    MINHASH
+    GKMV
   }
 
-  private Type type;
-  private int k;
-
-  public Sketches(Type type, int k) {
-    this.type = type;
-    this.k = k;
-  }
-
-  public void build() {
-    // TODO
+  public static KMVCorrelationSketch fromKmvStringHashedKeys(String[] hashes, double[] values) {
+    if (hashes.length != values.length) {
+      throw new IllegalArgumentException(
+          "Number of values cannot be different from number of hashes");
+    }
+    KMV kmv = new KMV(hashes.length);
+    for (int i = 0; i < hashes.length; i++) {
+      kmv.update(Integer.parseInt(hashes[i]), values[i]);
+    }
+    return new KMVCorrelationSketch(kmv);
   }
 }

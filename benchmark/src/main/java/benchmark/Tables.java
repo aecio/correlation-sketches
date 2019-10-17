@@ -46,7 +46,7 @@ public class Tables {
       Double[] doubles = (Double[]) column.asObjectArray();
       for (int i = 0; i < doubles.length; i++) {
         if (doubles[i] != null) {
-          columnValues.add(doubles[i]);
+          columnValues.add(doubles[i].doubleValue());
           keyValues.add(key.getString(i));
         }
       }

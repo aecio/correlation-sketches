@@ -2,8 +2,7 @@ package sketches.kmv;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
-import java.util.Comparator;
-import java.util.HashSet;
+import java.util.List;
 import java.util.TreeSet;
 import sketches.correlation.Hashes;
 
@@ -11,15 +10,36 @@ import sketches.correlation.Hashes;
  * Implements the KMV synopsis from the paper "On Synopsis fir distinct-value estimation under
  * multiset operations" by Beyer et. at, SIGMOD, 2017.
  */
-public class KMV {
+public class KMV implements IKMV<KMV> {
+
+  public static final int DEFAULT_K = 256;
 
   private final int maxK;
   private final TreeSet<ValueHash> kMinValues;
   private double kthValue = Double.MIN_VALUE;
 
   public KMV(int k) {
+    if (k < 1) {
+      throw new IllegalArgumentException("Minimum k size is 1, but larger is recommended.");
+    }
     this.maxK = k;
     this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
+  }
+
+  public static KMV create(List<String> keys, double[] values) {
+    return create(keys, values, DEFAULT_K);
+  }
+
+  public static KMV create(List<String> keys, double[] values, int k) {
+    if (keys.size() != values.length) {
+      throw new IllegalArgumentException(
+          String.format(
+              "keys and values must have same size. keys.size=[%d] values.size=[%d]",
+              keys.size(), values.length));
+    }
+    KMV kmv = new KMV(k);
+    kmv.updateAll(keys, values);
+    return kmv;
   }
 
   /** Creates a KMV synopsis of size k from an array of hashed keys. */
@@ -58,61 +78,58 @@ public class KMV {
 
   /** Estimates the size of union of the given KMV synopsis */
   public double unionSize(KMV other) {
-    int k = Math.min(this.kMinValues.size(), other.kMinValues.size());
-    double kthValue = kthValueOfUnion(other);
+    int k = computeK(this, other);
+    double kthValue = kthValueOfUnion(this.kMinValues, other.kMinValues);
     return (k - 1) / kthValue;
   }
 
   /** Estimates the Jaccard similarity using the p = K_e / k estimator from Beyer et. al. (2007) */
   public double jaccard(KMV other) {
+    int k = computeK(this, other);
     int intersection = intersectionSize(this.kMinValues, other.kMinValues);
-    int k = Math.min(this.kMinValues.size(), other.kMinValues.size());
     double js = intersection / (double) k;
     return js;
   }
 
-  /**
-   * Estimates the jaccard containment (JC) of the set represented by this KMV into the other KVM.
-   *
-   * <p>JC(X, Y) = |X ∩ Y| / |X| = |this ∩ other| / |this|
-   */
-  public double containment(KMV other) {
-    double jc = this.intersectionSize(other) / this.distinctValues();
-    return jc;
-  }
-
   /** Estimates intersection between the sets represeneted by this synopsis and the other. */
   public double intersectionSize(KMV other) {
-    int k = Math.min(this.kMinValues.size(), other.kMinValues.size());
-    // estimation of jaccard
+    int k = computeK(this, other);
+    // p is an unbiased estimate of the jaccard similarity
     double p = intersectionSize(this.kMinValues, other.kMinValues) / (double) k;
-    // estimation of union size
-    double kthValue = this.kthValueOfUnion(other);
+    // the k-th unit hash value of the union
+    double kthValue = kthValueOfUnion(this.kMinValues, other.kMinValues);
     double u = (k - 1) / kthValue;
     // estimation of intersection size
     return p * u;
   }
 
-  private double kthValueOfUnion(KMV other) {
+  private static double kthValueOfUnion(TreeSet<ValueHash> x, TreeSet<ValueHash> y) {
     TreeSet<ValueHash> union = new TreeSet<>(ValueHash.COMPARATOR_ASC);
-    union.addAll(this.kMinValues);
-    union.addAll(other.kMinValues);
+    union.addAll(x);
+    union.addAll(y);
 
-    int maxUnionSize = this.kMinValues.size() + other.kMinValues.size();
+    int maxUnionSize = x.size() + y.size();
     DoubleArrayList values = new DoubleArrayList(maxUnionSize);
     for (ValueHash v : union) {
       values.add(v.grmHash);
     }
     values.sort(DoubleComparators.NATURAL_COMPARATOR);
 
-    int k = Math.min(this.kMinValues.size(), other.kMinValues.size());
+    int k = Math.min(x.size(), y.size());
     return values.getDouble(k - 1);
   }
 
-  private static int intersectionSize(TreeSet<ValueHash> a, TreeSet<ValueHash> b) {
-    HashSet<ValueHash> intersection = new HashSet<>(a);
-    intersection.retainAll(b);
-    return intersection.size();
+  private static int computeK(KMV x, KMV y) {
+    int xSize = x.kMinValues.size();
+    int ySize = y.kMinValues.size();
+    int k = Math.min(xSize, ySize);
+    if (k < 1) {
+      throw new IllegalStateException(
+          String.format(
+              "Can not compute estimates on empty synopsis. x.size=[%d] y.size=[%d]",
+              xSize, ySize));
+    }
+    return k;
   }
 
   public TreeSet<ValueHash> getKMinValues() {
@@ -122,42 +139,5 @@ public class KMV {
   @Override
   public String toString() {
     return "KMV{" + "maxK=" + maxK + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
-  }
-
-  public static class ValueHash {
-
-    private static final Comparator<ValueHash> COMPARATOR_ASC = new HashValueComparatorAscending();
-
-    public int hashValue;
-    public double grmHash;
-    public double value;
-
-    public ValueHash(int hashValue, double grmHash, double value) {
-      this.hashValue = hashValue;
-      this.grmHash = grmHash;
-      this.value = value;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      return hashValue == ((ValueHash) o).hashValue;
-    }
-
-    @Override
-    public int hashCode() {
-      return hashValue;
-    }
-
-    @Override
-    public String toString() {
-      return "ValueHash{hashValue=" + hashValue + ", grmHash=" + grmHash + ", value=" + value + '}';
-    }
-  }
-
-  private static class HashValueComparatorAscending implements Comparator<ValueHash> {
-    @Override
-    public int compare(ValueHash a, ValueHash b) {
-      return Double.compare(a.grmHash, b.grmHash);
-    }
   }
 }

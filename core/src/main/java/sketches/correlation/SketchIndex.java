@@ -31,7 +31,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
-import sketches.kmv.KMV.ValueHash;
+import sketches.correlation.Sketches.Type;
+import sketches.kmv.KMV;
+import sketches.kmv.ValueHash;
 
 public class SketchIndex {
 
@@ -41,16 +43,18 @@ public class SketchIndex {
 
   private final IndexWriter writer;
   private final SearcherManager searcherManager;
+  private final Sketches.Type sketchType;
 
   public SketchIndex(String indexPath) throws IOException {
-    this(MMapDirectory.open(Paths.get(indexPath)));
+    this(MMapDirectory.open(Paths.get(indexPath)), Type.KMV);
   }
 
   public SketchIndex() {
-    this(new RAMDirectory());
+    this(new RAMDirectory(), Type.KMV);
   }
 
-  public SketchIndex(Directory dir) {
+  public SketchIndex(Directory dir, Sketches.Type sketchType) {
+    this.sketchType = sketchType;
     final Analyzer analyzer = new StandardAnalyzer();
     final IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
     iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
@@ -58,12 +62,11 @@ public class SketchIndex {
     final BooleanSimilarity similarity = new BooleanSimilarity();
     iwc.setSimilarity(similarity);
 
-    // Optional: for better indexing performance, if you
-    // are indexing many documents, increase the RAM
-    // buffer.  But if you do this, increase the max heap
-    // size to the JVM (eg add -Xmx512m or -Xmx1g):
+    // Optional: for better indexing performance, if you are indexing many documents, increase the
+    // RAM buffer. But if you do this, increase the max heap size to the JVM
+    // (e.g. add -Xmx512m or -Xmx1g):
     //
-    // iwc.setRAMBufferSizeMB(256.0);
+    //     iwc.setRAMBufferSizeMB(256.0);
     try {
       this.writer = new IndexWriter(dir, iwc);
     } catch (IOException e) {
@@ -73,8 +76,7 @@ public class SketchIndex {
     try {
       SearcherFactory searcherFactory =
           new SearcherFactory() {
-            public IndexSearcher newSearcher(IndexReader reader, IndexReader previousReader)
-                throws IOException {
+            public IndexSearcher newSearcher(IndexReader reader, IndexReader previousReader) {
               IndexSearcher is = new IndexSearcher(reader);
               is.setSimilarity(similarity);
               return is;
@@ -137,7 +139,13 @@ public class SketchIndex {
         String[] hashes = doc.getValues(HASHES_FIELD_NAME);
         BytesRef[] valuesRef = doc.getBinaryValues(VALUES_FIELD_NAME);
         double[] values = toDoubleArray(valuesRef[0].bytes);
-        results.add(new Hit(id, KMVCorrelationSketch.fromStringHashes(hashes, values)));
+        KMVCorrelationSketch kmv;
+        if (sketchType == Type.KMV) {
+          kmv = Sketches.fromKmvStringHashedKeys(hashes, values);
+        } else {
+          throw new IllegalArgumentException("Not supported yet!");
+        }
+        results.add(new Hit(id, kmv));
       }
       return results;
     } finally {
