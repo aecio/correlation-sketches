@@ -1,10 +1,12 @@
 package benchmark;
 
+import benchmark.BenchmarkUtils.Result;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.common.collect.Sets;
 import hashtabledb.BytesBytesHashtable;
+import hashtabledb.DBType;
 import hashtabledb.Kryos;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -17,10 +19,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
-import benchmark.BenchmarkUtils.Result;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import sketches.correlation.Sketches;
 import sketches.correlation.Sketches.Type;
 import sketches.kmv.KMV;
 import utils.CliTool;
@@ -36,26 +36,29 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
 
   @Required
   @Option(name = "--input-path", description = "Folder containing CSV files")
-  private String inputPath;
+  String inputPath;
 
   @Required
   @Option(name = "--output-path", description = "Output path for results file")
-  private String outputPath;
+  String outputPath;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
-  private Type sketch = Type.KMV;
+  Type sketch = Type.KMV;
 
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
-  private double numHashes = KMV.DEFAULT_K;
+  double numHashes = KMV.DEFAULT_K;
 
   @Option(name = "--min-rows", description = "Minimum number of rows to consider table")
   int minRows = 1;
 
+  @Option(name = "--db-backend", description = "")
+  DBType dbType = DBType.LEVELDB;
+
   @Option(
       name = "--intra-dataset-combinations",
       description = "Whether to consider only intra-dataset column combinations")
-  private Boolean intraDatasetCombinations = false;
+  Boolean intraDatasetCombinations = false;
 
   public static void main(String[] args) {
     CliTool.run(args, new ComputePairwiseCorrelationJoinsThreads());
@@ -64,7 +67,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   @Override
   public void execute() throws Exception {
     Path db = Paths.get(outputPath, "db");
-    BytesBytesHashtable hashtable = new BytesBytesHashtable(db.toString());
+
+    BytesBytesHashtable hashtable = new BytesBytesHashtable(dbType, db.toString());
     System.out.println("Created DB at " + db.toString());
 
     List<String> allCSVs = BenchmarkUtils.findAllCSVs(inputPath);
@@ -106,6 +110,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
                     .forEach(writeCSV(f)))
         .get();
     f.close();
+    hashtable.close();
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }
 

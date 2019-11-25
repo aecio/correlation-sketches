@@ -1,12 +1,10 @@
 package hashtabledb;
 
-public class BytesBytesHashtable extends AbstractRocksDbHashtable
+public class BytesBytesHashtable extends AbstractDbHashtable
     implements Iterable<KV<byte[], byte[]>> {
 
-  protected BytesBytesHashtable() {}
-
-  public BytesBytesHashtable(String path) {
-    super(path);
+  public BytesBytesHashtable(DBType backend, String path) {
+    super(backend, path);
   }
 
   public void put(byte[] key, byte[] value) {
@@ -19,6 +17,6 @@ public class BytesBytesHashtable extends AbstractRocksDbHashtable
 
   @Override
   public CloseableIterator<KV<byte[], byte[]>> iterator() {
-    return new RocksDBIterator(this.db);
+    return super.createIterator();
   }
 }
