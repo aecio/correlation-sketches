@@ -189,7 +189,7 @@ public class BenchmarkUtils {
 
     result.columnId =
         String.format(
-            "X(%s,%s,%s) Y(%s %s %s)",
+            "X(%s,%s,%s) Y(%s,%s,%s)",
             x.keyName, x.columnName, x.datasetId, y.keyName, y.columnName, y.datasetId);
 
     return result;
