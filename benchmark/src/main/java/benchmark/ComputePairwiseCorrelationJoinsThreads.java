@@ -92,7 +92,14 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     Set<ColumnCombination> combinations =
         createColumnCombinations(allColumns, intraDatasetCombinations);
 
-    FileWriter f = new FileWriter(Paths.get(outputPath, "results.csv").toString());
+    String baseInputPath = Paths.get(inputPath).getFileName().toString();
+    String filename =
+        String.format("%s_sketch=%s_b=%.3f.csv",
+              baseInputPath,
+              sketch.toString().toLowerCase(),
+              numHashes
+        );
+    FileWriter f = new FileWriter(Paths.get(outputPath, filename).toString());
     f.write(Result.csvHeader() + "\n");
 
     System.out.println("Number of combinations: " + combinations.size());
