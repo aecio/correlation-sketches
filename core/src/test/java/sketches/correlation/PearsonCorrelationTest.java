@@ -12,6 +12,35 @@ public class PearsonCorrelationTest {
   static final double delta = 0.001;
 
   @Test
+  public void shouldComputeCorrelationCoefficient() {
+    double[] x = {1,2,3};
+    double[] y = {1,2,3};
+    assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
+  }
+
+  @Test
+  public void shouldComputeCorrelationCoefficient2() {
+    double[] x = {0,0,0};
+    double[] y = {2,2,2};
+    assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
+  }
+
+  @Test
+  public void shouldComputeCorrelationCoefficient3() {
+    double[] x = {0,0,0.0001};
+    double[] y = {2,2,2};
+    assertEquals(0., PearsonCorrelation.coefficient(x, y), delta);
+  }
+
+  @Test
+  public void shouldComputeCorrelationCoefficient4() {
+//    double[] x = {0,0,0,0,1,1,0,0,0,0,0,0};
+    double[] y = {0,0,0,0,0,1,0,0,0,0,0,0};
+    double[] x = {1,1,1,1,1,2,1,1,1,1,1,1};
+    assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
+  }
+
+  @Test
   public void shouldComputeOneTailedTTestPValue() {
     assertEquals(0.24302101, PearsonCorrelation.pValueOneTailed(0.25, 10), delta);
     assertEquals(0.07055664, PearsonCorrelation.pValueOneTailed(0.50, 10), delta);
