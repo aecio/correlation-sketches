@@ -61,10 +61,10 @@ public class CorrelationHashingTest {
     KMVCorrelationSketch c2sk = new KMVCorrelationSketch(fk, c2);
 
     double delta = 0.1;
-    assertEquals(1.000, qsk.correlationTo(qsk), delta);
-    assertEquals(1.000, qsk.correlationTo(c0sk), delta);
-    assertEquals(0.9895, qsk.correlationTo(c1sk), delta);
-    assertEquals(0.9558, qsk.correlationTo(c2sk), delta);
+    assertEquals(1.000, qsk.correlationTo(qsk).coefficient, delta);
+    assertEquals(1.000, qsk.correlationTo(c0sk).coefficient, delta);
+    assertEquals(0.9895, qsk.correlationTo(c1sk).coefficient, delta);
+    assertEquals(0.9558, qsk.correlationTo(c2sk).coefficient, delta);
   }
 
   @Test

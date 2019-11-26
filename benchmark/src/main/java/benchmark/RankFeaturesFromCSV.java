@@ -57,7 +57,7 @@ public class RankFeaturesFromCSV {
         //                MinhashCorrelationSketch columnSketch = new
         // MinhashCorrelationSketch(keyValues, columnValues, minHasher);
         KMVCorrelationSketch columnSketch = new KMVCorrelationSketch(keyValues, columnValues, nhf);
-        sketchCorrelations[i] = targetSketch.correlationTo(columnSketch);
+        sketchCorrelations[i] = targetSketch.correlationTo(columnSketch).coefficient;
         pearsonCorrelations[i] = PearsonCorrelation.coefficient(targetValues, columnValues);
 
         System.out.printf(

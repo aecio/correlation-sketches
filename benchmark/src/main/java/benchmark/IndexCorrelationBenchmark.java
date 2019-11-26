@@ -70,7 +70,7 @@ public class IndexCorrelationBenchmark {
 
           Result result = new Result();
 
-          result.corr_est = querySketch.correlationTo(columnSketch);
+          result.corr_est = querySketch.correlationTo(columnSketch).coefficient;
           if (Double.isNaN(result.corr_est)) {
             continue;
           }

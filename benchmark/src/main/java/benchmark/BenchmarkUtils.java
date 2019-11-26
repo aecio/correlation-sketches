@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringEscapeUtils;
 import sketches.correlation.KMVCorrelationSketch;
+import sketches.correlation.KMVCorrelationSketch.CorrelationEstimate;
+import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.PearsonCorrelation.ConfidenceInterval;
 import sketches.correlation.Sketches;
 import sketches.correlation.Sketches.Type;
@@ -159,33 +161,43 @@ public class BenchmarkUtils {
           sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
     }
 
-    int mininumIntersection = 1;
-    int mininumSetSize = 1;
+    int mininumIntersection = 3; // minimum sample size for correlation is 3
+    int mininumSetSize = 3;
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check weather the actual cardinality and sketch sizes are large enough.
-    if (result.interxy_actual > mininumIntersection
-        && result.cardx_actual > mininumSetSize
-        && result.cardy_actual > mininumSetSize
-        && sketchX.getKMinValues().size() > mininumSetSize
-        && sketchY.getKMinValues().size() > mininumSetSize) {
+
+    if (result.interxy_actual >= mininumIntersection
+        && result.cardx_actual >= mininumSetSize
+        && result.cardy_actual >= mininumSetSize
+        && sketchX.getKMinValues().size() >= mininumSetSize
+        && sketchY.getKMinValues().size() >= mininumSetSize) {
+
       // set operations estimates (jaccard, cardinality, etc)
       computeSetStatisticsEstimates(result, sketchX, sketchY);
-      // correlation estimates
-      result.corr_est = sketchX.correlationTo(sketchY);
-      result.corr_delta = result.corr_actual - result.corr_est;
-      // correlation ground-truth
-      result.corr_actual = Tables.computePearsonAfterJoin(x, y);
-    }
 
-    // TODO: get the actual number of hash matches between both sketches (i.e., number of samples
-    //       used for computing the estimation) and use it for computing the hypothesis testing
-    //
-    //    result.corr_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_est, nhf);
-    //    result.corr_est_intervals = PearsonCorrelation.confidenceInterval(result.corr_est, nhf,
-    // 0.95);
-    //    result.corr_est_significance = PearsonCorrelation.isSignificant(result.corr_est, nhf,
-    // .05);
+      // correlation estimates
+      CorrelationEstimate estimate = sketchX.correlationTo(sketchY);
+
+      if (estimate.sampleSize > mininumIntersection) {
+        result.corr_est = estimate.coefficient;
+        result.corr_est_sample_size = estimate.sampleSize;
+        result.corr_delta = result.corr_actual - result.corr_est;
+
+        int sampleSize = estimate.sampleSize;
+        result.corr_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_est, sampleSize);
+
+        double alpha = .05;
+        result.corr_est_intervals =
+                PearsonCorrelation.confidenceInterval(result.corr_est, sampleSize, 1. - alpha);
+        result.corr_est_significance =
+                PearsonCorrelation.isSignificant(result.corr_est, sampleSize, alpha);
+
+        // correlation ground-truth
+        result.corr_actual = Tables.computePearsonAfterJoin(x, y);
+      }
+
+    }
 
     result.columnId =
         String.format(
@@ -255,6 +267,7 @@ public class BenchmarkUtils {
     // others
     public String parameters;
     public String columnId;
+    public int corr_est_sample_size;
 
     public static String header() {
       return String.format(
@@ -285,6 +298,7 @@ public class BenchmarkUtils {
               + "corr_est,"
               + "corr_actual,"
               + "corr_delta,"
+              + "corr_est_sample_size,"
               + "corr_est_pvalue2t,"
               + "corr_est_intervals,"
               + "corr_est_significance,"
@@ -299,7 +313,7 @@ public class BenchmarkUtils {
               + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,"
               + "%.2f,%d,%.2f,%d,"
               + "%.2f,%d,%.2f,%d,"
-              + "%.3f,%.3f,%.3f,%.3f,%s,%s,"
+              + "%.3f,%.3f,%.3f,%d,%.3f,%s,%s,"
               + "%s,%s",
           // jaccard
           jcx_est,
@@ -322,6 +336,7 @@ public class BenchmarkUtils {
           corr_est,
           corr_actual,
           corr_delta,
+          corr_est_sample_size,
           corr_est_pvalue2t,
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_intervals)),
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_significance)),

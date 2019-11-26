@@ -60,7 +60,7 @@ public class KMVCorrelationSketch {
     return kmv.intersectionSize(other.kmv);
   }
 
-  public double correlationTo(KMVCorrelationSketch other) {
+  public CorrelationEstimate correlationTo(KMVCorrelationSketch other) {
     TreeSet<ValueHash> thisKMinValues = this.kmv.getKMinValues();
     int[] thisMinhashes = new int[thisKMinValues.size()];
     Iterator<ValueHash> thisIt = thisKMinValues.iterator();
@@ -78,7 +78,7 @@ public class KMVCorrelationSketch {
     // compute intersection between both sketches
     IntSet commonHashes = commonValues(thisMinhashes, otherMinhashes);
     if (commonHashes.isEmpty()) {
-      return Double.NaN;
+      return new CorrelationEstimate(Double.NaN, 0);
     }
 
     Int2DoubleMap thisMap = buildHashToValueMap(thisKMinValues);
@@ -92,7 +92,9 @@ public class KMVCorrelationSketch {
       i++;
     }
     // finally, compute correlation coefficient between common values
-    return PearsonCorrelation.coefficient(thisValues, otherValues);
+    double coefficient = PearsonCorrelation.coefficient(thisValues, otherValues);
+
+    return new CorrelationEstimate(coefficient, commonHashes.size());
   }
 
   private Int2DoubleMap buildHashToValueMap(TreeSet<ValueHash> kMinValues) {
@@ -111,5 +113,14 @@ public class KMVCorrelationSketch {
 
   public TreeSet<ValueHash> getKMinValues() {
     return this.kmv.getKMinValues();
+  }
+
+  public static class CorrelationEstimate {
+      public final double coefficient;
+      public final int sampleSize;
+      public CorrelationEstimate(final double coefficient, final int sampleSize) {
+          this.coefficient = coefficient;
+          this.sampleSize = sampleSize;
+      }
   }
 }
