@@ -151,15 +151,15 @@ public class BenchmarkUtils {
       sketchY = new KMVCorrelationSketch(gkmvY);
     }
 
-    synchronized (System.out) {
-      System.out.println();
-      System.out.printf("x=%s dataset=%s\n", x.columnName, x.datasetId);
-      System.out.printf("y=%s dataset=%s\n", y.columnName, y.datasetId);
-      System.out.printf("x.size=%d y.size=%d\n", x.keyValues.size(), y.keyValues.size());
-      System.out.printf(
-          "sketch.x.size=%d sketch.y.size=%d\n",
-          sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
-    }
+//    synchronized (System.out) {
+//      System.out.println();
+//      System.out.printf("x=%s dataset=%s\n", x.columnName, x.datasetId);
+//      System.out.printf("y=%s dataset=%s\n", y.columnName, y.datasetId);
+//      System.out.printf("x.size=%d y.size=%d\n", x.keyValues.size(), y.keyValues.size());
+//      System.out.printf(
+//          "sketch.x.size=%d sketch.y.size=%d\n",
+//          sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
+//    }
 
     int mininumIntersection = 3; // minimum sample size for correlation is 3
     int mininumSetSize = 3;
