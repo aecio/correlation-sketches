@@ -68,6 +68,9 @@ public class CreateColumnStore extends CliTool implements Serializable {
     Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
       Set<ColumnPair> columnPairs = BenchmarkUtils.readColumnPairs(csv, minRows);
+      if (columnPairs.isEmpty()) {
+        continue;
+      }
       Set<String> columnIds = new HashSet<>();
       for (ColumnPair cp : columnPairs) {
         String id = cp.id();
@@ -115,7 +118,9 @@ public class CreateColumnStore extends CliTool implements Serializable {
         String value = line.substring(COLUMNS_KEY.length() + 1);
         List<String> columns = Arrays.asList(value.split(" "));
         Set<String> columnIds = new HashSet<>(columns);
-        allColumns.add(columnIds);
+        if (!columnIds.isEmpty()) {
+          allColumns.add(columnIds);
+        }
       }
     }
 
