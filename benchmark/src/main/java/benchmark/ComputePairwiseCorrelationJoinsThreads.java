@@ -53,6 +53,11 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
       description = "Whether to consider only intra-dataset column combinations")
   Boolean intraDatasetCombinations = false;
 
+  @Option(
+      name = "--cpu-cores",
+      description = "Number of CPU core to use. Default is to use all cores available.")
+  int cpuCores = -1;
+
   public static void main(String[] args) {
     CliTool.run(args, new ComputePairwiseCorrelationJoinsThreads());
   }
@@ -83,8 +88,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     System.out.println("Number of combinations: " + combinations.size());
     final AtomicInteger processed = new AtomicInteger(0);
     final int total = combinations.size();
-    //    int cores = Runtime.getRuntime().availableProcessors();
-    int cores = 8;
+
+    int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
     forkJoinPool
         .submit(
