@@ -21,6 +21,7 @@ create_store () {
   local STORE_PATH=$2
   local CREATE_STORE_CMD="$CREATE_STORE_EXE --input-path $INPUT_PATH --output-path $STORE_PATH --db-backend $DB"
   echo "Creating store for $INPUT_PATH"
+  echo "Running command: $CREATE_STORE_CMD"
   $CREATE_STORE_CMD
 }
 

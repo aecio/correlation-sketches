@@ -5,7 +5,8 @@ import benchmark.CreateColumnStore.ColumnStoreMetadata;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
-import com.google.common.collect.Sets;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import hashtabledb.BytesBytesHashtable;
 import hashtabledb.Kryos;
 import java.io.FileWriter;
@@ -13,8 +14,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +53,11 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   Boolean intraDatasetCombinations = false;
 
   @Option(
+      name = "--max-combinations",
+      description = "The maximum number of column combinations to consider")
+  private int maxSamples = 10000000;
+
+  @Option(
       name = "--cpu-cores",
       description = "Number of CPU core to use. Default is to use all cores available.")
   int cpuCores = -1;
@@ -73,7 +77,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
 
     System.out.println("\n> Computing column statistics for all column combinations...");
     Set<ColumnCombination> combinations =
-        createColumnCombinations(columnSets, intraDatasetCombinations);
+        ColumnCombination.createColumnCombinations(
+            columnSets, intraDatasetCombinations, maxSamples);
 
     String baseInputPath = Paths.get(inputPath).getFileName().toString();
     String filename =
@@ -89,6 +94,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     final AtomicInteger processed = new AtomicInteger(0);
     final int total = combinations.size();
 
+    Cache<String, ColumnPair> cache = CacheBuilder.newBuilder().softValues().build();
+
     int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
     forkJoinPool
@@ -96,7 +103,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
             () ->
                 combinations.stream()
                     .parallel()
-                    .map(computeStatistics(columnStore, processed, total, this.sketch))
+                    .map(computeStatistics(cache, columnStore, processed, total, this.sketch))
                     .forEach(writeCSV(resultsFile)))
         .get();
     resultsFile.close();
@@ -104,45 +111,25 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }
 
-  private Set<ColumnCombination> createColumnCombinations(
-      Set<Set<String>> allColumns, Boolean intraDatasetCombinations) {
-
-    Set<ColumnCombination> result = new HashSet<>();
-
-    if (intraDatasetCombinations) {
-      for (Set<String> c : allColumns) {
-        Set<Set<String>> intraCombinations = Sets.combinations(c, 2);
-        for (Set<String> columnPair : intraCombinations) {
-          result.add(createColumnCombination(columnPair));
-        }
-      }
-    } else {
-      Set<String> columnsSet = new HashSet<>();
-      for (Set<String> c : allColumns) {
-        columnsSet.addAll(c);
-      }
-      Set<Set<String>> interCombinations = Sets.combinations(columnsSet, 2);
-      for (Set<String> columnPair : interCombinations) {
-        result.add(createColumnCombination(columnPair));
-      }
-    }
-    return result;
-  }
-
-  private ColumnCombination createColumnCombination(Set<String> columnPair) {
-    Iterator<String> it = columnPair.iterator();
-    String x = it.next();
-    String y = it.next();
-    return new ColumnCombination(x, y);
-  }
-
   private Function<ColumnCombination, String> computeStatistics(
-      BytesBytesHashtable hashtable, AtomicInteger processed, double total, Type sketch) {
+      Cache<String, ColumnPair> cache,
+      BytesBytesHashtable hashtable,
+      AtomicInteger processed,
+      double total,
+      Type sketch) {
     return (ColumnCombination columnPair) -> {
-      byte[] xId = columnPair.x.getBytes();
-      byte[] yId = columnPair.y.getBytes();
-      ColumnPair x = KRYO.unserializeObject(hashtable.get(xId));
-      ColumnPair y = KRYO.unserializeObject(hashtable.get(yId));
+      ColumnPair x = cache.getIfPresent(columnPair.x);
+      if (x == null) {
+        byte[] xId = columnPair.x.getBytes();
+        x = KRYO.unserializeObject(hashtable.get(xId));
+        cache.put(columnPair.x, x);
+      }
+      ColumnPair y = cache.getIfPresent(columnPair.y);
+      if (y == null) {
+        byte[] yId = columnPair.y.getBytes();
+        y = KRYO.unserializeObject(hashtable.get(yId));
+        cache.put(columnPair.y, y);
+      }
 
       Result result = BenchmarkUtils.computeStatistics(x, y, sketch, numHashes);
 
@@ -171,15 +158,5 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
         }
       }
     };
-  }
-
-  public static class ColumnCombination {
-    public String x;
-    public String y;
-
-    public ColumnCombination(String x, String y) {
-      this.x = x;
-      this.y = y;
-    }
   }
 }
