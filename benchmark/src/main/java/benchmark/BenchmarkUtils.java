@@ -25,6 +25,7 @@ import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
 import tech.tablesaw.api.Table;
 import tech.tablesaw.io.csv.CsvReadOptions;
+import utils.Sets;
 
 public class BenchmarkUtils {
 
@@ -208,23 +209,18 @@ public class BenchmarkUtils {
   }
 
   private static void computeSetStatisticsGroundTruth(ColumnPair x, ColumnPair y, Result result) {
-    Set<String> xKeys = new HashSet<>(x.keyValues);
-    Set<String> yKeys = new HashSet<>(y.keyValues);
+    HashSet<String> xKeys = new HashSet<>(x.keyValues);
+    HashSet<String> yKeys = new HashSet<>(y.keyValues);
     result.cardx_actual = xKeys.size();
     result.cardy_actual = yKeys.size();
 
-    Set<String> intersection = new HashSet<>(xKeys);
-    intersection.retainAll(yKeys);
-    result.interxy_actual = intersection.size();
+    result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
+    result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
 
-    Set<String> union = new HashSet<>(xKeys);
-    union.addAll(yKeys);
-    result.unionxy_actual = union.size();
+    result.jcx_actual = result.interxy_actual / (double) result.cardx_actual;
+    result.jcy_actual = result.interxy_actual / (double) result.cardy_actual;
 
-    result.jcx_actual = intersection.size() / (double) xKeys.size();
-    result.jcy_actual = intersection.size() / (double) yKeys.size();
-
-    result.jsxy_actual = intersection.size() / (double) union.size();
+    result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
   }
 
   private static void computeSetStatisticsEstimates(
