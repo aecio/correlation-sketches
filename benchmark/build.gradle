@@ -27,7 +27,8 @@ dependencies {
     compile group: 'com.github.rvesse', name: 'airline', version: '2.7.2'
     compile group: 'org.rocksdb', name: 'rocksdbjni', version: '6.2.2'
     compile group: 'org.iq80.leveldb', name: 'leveldb', version: '0.12'
-
+    compile group: 'tech.tablesaw', name: 'tablesaw-core', version: '0.36.0'
+    compile group: 'org.apache.commons', name: 'commons-text', version: '1.8'
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.5.1")
