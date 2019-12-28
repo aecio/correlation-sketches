@@ -1,8 +1,12 @@
 package benchmark;
 
+import com.github.rvesse.airline.annotations.Command;
+import com.github.rvesse.airline.annotations.Option;
+import com.github.rvesse.airline.annotations.restrictions.Required;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,19 +19,47 @@ import sketches.correlation.SketchIndex;
 import sketches.correlation.SketchIndex.Hit;
 import benchmark.BenchmarkUtils.Result;
 import sketches.correlation.Sketches;
+import sketches.correlation.Sketches.Type;
 import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
+import spark.ComputePairwiseCorrelationJoins;
+import utils.CliTool;
 
-public class IndexCorrelationBenchmark {
+@Command(
+    name = IndexCorrelationBenchmark.JOB_NAME,
+    description = "Creates a Lucene index of tables")
+public class IndexCorrelationBenchmark extends CliTool implements Serializable {
 
-  public static void main(String[] args) throws IOException {
+  public static final String JOB_NAME = "IndexCorrelationBenchmark";
 
-    //        String basePath = "/home/aeciosantos/workspace/d3m/datasets/seed_datasets_current/";
+  @Required
+  @Option(name = "--input-path", description = "Folder containing CSV files")
+  private String inputPath;
+
+  @Required
+  @Option(name = "--output-path", description = "Output path for results file")
+  private String outputPath;
+
+  @Option(name = "--sketch-type", description = "The type sketch to be used")
+  private Type sketchType = Type.KMV;
+
+  @Required
+  @Option(name = "--num-hashes", description = "Number of hashes per sketch")
+  private double numHashes = KMV.DEFAULT_K;
+
+  @Option(name = "--min-rows", description = "Minimum number of rows to consider table")
+  int minRows = 1;
+
+  public static void main(String[] args) {
+    CliTool.run(args, new ComputePairwiseCorrelationJoins());
+  }
+
+  @Override
+  public void execute() {
+
     String basePath = "/home/aeciosantos/workspace/d3m/data-search-datasets/poverty-data";
-    //        String basePath = "/home/aeciosantos/Downloads/chicago-data/";
 
-    List<String> allFiles = BenchmarkUtils.findAllCSVs(basePath);
-    int minRows = 1;
+    List<String> allFiles = BenchmarkUtils.findAllCSVs(inputPath);
     Set<ColumnPair> allColumns = BenchmarkUtils.readAllColumnPairs(allFiles, minRows);
 
     DoubleList estimationsCorrelations = new DoubleArrayList();

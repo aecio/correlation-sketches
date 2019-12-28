@@ -3,7 +3,7 @@
 #
 # Example:
 #
-#  DB=LEVELDB COMPILE=false JAR=./benchmark-0.1-SNAPSHOT-all.jar BASE_OUTPUT_PATH=./output DATASETS_PATH="./datasets" ./run_experiments.sh
+#  DB=LEVELDB COMPILE=false JVM_ARGS="-Xmx32768m -Xms32768m" JAR=./benchmark-0.1-SNAPSHOT-all.jar BASE_OUTPUT_PATH=./output DATASETS_PATH="./datasets" ./run_experiments.sh
 #
 
 # Default parameters
@@ -12,9 +12,10 @@ COMPILE=${COMPILE:-"true"}
 BASE_OUTPUT_PATH=${BASE_OUTPUT_PATH:-"./notebooks/results"}
 DATASETS_PATH=${DATASETS_PATH:-"./datasets"}
 JAR=${JAR:-"benchmark/build/libs/benchmark-0.1-SNAPSHOT-all.jar"}
+JVM_ARGS=${JVM_ARGS:-""}
 
-BENCHMARK_EXE="java -cp $JAR benchmark.ComputePairwiseCorrelationJoinsThreads"
-CREATE_STORE_EXE="java -cp $JAR benchmark.CreateColumnStore"
+BENCHMARK_EXE="java $JVM_ARGS -cp $JAR benchmark.ComputePairwiseCorrelationJoinsThreads"
+CREATE_STORE_EXE="java $JVM_ARGS -cp $JAR benchmark.CreateColumnStore"
 
 create_store () {
   local INPUT_PATH=$1
@@ -79,17 +80,17 @@ fi
 #  k=1024 budget=1024*500=512000 tau=0.027 tau-unique=0.093
 #
 
-DATASET_NAME="synthetic-correlated-joinable-large"
-TAU="0.003 0.007 0.013 0.027"
-K_VALUES="128 256 512 1024"
-
-  INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
-  STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
-RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
-
+#DATASET_NAME="synthetic-correlated-joinable-large"
+#TAU="0.003 0.007 0.013 0.027"
+#K_VALUES="128 256 512 1024"
+#
+#  INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
+#  STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
+#RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
+#
 #create_store "$INPUT_PATH" "$STORE_PATH"
-run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
-run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
+#run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
+#run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
 
 #
 #  Parameter equivalency for each method in the Worldbank Finances dataset
@@ -100,14 +101,35 @@ run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
 #  k=1024 budget=1024*521=533504 tau=0.883 tau-unique=1.070
 #
 
-DATASET_NAME="finances.worldbank.org"
-TAU="0.110 0.221 0.442 0.883"
+#DATASET_NAME="finances.worldbank.org"
+#TAU="0.110 0.221 0.442 0.883"
+#K_VALUES="128 256 512 1024"
+#
+#  INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
+#  STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
+#RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
+#
+#create_store "$INPUT_PATH" "$STORE_PATH"
+#run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
+#run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
+
+#
+#  Parameter equivalency for data.cityofnewyork.us
+#
+#  k=128 budget=128*15842=2027776 unique-keys=46655726 unique-keys=46655726 tau=0.04346
+#  k=256 budget=256*15842=4055552 unique-keys=46655726 unique-keys=46655726 tau=0.08693
+#  k=512 budget=512*15842=8111104 unique-keys=46655726 unique-keys=46655726 tau=0.17385
+#  k=1024 budget=1024*15842=16222208 unique-keys=46655726 unique-keys=46655726 tau=0.34770
+#
+
+DATASET_NAME="data.cityofnewyork.us"
+TAU="0.04346 0.08693 0.17385 0.34770"
 K_VALUES="128 256 512 1024"
 
   INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
   STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
 RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
 
-create_store "$INPUT_PATH" "$STORE_PATH"
+#create_store "$INPUT_PATH" "$STORE_PATH"
 run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
 run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"

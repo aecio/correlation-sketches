@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import utils.CliTool;
@@ -67,12 +68,13 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
     Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
-      Set<ColumnPair> columnPairs = BenchmarkUtils.readColumnPairs(csv, minRows);
-      if (columnPairs.isEmpty()) {
+      Iterator<ColumnPair> columnPairs = BenchmarkUtils.readColumnPairs(csv, minRows);
+      if (!columnPairs.hasNext()) {
         continue;
       }
       Set<String> columnIds = new HashSet<>();
-      for (ColumnPair cp : columnPairs) {
+      while (columnPairs.hasNext()) {
+        ColumnPair cp = columnPairs.next();
         String id = cp.id();
         hashtable.put(id.getBytes(), KRYO.serializeObject(cp));
         columnIds.add(id);

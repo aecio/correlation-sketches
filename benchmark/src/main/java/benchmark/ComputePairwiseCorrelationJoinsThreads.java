@@ -54,8 +54,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
 
   @Option(
       name = "--max-combinations",
-      description = "The maximum number of column combinations to consider")
-  private int maxSamples = 10000000;
+      description = "The maximum number of columns to consider for creating combinations.")
+  private int maxSamples = 5000;
 
   @Option(
       name = "--cpu-cores",

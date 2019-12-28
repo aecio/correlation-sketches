@@ -9,9 +9,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Set;
+import java.util.Iterator;
+import java.util.List;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -75,8 +77,12 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
               DataInputStream is = kv._2.open();
               try {
                 String datasetName = Paths.get(fileName).getFileName().toString();
-                Set<ColumnPair> s = BenchmarkUtils.readColumnPairs(datasetName, is, minRows);
-                return s;
+                Iterator<ColumnPair> it = BenchmarkUtils.readColumnPairs(datasetName, is, minRows);
+                List<ColumnPair> list = new ArrayList<>();
+                while (it.hasNext()) {
+                  list.add(it.next());
+                }
+                return list;
               } finally {
                 closeQuietly(is);
               }

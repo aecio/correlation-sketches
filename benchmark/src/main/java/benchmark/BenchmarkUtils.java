@@ -1,11 +1,12 @@
 package benchmark;
 
-import java.io.FileInputStream;
+import com.clearspring.analytics.util.Lists;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -25,6 +26,7 @@ import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
 import tech.tablesaw.api.Table;
 import tech.tablesaw.io.csv.CsvReadOptions;
+import tech.tablesaw.io.csv.CsvReadOptions.Builder;
 import utils.Sets;
 
 public class BenchmarkUtils {
@@ -34,7 +36,8 @@ public class BenchmarkUtils {
     for (int i = 0; i < allFiles.size(); i++) {
       String dataset = allFiles.get(i);
       try {
-        allPairs.addAll(readColumnPairs(dataset, minRows));
+        Iterator<ColumnPair> it = readColumnPairs(dataset, minRows);
+        while (it.hasNext()) allPairs.add(it.next());
       } catch (Exception e) {
         System.err.println("Failed to read dataset: " + dataset);
         System.err.println(e.toString());
@@ -43,20 +46,30 @@ public class BenchmarkUtils {
     return allPairs;
   }
 
-  public static Set<ColumnPair> readColumnPairs(String dataset, int minRows) throws IOException {
-    InputStream fileInputStream = new FileInputStream(dataset);
-    return readColumnPairs(dataset, fileInputStream, minRows);
+  public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
+    try {
+      Table table = readTable(CsvReadOptions.builderFromFile(datasetFilePath));
+      return readColumnPairs(datasetFilePath, table, minRows);
+    } catch (Exception e) {
+      System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
+      e.printStackTrace(System.out);
+      return Collections.emptyIterator();
+    }
   }
 
-  public static Set<ColumnPair> readColumnPairs(
-      String datasetName, InputStream fileInputStream, int minRows) throws IOException {
+  public static Iterator<ColumnPair> readColumnPairs(String datasetName, InputStream is, int minRows) {
+    try {
+      Table table = readTable(CsvReadOptions.builder(is));
+      return readColumnPairs(datasetName, table, minRows);
+    } catch (Exception e) {
+      System.out.println("\nFailed to read dataset from input stream: " + datasetName);
+      e.printStackTrace(System.out);
+      return Collections.emptyIterator();
+    }
+  }
+
+  public static Iterator<ColumnPair> readColumnPairs(String datasetName, Table df, int minRows) {
     System.out.println("\nDataset: " + datasetName);
-    Table df =
-        Table.read()
-            .csv(
-                CsvReadOptions.builder(fileInputStream)
-                    .maxCharsPerColumn(10000)
-                    .missingValueIndicator("-"));
 
     System.out.printf("Row count: %d \n", df.rowCount());
 
@@ -66,33 +79,66 @@ public class BenchmarkUtils {
     List<NumericColumn<?>> numericColumns = df.numericColumns();
     System.out.println("Numeric columns: " + numericColumns.size());
 
-    Set<ColumnPair> pairs = new HashSet<>();
     if (df.rowCount() < minRows) {
-      System.out.println("Column pairs: " + pairs.size());
-      return pairs;
+      System.out.println("Column pairs: 0");
+      return Collections.emptyIterator();
     }
+
+    // Create a list of all column pairs
+    List<ColumnEntry> pairs = new ArrayList<>();
     for (CategoricalColumn<?> key : categoricalColumns) {
       for (NumericColumn<?> column : numericColumns) {
-        try {
-          pairs.add(Tables.createColumnPair(datasetName, key, column));
-        } catch (Exception e) {
-          e.printStackTrace();
-          continue;
-        }
+          pairs.add(new ColumnEntry(key, column));
       }
     }
     System.out.println("Column pairs: " + pairs.size());
-    return pairs;
+    if (pairs.isEmpty()) {
+      return Collections.emptyIterator();
+    }
+
+    // Create a "lazy" iterator that creates one ColumnPair at a time to avoid overloading memory
+    // with many large column pairs.
+    Iterator<ColumnEntry> it = pairs.iterator();
+    return new Iterator<ColumnPair>() {
+      ColumnEntry nextPair = it.next();
+
+      @Override
+      public boolean hasNext() {
+        return nextPair != null;
+      }
+
+      @Override
+      public ColumnPair next() {
+        ColumnEntry tmp = nextPair;
+        nextPair = it.hasNext() ? it.next() : null;
+        return Tables.createColumnPair(datasetName, tmp.key, tmp.column);
+      }
+    };
+  }
+
+  static class ColumnEntry {
+    CategoricalColumn<?> key;
+    NumericColumn<?> column;
+    ColumnEntry(CategoricalColumn<?> key, NumericColumn<?> column) {
+      this.key = key;
+      this.column = column;
+    }
+  }
+
+  private static Table readTable(Builder csvReadOptionsBuilder) throws IOException {
+    Table table =
+        Table.read()
+            .csv(
+                csvReadOptionsBuilder
+                    .sample(true)
+                    .sampleRowsIfGreaterThan(5000000) // availaible only on custom tablesaw fork
+                    .maxCharsPerColumn(10000)
+                    .missingValueIndicator("-"));
+    return table;
   }
 
   public static List<Set<String>> readAllKeyColumns(String dataset) throws IOException {
-    InputStream fileInputStream = new FileInputStream(dataset);
-    Table df =
-        Table.read()
-            .csv(
-                CsvReadOptions.builder(fileInputStream)
-                    .maxCharsPerColumn(10000)
-                    .missingValueIndicator("-"));
+    Table df = readTable(CsvReadOptions.builderFromFile(dataset));
     List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
     List<Set<String>> allColumns = new ArrayList<>();
     for (CategoricalColumn<String> column : categoricalColumns) {
@@ -152,15 +198,15 @@ public class BenchmarkUtils {
       sketchY = new KMVCorrelationSketch(gkmvY);
     }
 
-//    synchronized (System.out) {
-//      System.out.println();
-//      System.out.printf("x=%s dataset=%s\n", x.columnName, x.datasetId);
-//      System.out.printf("y=%s dataset=%s\n", y.columnName, y.datasetId);
-//      System.out.printf("x.size=%d y.size=%d\n", x.keyValues.size(), y.keyValues.size());
-//      System.out.printf(
-//          "sketch.x.size=%d sketch.y.size=%d\n",
-//          sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
-//    }
+    //    synchronized (System.out) {
+    //      System.out.println();
+    //      System.out.printf("x=%s dataset=%s\n", x.columnName, x.datasetId);
+    //      System.out.printf("y=%s dataset=%s\n", y.columnName, y.datasetId);
+    //      System.out.printf("x.size=%d y.size=%d\n", x.keyValues.size(), y.keyValues.size());
+    //      System.out.printf(
+    //          "sketch.x.size=%d sketch.y.size=%d\n",
+    //          sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
+    //    }
 
     int mininumIntersection = 3; // minimum sample size for correlation is 3
     int mininumSetSize = 3;
@@ -190,14 +236,13 @@ public class BenchmarkUtils {
 
         double alpha = .05;
         result.corr_est_intervals =
-                PearsonCorrelation.confidenceInterval(result.corr_est, sampleSize, 1. - alpha);
+            PearsonCorrelation.confidenceInterval(result.corr_est, sampleSize, 1. - alpha);
         result.corr_est_significance =
-                PearsonCorrelation.isSignificant(result.corr_est, sampleSize, alpha);
+            PearsonCorrelation.isSignificant(result.corr_est, sampleSize, alpha);
 
         // correlation ground-truth
         result.corr_actual = Tables.computePearsonAfterJoin(x, y);
       }
-
     }
 
     result.columnId =
