@@ -24,7 +24,6 @@ public class Qn {
 
   private static final double SQRT_OF_TWO = Math.sqrt(2);
 
-
   /**
    * Implements the time-efficient algorithm for the Qn scale estimator proposed by Rousseeuw and
    * Croux. The algorithm implemented here runs in O(n log n) time and was originally proposed in:
@@ -75,7 +74,7 @@ public class Qn {
           j++;
         }
       }
-      trial = WeightedHighMedian(work, weight, j);
+      trial = weightedHighMedian(work, weight, j);
 
       j = 0;
       for (int i = n - 1; i >= 0; --i) {
@@ -127,7 +126,7 @@ public class Qn {
           }
         }
       }
-      Qn = FindKthOrderStatistic(work, j, knew - nL);
+      Qn = findKthOrderStatistic(work, j, knew - nL);
     }
 
     /* Corrections are consistent with the implementation of the 'robustbase' R package */
@@ -182,7 +181,7 @@ public class Qn {
    * @param iw array of integer weights of the observations.
    * @param n number of observations
    */
-  public static double WeightedHighMedian(double[] a, int[] iw, int n) {
+  static double weightedHighMedian(double[] a, int[] iw, int n) {
     int kcand;
     double[] acand = new double[n];
     int[] iwcand = new int[n];
@@ -197,7 +196,7 @@ public class Qn {
     double trial;
 
     while (true) {
-      trial = FindKthOrderStatistic(a, nn, nn / 2);
+      trial = findKthOrderStatistic(a, nn, nn / 2);
 
       int wleft = 0;
       int wmid = 0;
@@ -247,7 +246,7 @@ public class Qn {
   /**
    * Finds the k-th order statistic of an array array a of length n.
    */
-  public static double FindKthOrderStatistic(double[] x, int n, int k) {
+  static double findKthOrderStatistic(double[] x, int n, int k) {
     // Check if arguments are valid
     final int N = x.length;
     checkArgument(n <= N, "n=[%d] can't be greater than the length of array x=[%d]", n, N);

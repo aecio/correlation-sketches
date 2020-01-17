@@ -13,35 +13,35 @@ public class QnTest {
     double[] x;
 
     x = new double[]{1, 2, 3};
-    assertEquals(1, Qn.FindKthOrderStatistic(x, 2, 1), delta);
-    assertEquals(2, Qn.FindKthOrderStatistic(x, 2, 2), delta);
+    assertEquals(1, Qn.findKthOrderStatistic(x, 2, 1), delta);
+    assertEquals(2, Qn.findKthOrderStatistic(x, 2, 2), delta);
     try {
-      Qn.FindKthOrderStatistic(x, 2, 3); // outside valid range
+      Qn.findKthOrderStatistic(x, 2, 3); // outside valid range
     } catch (IllegalArgumentException e) {
       // great, should fail when outside valid range
     }
 
-    assertEquals(1, Qn.FindKthOrderStatistic(x, 3, 1), delta);
-    assertEquals(2, Qn.FindKthOrderStatistic(x, 3, 2), delta);
-    assertEquals(3, Qn.FindKthOrderStatistic(x, 3, 3), delta);
+    assertEquals(1, Qn.findKthOrderStatistic(x, 3, 1), delta);
+    assertEquals(2, Qn.findKthOrderStatistic(x, 3, 2), delta);
+    assertEquals(3, Qn.findKthOrderStatistic(x, 3, 3), delta);
 
     x = new double[]{3, 2, 1};
-    assertEquals(1, Qn.FindKthOrderStatistic(x, 3, 1), delta);
-    assertEquals(2, Qn.FindKthOrderStatistic(x, 3, 2), delta);
-    assertEquals(3, Qn.FindKthOrderStatistic(x, 3, 3), delta);
+    assertEquals(1, Qn.findKthOrderStatistic(x, 3, 1), delta);
+    assertEquals(2, Qn.findKthOrderStatistic(x, 3, 2), delta);
+    assertEquals(3, Qn.findKthOrderStatistic(x, 3, 3), delta);
 
-    assertEquals(2, Qn.FindKthOrderStatistic(x, 2, 1), delta);
-    assertEquals(3, Qn.FindKthOrderStatistic(x, 2, 2), delta);
+    assertEquals(2, Qn.findKthOrderStatistic(x, 2, 1), delta);
+    assertEquals(3, Qn.findKthOrderStatistic(x, 2, 2), delta);
 
-    assertEquals(3, Qn.FindKthOrderStatistic(x, 1, 1), delta);
+    assertEquals(3, Qn.findKthOrderStatistic(x, 1, 1), delta);
 
     x = new double[]{25, 20, 25};
-    assertEquals(25, Qn.FindKthOrderStatistic(x, 1, 1), delta);
-    assertEquals(20, Qn.FindKthOrderStatistic(x, 2, 1), delta);
-    assertEquals(20, Qn.FindKthOrderStatistic(x, 3, 1), delta);
+    assertEquals(25, Qn.findKthOrderStatistic(x, 1, 1), delta);
+    assertEquals(20, Qn.findKthOrderStatistic(x, 2, 1), delta);
+    assertEquals(20, Qn.findKthOrderStatistic(x, 3, 1), delta);
 
-    assertEquals(25, Qn.FindKthOrderStatistic(x, 2, 2), delta);
-    assertEquals(25, Qn.FindKthOrderStatistic(x, 3, 3), delta);
+    assertEquals(25, Qn.findKthOrderStatistic(x, 2, 2), delta);
+    assertEquals(25, Qn.findKthOrderStatistic(x, 3, 3), delta);
   }
 
   @Test
