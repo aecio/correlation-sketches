@@ -131,7 +131,7 @@ public class BenchmarkUtils {
             .csv(
                 csvReadOptionsBuilder
                     .sample(true)
-                    .sampleRowsIfGreaterThan(5000000) // availaible only on custom tablesaw fork
+//                    .sampleRowsIfGreaterThan(5000000) // available only on custom tablesaw fork
                     .maxCharsPerColumn(10000)
                     .missingValueIndicator("-"));
     return table;
