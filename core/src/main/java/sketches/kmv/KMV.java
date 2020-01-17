@@ -51,7 +51,7 @@ public class KMV implements IKMV<KMV> {
     return kmv;
   }
 
-  /** Updates the KMV sysnopsis with the given hashed key */
+  /** Updates the KMV synopsis with the given hashed key */
   public void update(int hash, double value) {
     double h = Hashes.grm(hash);
     if (kMinValues.size() < maxK) {

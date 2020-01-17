@@ -8,7 +8,7 @@ import sketches.correlation.Hashes;
 public interface IKMV<T> {
 
   /**
-   * Updates this sysnopsis with the hashes of all the given key strings and their associated values
+   * Updates this synopsis with the hashes of all the given key strings and their associated values
    */
   default void updateAll(List<String> keys, double[] values) {
     if (keys.size() != values.length) {
@@ -20,7 +20,7 @@ public interface IKMV<T> {
   }
 
   /**
-   * Updates this sysnopsis with the hash value (Murmur3) of the given key string and its associated
+   * Updates this synopsis with the hash value (Murmur3) of the given key string and its associated
    * value.
    */
   default void update(String key, double value) {
@@ -31,7 +31,7 @@ public interface IKMV<T> {
     this.update(keyHash, value);
   }
 
-  /** Updates this sysnopsis with the given hashed key */
+  /** Updates this synopsis with the given hashed key */
   void update(int hash, double value);
 
   double distinctValues();
@@ -39,7 +39,7 @@ public interface IKMV<T> {
   /** Estimates the size of union of the given KMV synopsis */
   double unionSize(T other);
 
-  /** Estimates intersection between the sets represeneted by this synopsis and the other. */
+  /** Estimates intersection between the sets represented by this synopsis and the other. */
   double intersectionSize(T other);
 
   /** Estimates the Jaccard similarity between this and the other synopsis */
