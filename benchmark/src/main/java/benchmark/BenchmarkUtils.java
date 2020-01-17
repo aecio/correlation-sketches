@@ -1,6 +1,5 @@
 package benchmark;
 
-import com.clearspring.analytics.util.Lists;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringEscapeUtils;
+import sketches.correlation.CorrelationType;
 import sketches.correlation.KMVCorrelationSketch;
 import sketches.correlation.KMVCorrelationSketch.CorrelationEstimate;
 import sketches.correlation.PearsonCorrelation;
@@ -37,7 +37,9 @@ public class BenchmarkUtils {
       String dataset = allFiles.get(i);
       try {
         Iterator<ColumnPair> it = readColumnPairs(dataset, minRows);
-        while (it.hasNext()) allPairs.add(it.next());
+        while (it.hasNext()) {
+          allPairs.add(it.next());
+        }
       } catch (Exception e) {
         System.err.println("Failed to read dataset: " + dataset);
         System.err.println(e.toString());
@@ -57,7 +59,8 @@ public class BenchmarkUtils {
     }
   }
 
-  public static Iterator<ColumnPair> readColumnPairs(String datasetName, InputStream is, int minRows) {
+  public static Iterator<ColumnPair> readColumnPairs(String datasetName, InputStream is,
+      int minRows) {
     try {
       Table table = readTable(CsvReadOptions.builder(is));
       return readColumnPairs(datasetName, table, minRows);
@@ -88,7 +91,7 @@ public class BenchmarkUtils {
     List<ColumnEntry> pairs = new ArrayList<>();
     for (CategoricalColumn<?> key : categoricalColumns) {
       for (NumericColumn<?> column : numericColumns) {
-          pairs.add(new ColumnEntry(key, column));
+        pairs.add(new ColumnEntry(key, column));
       }
     }
     System.out.println("Column pairs: " + pairs.size());
@@ -117,8 +120,10 @@ public class BenchmarkUtils {
   }
 
   static class ColumnEntry {
+
     CategoricalColumn<?> key;
     NumericColumn<?> column;
+
     ColumnEntry(CategoricalColumn<?> key, NumericColumn<?> column) {
       this.key = key;
       this.column = column;
@@ -172,7 +177,7 @@ public class BenchmarkUtils {
   }
 
   public static Result computeStatistics(
-      ColumnPair x, ColumnPair y, Sketches.Type type, double nhf) {
+      ColumnPair x, ColumnPair y, Sketches.Type type, double nhf, CorrelationType estimator) {
 
     Result result = new Result();
 
@@ -184,14 +189,14 @@ public class BenchmarkUtils {
     KMVCorrelationSketch sketchY;
     if (type == Type.KMV) {
       int k = (int) nhf;
-      result.parameters = "KMV(k=" + k + ")";
+      result.parameters = "KMV(k=" + k + ")+" + estimator.toString();
       KMV kmvX = KMV.create(x.keyValues, x.columnValues, k);
       KMV kmvY = KMV.create(y.keyValues, y.columnValues, k);
-      sketchX = new KMVCorrelationSketch(kmvX);
-      sketchY = new KMVCorrelationSketch(kmvY);
+      sketchX = KMVCorrelationSketch.create(kmvX, CorrelationType.get(estimator));
+      sketchY = KMVCorrelationSketch.create(kmvY, CorrelationType.get(estimator));
     } else {
       double t = nhf;
-      result.parameters = "GKMV(t=" + t + ")";
+      result.parameters = "GKMV(t=" + t + ")+" + estimator.toString();
       GKMV gkmvX = GKMV.create(x.keyValues, x.columnValues, t);
       GKMV gkmvY = GKMV.create(y.keyValues, y.columnValues, t);
       sketchX = new KMVCorrelationSketch(gkmvX);

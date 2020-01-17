@@ -24,6 +24,7 @@ import scala.Tuple2;
 import benchmark.BenchmarkUtils;
 import benchmark.BenchmarkUtils.Result;
 import benchmark.ColumnPair;
+import sketches.correlation.CorrelationType;
 import sketches.correlation.Sketches.Type;
 import sketches.kmv.KMV;
 import utils.CliTool;
@@ -42,6 +43,9 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
   @Required
   @Option(name = "--output-path", description = "Output path for results file")
   private String outputPath;
+
+  @Option(name = "--estimator", description = "The correlation estimator to be used")
+  CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
   private Type sketchType = Type.KMV;
@@ -100,7 +104,7 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
                 (kv) -> {
                   ColumnPair query = kv._1;
                   ColumnPair column = kv._2;
-                  Result result = BenchmarkUtils.computeStatistics(query, column, sketchType, numHashes);
+                  Result result = BenchmarkUtils.computeStatistics(query, column, sketchType, numHashes, estimator);
                   return result == null ? Collections.emptyList() : Arrays.asList(result.csvLine());
                 });
 

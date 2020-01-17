@@ -19,6 +19,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import sketches.correlation.CorrelationType;
 import sketches.correlation.Sketches.Type;
 import sketches.kmv.KMV;
 import utils.CliTool;
@@ -39,6 +40,9 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   @Required
   @Option(name = "--output-path", description = "Output path for results file")
   String outputPath;
+
+  @Option(name = "--estimator", description = "The correlation estimator to be used")
+  CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
   Type sketch = Type.KMV;
@@ -131,7 +135,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
         cache.put(columnPair.y, y);
       }
 
-      Result result = BenchmarkUtils.computeStatistics(x, y, sketch, numHashes);
+      Result result = BenchmarkUtils.computeStatistics(x, y, sketch, numHashes, estimator);
 
       int current = processed.incrementAndGet();
       if (current % 100 == 0) {

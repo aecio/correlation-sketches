@@ -13,16 +13,18 @@ import sketches.kmv.ValueHash;
 
 public class KMVCorrelationSketch {
 
+  private final Correlation estimator;
   private final IKMV kmv;
-  private int cardinality = -1;
+  private int cardinality;
 
   public KMVCorrelationSketch(IKMV kmv) {
-    this(kmv, -1);
+    this(kmv, -1, PearsonCorrelation::coefficient);
   }
 
-  public KMVCorrelationSketch(IKMV kmv, int cardinality) {
+  public KMVCorrelationSketch(IKMV kmv, int cardinality, Correlation estimator) {
     this.kmv = kmv;
     this.cardinality = cardinality;
+    this.estimator = estimator;
   }
 
   public KMVCorrelationSketch(List<String> keys, double[] values) {
@@ -31,6 +33,10 @@ public class KMVCorrelationSketch {
 
   public KMVCorrelationSketch(List<String> keys, double[] values, int k) {
     this(KMV.create(keys, values, k));
+  }
+
+  public static KMVCorrelationSketch create(IKMV kmv, Correlation estimator) {
+    return new KMVCorrelationSketch(kmv, -1, estimator);
   }
 
   public void setCardinality(int cardinality) {
@@ -92,7 +98,7 @@ public class KMVCorrelationSketch {
       i++;
     }
     // finally, compute correlation coefficient between common values
-    double coefficient = PearsonCorrelation.coefficient(thisValues, otherValues);
+    double coefficient = estimator.correlation(thisValues, otherValues);
 
     return new CorrelationEstimate(coefficient, commonHashes.size());
   }
