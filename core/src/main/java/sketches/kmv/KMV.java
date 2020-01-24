@@ -42,6 +42,14 @@ public class KMV implements IKMV<KMV> {
     return kmv;
   }
 
+  public static KMV fromStringHashedKeys(String[] hashes, double[] values) {
+    KMV kmv = new KMV(hashes.length);
+    for (int i = 0; i < hashes.length; i++) {
+      kmv.update(Integer.parseInt(hashes[i]), values[i]);
+    }
+    return kmv;
+  }
+
   /** Creates a KMV synopsis of size k from an array of hashed keys. */
   public static KMV fromHashedKeys(int[] hashes, double[] values, int k) {
     KMV kmv = new KMV(k);

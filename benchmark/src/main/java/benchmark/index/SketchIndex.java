@@ -1,5 +1,6 @@
-package sketches.correlation;
+package benchmark.index;
 
+import benchmark.ColumnPair;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
@@ -31,42 +32,48 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
+import sketches.correlation.KMVCorrelationSketch;
 import sketches.correlation.Sketches.Type;
+import sketches.kmv.GKMV;
+import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
 import sketches.kmv.ValueHash;
 
 public class SketchIndex {
 
-  public static final String HASHES_FIELD_NAME = "hashes";
-  private static final String VALUES_FIELD_NAME = "values";
-  public static final String ID_FIELD_NAME = "id";
+  private static final String HASHES_FIELD_NAME = "h";
+  private static final String VALUES_FIELD_NAME = "v";
+  private static final String ID_FIELD_NAME = "i";
 
   private final IndexWriter writer;
   private final SearcherManager searcherManager;
-  private final Sketches.Type sketchType;
+  private final Type sketchType;
 
-  public SketchIndex(String indexPath) throws IOException {
-    this(MMapDirectory.open(Paths.get(indexPath)), Type.KMV);
-  }
+  private final double threshold;
 
   public SketchIndex() {
-    this(new RAMDirectory(), Type.KMV);
+    this(Type.KMV, 256);
   }
 
-  public SketchIndex(Directory dir, Sketches.Type sketchType) {
+  public SketchIndex(String indexPath, Type sketchType, double threshold) throws IOException {
+    this(MMapDirectory.open(Paths.get(indexPath)), sketchType, threshold);
+  }
+
+  public SketchIndex(Type sketchType, double threshold) {
+    this(new RAMDirectory(), sketchType, threshold);
+  }
+
+  public SketchIndex(Directory dir, Type sketchType, double threshold) {
     this.sketchType = sketchType;
+    this.threshold = threshold;
+
     final Analyzer analyzer = new StandardAnalyzer();
     final IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
     iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
 
     final BooleanSimilarity similarity = new BooleanSimilarity();
     iwc.setSimilarity(similarity);
-
-    // Optional: for better indexing performance, if you are indexing many documents, increase the
-    // RAM buffer. But if you do this, increase the max heap size to the JVM
-    // (e.g. add -Xmx512m or -Xmx1g):
-    //
-    //     iwc.setRAMBufferSizeMB(256.0);
+    iwc.setRAMBufferSizeMB(256.0);
     try {
       this.writer = new IndexWriter(dir, iwc);
     } catch (IOException e) {
@@ -88,13 +95,12 @@ public class SketchIndex {
     }
   }
 
-  public void index(String id, KMVCorrelationSketch sketch) throws IOException {
+  public void index(String id, ColumnPair columnPair) throws IOException {
+
+    KMVCorrelationSketch sketch = createCorrelationSketch(columnPair);
+
     Document doc = new Document();
 
-    // Add the path of the file as a field named "path".  Use a
-    // field that is indexed (i.e. searchable), but don't tokenize
-    // the field into separate words and don't index term frequency
-    // or positional information:
     Field idField = new StringField(ID_FIELD_NAME, id, Field.Store.YES);
     doc.add(idField);
 
@@ -109,12 +115,15 @@ public class SketchIndex {
 
     //        System.out.println(Arrays.asList(doc.getValues(HASHES_FIELD_NAME)));
     //        System.out.println(Arrays.asList(doc.getValues(VALUES_FIELD_NAME)));
-    writer.updateDocument(new Term("id", id), doc);
+    writer.updateDocument(new Term(ID_FIELD_NAME, id), doc);
     writer.flush();
     searcherManager.maybeRefresh();
   }
 
-  public List<Hit> search(KMVCorrelationSketch query, int k) throws IOException {
+  public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
+
+    KMVCorrelationSketch query = createCorrelationSketch(columnPair);
+
     IndexSearcher searcher = searcherManager.acquire();
     try {
       Builder bq = new BooleanQuery.Builder();
@@ -134,23 +143,33 @@ public class SketchIndex {
       for (int i = 0; i < hits.scoreDocs.length; i++) {
         //                System.out.println(hits.scoreDocs[i]);
 
+        // retrieve data from index fields
         Document doc = searcher.doc(hits.scoreDocs[i].doc);
         String id = doc.getValues(ID_FIELD_NAME)[0];
         String[] hashes = doc.getValues(HASHES_FIELD_NAME);
         BytesRef[] valuesRef = doc.getBinaryValues(VALUES_FIELD_NAME);
+
+        // re-construct data structures from bytes
         double[] values = toDoubleArray(valuesRef[0].bytes);
-        KMVCorrelationSketch kmv;
-        if (sketchType == Type.KMV) {
-          kmv = Sketches.fromKmvStringHashedKeys(hashes, values);
-        } else {
-          throw new IllegalArgumentException("Not supported yet!");
-        }
-        results.add(new Hit(id, kmv));
+        KMVCorrelationSketch correlationSketch = createCorrelationSketch(hashes, values);
+        results.add(new Hit(id, correlationSketch));
       }
       return results;
     } finally {
       searcherManager.release(searcher);
     }
+  }
+
+  private KMVCorrelationSketch createCorrelationSketch(String[] hashes, double[] values) {
+    IKMV kmv;
+    if (sketchType == Type.KMV) {
+      kmv = KMV.fromStringHashedKeys(hashes, values);
+    } else if (sketchType == Type.GKMV) {
+      kmv = GKMV.fromStringHashedKeys(hashes, values, threshold);
+    } else {
+      throw new IllegalArgumentException("Not supported yet!");
+    }
+    return new KMVCorrelationSketch(kmv);
   }
 
   protected static byte[] toByteArray(double[] value) {
@@ -170,6 +189,21 @@ public class SketchIndex {
       doubles[i] = bb.getDouble();
     }
     return doubles;
+  }
+
+
+  private KMVCorrelationSketch createCorrelationSketch(ColumnPair columnPair) {
+    KMVCorrelationSketch sketch;
+    if (sketchType == Type.KMV) {
+      int k = (int) threshold;
+      KMV kmv = KMV.create(columnPair.keyValues, columnPair.columnValues, k);
+      sketch = new KMVCorrelationSketch(kmv);
+    } else {
+      double t = threshold;
+      GKMV gkmv = GKMV.create(columnPair.keyValues, columnPair.columnValues, t);
+      sketch = new KMVCorrelationSketch(gkmv);
+    }
+    return sketch;
   }
 
   public static class Hit {

@@ -41,7 +41,15 @@ public class GKMV implements IKMV<GKMV> {
     return kmv;
   }
 
-  /** Updates the KMV sysnopsis with the given hashed key */
+  public static IKMV fromStringHashedKeys(String[] hashes, double[] values, double threshold) {
+    GKMV kmv = new GKMV(threshold);
+    for (int i = 0; i < hashes.length; i++) {
+      kmv.update(Integer.parseInt(hashes[i]), values[i]);
+    }
+    return kmv;
+  }
+
+  /** Updates the KMV synopsis with the given hashed key */
   public void update(int hash, double value) {
     double h = Hashes.grm(hash);
     if (h <= maxT) {

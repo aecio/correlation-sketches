@@ -1,26 +1,25 @@
 package benchmark;
 
+import benchmark.CreateColumnStore.ColumnStoreMetadata;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.doubles.DoubleList;
+import hashtabledb.BytesBytesHashtable;
+import hashtabledb.KV;
+import hashtabledb.Kryos;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.Random;
 import java.util.Set;
+import sketches.correlation.CorrelationType;
 import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.PearsonCorrelation;
-import sketches.correlation.SketchIndex;
-import sketches.correlation.SketchIndex.Hit;
-import benchmark.BenchmarkUtils.Result;
-import sketches.correlation.Sketches;
+import benchmark.index.SketchIndex;
+import benchmark.index.SketchIndex.Hit;
 import sketches.correlation.Sketches.Type;
-import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
 import spark.ComputePairwiseCorrelationJoins;
 import utils.CliTool;
@@ -32,135 +31,85 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "IndexCorrelationBenchmark";
 
+  public static final Kryos<ColumnPair> KRYO = new Kryos(ColumnPair.class);
+
   @Required
-  @Option(name = "--input-path", description = "Folder containing CSV files")
-  private String inputPath;
+  @Option(name = "--input-path", description = "Folder containing key-value column store")
+  String inputPath;
 
   @Required
   @Option(name = "--output-path", description = "Output path for results file")
-  private String outputPath;
+  String outputPath;
+
+  @Option(name = "--estimator", description = "The correlation estimator to be used")
+  CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
-  private Type sketchType = Type.KMV;
+  Type sketchType = Type.KMV;
 
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
   private double numHashes = KMV.DEFAULT_K;
-
-  @Option(name = "--min-rows", description = "Minimum number of rows to consider table")
-  int minRows = 1;
 
   public static void main(String[] args) {
     CliTool.run(args, new ComputePairwiseCorrelationJoins());
   }
 
   @Override
-  public void execute() {
+  public void execute() throws IOException {
 
-    String basePath = "/home/aeciosantos/workspace/d3m/data-search-datasets/poverty-data";
+    ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
+    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
 
-    List<String> allFiles = BenchmarkUtils.findAllCSVs(inputPath);
-    Set<ColumnPair> allColumns = BenchmarkUtils.readAllColumnPairs(allFiles, minRows);
+    System.out.println("Selecting a random sample of columns as queries...");
+    int numQueries = 10;
+    Set<String> queryColumns = new HashSet<>(selectQueriesRandomly(storeMetadata, numQueries));
 
-    DoubleList estimationsCorrelations = new DoubleArrayList();
-    int minHashFunctionsExp = 8;
-    for (int k = minHashFunctionsExp; k <= 8; k++) {
+    // Build index
+    String indexPath = outputPath;
+    SketchIndex index = new SketchIndex(indexPath, sketchType, numHashes);
 
-      int nhf = (int) Math.pow(2, k);
-      System.out.printf("\nCorrelation Sketch with %d hash functions:\n\n", nhf);
-      //            MinwiseHasher minHasher = new MinwiseHasher(nhf);
+    System.out.println("Indexing all columns...");
 
-      Map<String, ColumnPair> idToColumnMap = new HashMap<>();
+    Iterator<KV<byte[], byte[]>> it = columnStore.iterator();
+    while (it.hasNext()) {
 
-      SketchIndex index = new SketchIndex();
-      for (ColumnPair column : allColumns) {
-        KMV kmv = KMV.create(column.keyValues, column.columnValues, nhf);
-        KMVCorrelationSketch columnSketch = new KMVCorrelationSketch(kmv);
-        index.index(column.id(), columnSketch);
-        idToColumnMap.put(column.id(), column);
+      KV<byte[], byte[]> kv = it.next();
+      String key = new String(kv.getKey());
+      ColumnPair columnPair = KRYO.unserializeObject(kv.getValue());
+
+      if (!queryColumns.contains(key)) {
+        index.index(key, columnPair);
       }
+    }
 
-      System.out.println(Result.header());
+    // Execute queries against the index
+    System.out.println("Running queries against the index...");
+    for (String query : queryColumns) {
+      byte[] columnPairBytes = columnStore.get(query.getBytes());
+      ColumnPair columnPair = KRYO.unserializeObject(columnPairBytes);
+      int k = 10;
+      List<Hit> hits = index.search(columnPair, k);
+    }
+  }
 
-      List<Result> results = new ArrayList<>();
-
-      for (ColumnPair query : allColumns) {
-
-        KMVCorrelationSketch querySketch =
-            new KMVCorrelationSketch(query.keyValues, query.columnValues, nhf);
-        long start = System.currentTimeMillis();
-        List<Hit> hits = index.search(querySketch, 10);
-        long end = System.currentTimeMillis();
-        System.err.println(end - start);
-
-        for (Hit hit : hits) {
-          if (query.id().equals(hit.id)) {
-            continue;
+  private List<String> selectQueriesRandomly(ColumnStoreMetadata storeMetadata, int sampleSize) {
+    List<String> queries = new ArrayList<>();
+    Random random = new Random(0);
+    int seen = 0;
+    for (Set<String> columnSet : storeMetadata.columnSets) {
+      for (String column : columnSet) {
+        if (queries.size() < sampleSize) {
+          queries.add(column);
+        } else {
+          int index = random.nextInt(seen + 1);
+          if (index < sampleSize) {
+            queries.set(index, column);
           }
-
-          KMVCorrelationSketch columnSketch = hit.sketch;
-
-          Result result = new Result();
-
-          result.corr_est = querySketch.correlationTo(columnSketch).coefficient;
-          if (Double.isNaN(result.corr_est)) {
-            continue;
-          }
-
-          ColumnPair column = idToColumnMap.get(hit.id);
-          result.corr_actual = Tables.computePearsonAfterJoin(query, column);
-          if (Double.isNaN(result.corr_actual)) {
-            continue;
-          }
-
-          result.columnId =
-              String.format(
-                  "q(%s,%s)<->c(%s,%s)",
-                  query.keyName, query.columnName, column.keyName, column.columnName);
-          int actualCardinalityQ = new HashSet<>(query.keyValues).size();
-          int actualCardinalityC = new HashSet<>(column.keyValues).size();
-
-          //          BenchmarkUtils.computeStatistics(
-          //              nhf, result, querySketch, columnSketch, actualCardinalityQ,
-          // actualCardinalityC);
-          results.add(result);
         }
+        seen++;
       }
-
-      //            results.sort((a, b) -> {
-      //                return Double.compare(
-      //                        Math.abs(a.actualCorrelation - a.estimatedCorrelation),
-      //                        Math.abs(b.actualCorrelation - b.estimatedCorrelation)
-      //                );
-      //            });
-      //            results.sort((a, b) -> Double.compare(b.containment, a.containment));
-      //            results.sort((a, b) -> Double.compare(b.estimatedCorrelation,
-      // a.estimatedCorrelation));
-      results.sort((a, b) -> Double.compare(Math.abs(b.corr_actual), Math.abs(a.corr_actual)));
-
-      for (Result result : results) {
-        System.out.printf(result.toString());
-      }
-
-      double[] estimation = results.stream().mapToDouble(r -> r.corr_est).toArray();
-
-      double[] actual = results.stream().mapToDouble(r -> r.corr_actual).toArray();
-
-      estimationsCorrelations.add(PearsonCorrelation.coefficient(estimation, actual));
-      System.out.println();
     }
-
-    System.out.println("Pearson  #-murmur3_32  p-value  Interval          Significance\n");
-    for (int k = minHashFunctionsExp; k <= 8; k++) {
-      int nhf = (int) Math.pow(2, k);
-      double corr = estimationsCorrelations.getDouble(k - minHashFunctionsExp);
-      System.out.printf(
-          "%+.4f  %-8d  %-7.3f  %s  %s\n",
-          corr,
-          nhf,
-          PearsonCorrelation.pValueOneTailed(corr, nhf),
-          PearsonCorrelation.confidenceInterval(corr, nhf, 0.95),
-          PearsonCorrelation.isSignificant(corr, nhf, .05));
-    }
+    return queries;
   }
 }
