@@ -33,7 +33,7 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.Sketches.Type;
+import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
 import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
@@ -47,23 +47,23 @@ public class SketchIndex {
 
   private final IndexWriter writer;
   private final SearcherManager searcherManager;
-  private final Type sketchType;
+  private final SketchType sketchType;
 
   private final double threshold;
 
   public SketchIndex() {
-    this(Type.KMV, 256);
+    this(SketchType.KMV, 256);
   }
 
-  public SketchIndex(String indexPath, Type sketchType, double threshold) throws IOException {
+  public SketchIndex(String indexPath, SketchType sketchType, double threshold) throws IOException {
     this(MMapDirectory.open(Paths.get(indexPath)), sketchType, threshold);
   }
 
-  public SketchIndex(Type sketchType, double threshold) {
+  public SketchIndex(SketchType sketchType, double threshold) {
     this(new RAMDirectory(), sketchType, threshold);
   }
 
-  public SketchIndex(Directory dir, Type sketchType, double threshold) {
+  public SketchIndex(Directory dir, SketchType sketchType, double threshold) {
     this.sketchType = sketchType;
     this.threshold = threshold;
 
@@ -162,9 +162,9 @@ public class SketchIndex {
 
   private KMVCorrelationSketch createCorrelationSketch(String[] hashes, double[] values) {
     IKMV kmv;
-    if (sketchType == Type.KMV) {
+    if (sketchType == SketchType.KMV) {
       kmv = KMV.fromStringHashedKeys(hashes, values);
-    } else if (sketchType == Type.GKMV) {
+    } else if (sketchType == SketchType.GKMV) {
       kmv = GKMV.fromStringHashedKeys(hashes, values, threshold);
     } else {
       throw new IllegalArgumentException("Not supported yet!");
@@ -194,7 +194,7 @@ public class SketchIndex {
 
   private KMVCorrelationSketch createCorrelationSketch(ColumnPair columnPair) {
     KMVCorrelationSketch sketch;
-    if (sketchType == Type.KMV) {
+    if (sketchType == SketchType.KMV) {
       int k = (int) threshold;
       KMV kmv = KMV.create(columnPair.keyValues, columnPair.columnValues, k);
       sketch = new KMVCorrelationSketch(kmv);

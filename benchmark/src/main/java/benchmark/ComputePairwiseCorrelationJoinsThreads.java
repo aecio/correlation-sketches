@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import sketches.correlation.CorrelationType;
-import sketches.correlation.Sketches.Type;
+import sketches.correlation.SketchType;
 import sketches.kmv.KMV;
 import utils.CliTool;
 
@@ -45,7 +45,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
-  Type sketch = Type.KMV;
+  SketchType sketch = SketchType.KMV;
 
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
@@ -120,7 +120,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
       BytesBytesHashtable hashtable,
       AtomicInteger processed,
       double total,
-      Type sketch) {
+      SketchType sketch) {
     return (ColumnCombination columnPair) -> {
       ColumnPair x = cache.getIfPresent(columnPair.x);
       if (x == null) {

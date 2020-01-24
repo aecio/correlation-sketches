@@ -17,8 +17,7 @@ import sketches.correlation.KMVCorrelationSketch;
 import sketches.correlation.KMVCorrelationSketch.CorrelationEstimate;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.PearsonCorrelation.ConfidenceInterval;
-import sketches.correlation.Sketches;
-import sketches.correlation.Sketches.Type;
+import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
 import sketches.kmv.KMV;
 import tech.tablesaw.api.CategoricalColumn;
@@ -177,7 +176,7 @@ public class BenchmarkUtils {
   }
 
   public static Result computeStatistics(
-      ColumnPair x, ColumnPair y, Sketches.Type type, double nhf, CorrelationType estimator) {
+      ColumnPair x, ColumnPair y, SketchType type, double nhf, CorrelationType estimator) {
 
     Result result = new Result();
 
@@ -187,7 +186,7 @@ public class BenchmarkUtils {
     // create correlation sketches for the data
     KMVCorrelationSketch sketchX;
     KMVCorrelationSketch sketchY;
-    if (type == Type.KMV) {
+    if (type == SketchType.KMV) {
       int k = (int) nhf;
       result.parameters = "KMV(k=" + k + ")+" + estimator.toString();
       KMV kmvX = KMV.create(x.keyValues, x.columnValues, k);

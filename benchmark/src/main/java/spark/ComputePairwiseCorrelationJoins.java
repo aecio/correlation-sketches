@@ -1,5 +1,8 @@
 package spark;
 
+import benchmark.BenchmarkUtils;
+import benchmark.BenchmarkUtils.Result;
+import benchmark.ColumnPair;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
@@ -21,11 +24,8 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import scala.Tuple2;
-import benchmark.BenchmarkUtils;
-import benchmark.BenchmarkUtils.Result;
-import benchmark.ColumnPair;
 import sketches.correlation.CorrelationType;
-import sketches.correlation.Sketches.Type;
+import sketches.correlation.SketchType;
 import sketches.kmv.KMV;
 import utils.CliTool;
 
@@ -48,7 +48,7 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
   CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
-  private Type sketchType = Type.KMV;
+  private SketchType sketchType = SketchType.KMV;
 
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")

@@ -1,6 +1,8 @@
 package benchmark;
 
 import benchmark.CreateColumnStore.ColumnStoreMetadata;
+import benchmark.index.SketchIndex;
+import benchmark.index.SketchIndex.Hit;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
@@ -16,10 +18,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import sketches.correlation.CorrelationType;
-import sketches.correlation.KMVCorrelationSketch;
-import benchmark.index.SketchIndex;
-import benchmark.index.SketchIndex.Hit;
-import sketches.correlation.Sketches.Type;
+import sketches.correlation.SketchType;
 import sketches.kmv.KMV;
 import spark.ComputePairwiseCorrelationJoins;
 import utils.CliTool;
@@ -45,7 +44,7 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
   CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
-  Type sketchType = Type.KMV;
+  SketchType sketchType = SketchType.KMV;
 
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
