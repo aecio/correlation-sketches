@@ -99,7 +99,7 @@ public class KMV implements IKMV<KMV> {
     return js;
   }
 
-  /** Estimates intersection between the sets represeneted by this synopsis and the other. */
+  /** Estimates intersection between the sets represented by this synopsis and the other. */
   public double intersectionSize(KMV other) {
     int k = computeK(this, other);
     // p is an unbiased estimate of the jaccard similarity
