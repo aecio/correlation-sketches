@@ -9,15 +9,17 @@ import com.github.rvesse.airline.annotations.restrictions.Required;
 import hashtabledb.BytesBytesHashtable;
 import hashtabledb.KV;
 import hashtabledb.Kryos;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.LongSummaryStatistics;
 import java.util.Random;
 import java.util.Set;
-import sketches.correlation.CorrelationType;
 import sketches.correlation.SketchType;
 import sketches.kmv.KMV;
 import spark.ComputePairwiseCorrelationJoins;
@@ -40,11 +42,14 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
   @Option(name = "--output-path", description = "Output path for results file")
   String outputPath;
 
-  @Option(name = "--estimator", description = "The correlation estimator to be used")
-  CorrelationType estimator = CorrelationType.PEARSONS;
+//  @Option(name = "--estimator", description = "The correlation estimator to be used")
+//  CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
   SketchType sketchType = SketchType.KMV;
+
+  @Option(name = "--num-queries", description = "The numbers of queries to be run")
+  int numQueries = 100;
 
   @Required
   @Option(name = "--num-hashes", description = "Number of hashes per sketch")
@@ -61,7 +66,7 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
 
     System.out.println("Selecting a random sample of columns as queries...");
-    int numQueries = 10;
+
     Set<String> queryColumns = new HashSet<>(selectQueriesRandomly(storeMetadata, numQueries));
 
     // Build index
@@ -84,12 +89,28 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
 
     // Execute queries against the index
     System.out.println("Running queries against the index...");
+    LongList times = new LongArrayList();
     for (String query : queryColumns) {
       byte[] columnPairBytes = columnStore.get(query.getBytes());
       ColumnPair columnPair = KRYO.unserializeObject(columnPairBytes);
       int k = 10;
+
+      long start = System.currentTimeMillis();
       List<Hit> hits = index.search(columnPair, k);
+      long elapsedTime = System.currentTimeMillis() - start;
+
+      System.out.printf(" - query-time(ms): %d\n", elapsedTime);
+      times.add(elapsedTime);
     }
+
+    LongSummaryStatistics stats = times.stream().mapToLong(Long::longValue).summaryStatistics();
+    System.out.printf("query-time-statistics: count=%d, sum=%d, min=%d, average=%f, max=%d\n",
+        stats.getCount(),
+        stats.getSum(),
+        stats.getMin(),
+        stats.getAverage(),
+        stats.getMax()
+    );
   }
 
   private List<String> selectQueriesRandomly(ColumnStoreMetadata storeMetadata, int sampleSize) {

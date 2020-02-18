@@ -27,7 +27,7 @@ public class SketchIndexTest {
 
     ColumnPair c2 = createColumnPair(
         Arrays.asList("a", "b", "c"),
-        new double[]{1.0, 3.2, 3.1});
+        new double[]{1.0, 3.1, 3.2});
 
     SketchIndex index = new SketchIndex();
     index.index("c0", c0);
@@ -35,6 +35,17 @@ public class SketchIndexTest {
     index.index("c2", c2);
 
     List<Hit> hits = index.search(q, 5);
+
+    System.out.println("Total hits: " + hits.size());
+    for (int i = 0; i < hits.size(); i++) {
+      Hit hit = hits.get(i);
+      System.out.printf("\n[%d] ", i+1);
+      System.out.println("id: " + hit.id);
+      System.out.println("    score: " + hit.score);
+      System.out.println("    containment: " + hit.containment());
+      System.out.println("    correlation: " + hit.correlation());
+      System.out.println("    robust-correlation: " + hit.robustCorrelation());
+    }
 
     assertEquals(hits.size(), 3);
     assertEquals(hits.get(0).id, "c0");

@@ -11,7 +11,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
@@ -23,6 +22,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TermQuery;
@@ -32,7 +32,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
+import sketches.correlation.CorrelationType;
 import sketches.correlation.KMVCorrelationSketch;
+import sketches.correlation.KMVCorrelationSketch.CorrelationEstimate;
 import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
 import sketches.kmv.IKMV;
@@ -106,15 +108,13 @@ public class SketchIndex {
 
     TreeSet<ValueHash> hashes = sketch.getKMinValues();
     for (ValueHash hash : hashes) {
-      doc.add(new StringField(HASHES_FIELD_NAME, String.valueOf(hash.hashValue), Store.YES));
+      doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(hash.hashValue), Field.Store.YES));
     }
 
     double[] values = hashes.stream().mapToDouble(v -> v.value).toArray();
     byte[] valuesBytes = toByteArray(values);
     doc.add(new StoredField(VALUES_FIELD_NAME, valuesBytes));
 
-    //        System.out.println(Arrays.asList(doc.getValues(HASHES_FIELD_NAME)));
-    //        System.out.println(Arrays.asList(doc.getValues(VALUES_FIELD_NAME)));
     writer.updateDocument(new Term(ID_FIELD_NAME, id), doc);
     writer.flush();
     searcherManager.maybeRefresh();
@@ -123,53 +123,86 @@ public class SketchIndex {
   public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
 
     KMVCorrelationSketch query = createCorrelationSketch(columnPair);
+    query.setCardinality(columnPair.keyValues.size());
 
     IndexSearcher searcher = searcherManager.acquire();
     try {
       Builder bq = new BooleanQuery.Builder();
       TreeSet<ValueHash> kMinValues = query.getKMinValues();
       for (ValueHash vh : kMinValues) {
-        bq.add(
-            new TermQuery(new Term(HASHES_FIELD_NAME, String.valueOf(vh.hashValue))), Occur.SHOULD);
+        final Term term = new Term(HASHES_FIELD_NAME, intToBytesRef(vh.hashValue));
+        bq.add(new TermQuery(term), Occur.SHOULD);
       }
-      //            bq.setMinimumNumberShouldMatch(1);
+      // bq.setMinimumNumberShouldMatch(1);
 
-      //            System.out.println("Query: " + bq.build());
       TopDocs hits = searcher.search(bq.build(), k);
-      //            TopDocs hits = searcher.search(new MatchAllDocsQuery(), k);
 
       List<Hit> results = new ArrayList<>();
-      //            System.out.println(hits.totalHits);
       for (int i = 0; i < hits.scoreDocs.length; i++) {
-        //                System.out.println(hits.scoreDocs[i]);
-
-        // retrieve data from index fields
-        Document doc = searcher.doc(hits.scoreDocs[i].doc);
-        String id = doc.getValues(ID_FIELD_NAME)[0];
-        String[] hashes = doc.getValues(HASHES_FIELD_NAME);
-        BytesRef[] valuesRef = doc.getBinaryValues(VALUES_FIELD_NAME);
-
-        // re-construct data structures from bytes
-        double[] values = toDoubleArray(valuesRef[0].bytes);
-        KMVCorrelationSketch correlationSketch = createCorrelationSketch(hashes, values);
-        results.add(new Hit(id, correlationSketch));
+        final ScoreDoc scoreDoc = hits.scoreDocs[i];
+        final Hit hit = createSearchHit(query, searcher.doc(scoreDoc.doc), scoreDoc.score);
+        results.add(hit);
       }
+
+      results.sort((a, b) -> Double.compare(b.correlation(), a.correlation()));
+
       return results;
     } finally {
       searcherManager.release(searcher);
     }
   }
 
-  private KMVCorrelationSketch createCorrelationSketch(String[] hashes, double[] values) {
+  private Hit createSearchHit(KMVCorrelationSketch query, Document doc, float score) {
+
+    // retrieve data from index fields
+    String id = doc.getValues(ID_FIELD_NAME)[0];
+    BytesRef[] hashesRef = doc.getBinaryValues(HASHES_FIELD_NAME);
+    BytesRef[] valuesRef = doc.getBinaryValues(VALUES_FIELD_NAME);
+
+    // re-construct sketch data structures from bytes
+    KMVCorrelationSketch hitSketch = createCorrelationSketch(hashesRef, valuesRef);
+
+    return new Hit(id, query, hitSketch, score);
+  }
+
+  private KMVCorrelationSketch createCorrelationSketch(
+      BytesRef[] hashesBytes,
+      BytesRef[] valuesRef) {
+
+    int[] hashes = new int[hashesBytes.length];
+    for (int i = 0; i < hashes.length; i++) {
+      hashes[i] = bytesRefToInt(hashesBytes[i]);
+    }
+
+    double[] values = toDoubleArray(valuesRef[0].bytes);
+
     IKMV kmv;
     if (sketchType == SketchType.KMV) {
-      kmv = KMV.fromStringHashedKeys(hashes, values);
+      kmv = KMV.fromHashedKeys(hashes, values, hashes.length);
     } else if (sketchType == SketchType.GKMV) {
-      kmv = GKMV.fromStringHashedKeys(hashes, values, threshold);
+      kmv = GKMV.fromHashedKeys(hashes, values, threshold);
     } else {
       throw new IllegalArgumentException("Not supported yet!");
     }
     return new KMVCorrelationSketch(kmv);
+  }
+
+  private BytesRef intToBytesRef(int value) {
+    byte[] bytes = new byte[]{
+        (byte) (value >> 24),
+        (byte) (value >> 16),
+        (byte) (value >> 8),
+        (byte) (value)
+    };
+    return new BytesRef(bytes);
+  }
+
+  private int bytesRefToInt(BytesRef bytesRef) {
+    final byte[] bytes = bytesRef.bytes;
+    return ((bytes[0] & 0xFF) << 24) |
+        ((bytes[1] & 0xFF) << 16) |
+        ((bytes[2] & 0xFF) << 8) |
+        ((bytes[3] & 0xFF) << 0);
   }
 
   protected static byte[] toByteArray(double[] value) {
@@ -191,7 +224,6 @@ public class SketchIndex {
     return doubles;
   }
 
-
   private KMVCorrelationSketch createCorrelationSketch(ColumnPair columnPair) {
     KMVCorrelationSketch sketch;
     if (sketchType == SketchType.KMV) {
@@ -209,11 +241,31 @@ public class SketchIndex {
   public static class Hit {
 
     public final String id;
-    public final KMVCorrelationSketch sketch;
+    public final float score;
+    private final KMVCorrelationSketch query;
+    private final KMVCorrelationSketch hit;
+    private CorrelationEstimate correlation;
 
-    public Hit(String id, KMVCorrelationSketch sketch) {
+    public Hit(String id, KMVCorrelationSketch query, KMVCorrelationSketch sketch, float score) {
       this.id = id;
-      this.sketch = sketch;
+      this.query = query;
+      this.hit = sketch;
+      this.score = score;
+    }
+
+    public double containment() {
+      return query.containment(hit);
+    }
+
+    public double correlation() {
+      if (this.correlation == null) {
+        this.correlation = query.correlationTo(hit);
+      }
+      return correlation.coefficient;
+    }
+
+    public double robustCorrelation() {
+      return query.correlationTo(hit, CorrelationType.get(CorrelationType.ROBUST_QN)).coefficient;
     }
   }
 }

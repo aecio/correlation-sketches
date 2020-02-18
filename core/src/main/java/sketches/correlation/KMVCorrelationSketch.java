@@ -59,7 +59,7 @@ public class KMVCorrelationSketch {
   }
 
   public double containment(KMVCorrelationSketch other) {
-    return kmv.containment(other.kmv);
+    return this.intersectionSize(other) / this.cardinality();
   }
 
   public double intersectionSize(KMVCorrelationSketch other) {
@@ -67,6 +67,10 @@ public class KMVCorrelationSketch {
   }
 
   public CorrelationEstimate correlationTo(KMVCorrelationSketch other) {
+    return correlationTo(other, this.estimator);
+  }
+
+  public CorrelationEstimate correlationTo(KMVCorrelationSketch other, Correlation estimator) {
     TreeSet<ValueHash> thisKMinValues = this.kmv.getKMinValues();
     int[] thisMinhashes = new int[thisKMinValues.size()];
     Iterator<ValueHash> thisIt = thisKMinValues.iterator();
@@ -122,11 +126,13 @@ public class KMVCorrelationSketch {
   }
 
   public static class CorrelationEstimate {
-      public final double coefficient;
-      public final int sampleSize;
-      public CorrelationEstimate(final double coefficient, final int sampleSize) {
-          this.coefficient = coefficient;
-          this.sampleSize = sampleSize;
-      }
+
+    public final double coefficient;
+    public final int sampleSize;
+
+    public CorrelationEstimate(final double coefficient, final int sampleSize) {
+      this.coefficient = coefficient;
+      this.sampleSize = sampleSize;
+    }
   }
 }
