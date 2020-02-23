@@ -87,7 +87,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     String baseInputPath = Paths.get(inputPath).getFileName().toString();
     String filename =
         String.format(
-            "%s_sketch=%s_b=%.3f.csv", baseInputPath, sketch.toString().toLowerCase(), numHashes);
+            "%s_sketch=%s_b=%.3f_estimator=%s.csv", baseInputPath, sketch.toString().toLowerCase(), numHashes, estimator.toString());
 
     Files.createDirectories(Paths.get(outputPath));
     FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
