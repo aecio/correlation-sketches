@@ -34,6 +34,7 @@ public class Qn {
    * @return the Qn estimate
    */
   static QnEstimate estimateScale(final double[] x) {
+    checkArgument(x.length > 1, "array length must be at least 2, found %s", x.length);
 
     double Qn = Double.NaN;
     int n = x.length;

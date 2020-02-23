@@ -87,14 +87,16 @@ public class KMVCorrelationSketch {
 
     // compute intersection between both sketches
     IntSet commonHashes = commonValues(thisMinhashes, otherMinhashes);
-    if (commonHashes.isEmpty()) {
-      return new CorrelationEstimate(Double.NaN, 0);
+    int sampleSize = commonHashes.size();
+    if (sampleSize <= 2) {
+      // legth must be at least 2 to compute the correlation
+      return new CorrelationEstimate(Double.NaN, sampleSize);
     }
 
     Int2DoubleMap thisMap = buildHashToValueMap(thisKMinValues);
     Int2DoubleMap otherMap = buildHashToValueMap(otherKMinValues);
-    double[] thisValues = new double[commonHashes.size()];
-    double[] otherValues = new double[commonHashes.size()];
+    double[] thisValues = new double[sampleSize];
+    double[] otherValues = new double[sampleSize];
     int i = 0;
     for (int hash : commonHashes) {
       thisValues[i] = thisMap.get(hash);
@@ -104,7 +106,7 @@ public class KMVCorrelationSketch {
     // finally, compute correlation coefficient between common values
     double coefficient = estimator.correlation(thisValues, otherValues);
 
-    return new CorrelationEstimate(coefficient, commonHashes.size());
+    return new CorrelationEstimate(coefficient, sampleSize);
   }
 
   private Int2DoubleMap buildHashToValueMap(TreeSet<ValueHash> kMinValues) {
