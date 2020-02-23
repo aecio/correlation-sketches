@@ -3,7 +3,7 @@
 #
 # Example:
 #
-#  DB=LEVELDB COMPILE=false JVM_ARGS="-Xmx32768m -Xms32768m" JAR=./benchmark-0.1-SNAPSHOT-all.jar BASE_OUTPUT_PATH=./output DATASETS_PATH="./datasets" ./run_experiments.sh
+#  DB=LEVELDB COMPILE=false JVM_ARGS="-Xmx32768m -Xms32768m" JAR=./benchmark-0.1-SNAPSHOT-all.jar BASE_OUTPUT_PATH=./output DATASETS_PATH="./datasets" ESTIMATOR="ROBUST_QN" ./run_experiments.sh
 #
 
 # Default parameters
@@ -13,36 +13,35 @@ BASE_OUTPUT_PATH=${BASE_OUTPUT_PATH:-"./notebooks/results"}
 DATASETS_PATH=${DATASETS_PATH:-"./datasets"}
 JAR=${JAR:-"benchmark/build/libs/benchmark-0.1-SNAPSHOT-all.jar"}
 JVM_ARGS=${JVM_ARGS:-""}
+ESTIMATOR=${ESTIMATOR:-"PEARSONS"}
 
 BENCHMARK_EXE="java $JVM_ARGS -cp $JAR benchmark.ComputePairwiseCorrelationJoinsThreads"
 CREATE_STORE_EXE="java $JVM_ARGS -cp $JAR benchmark.CreateColumnStore"
 
 create_store () {
-  local INPUT_PATH=$1
-  local STORE_PATH=$2
+  local DATASETS_PATH=$1
+  local DATASET_NAME=$2
+
+  local INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
+  local STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
+
   local CREATE_STORE_CMD="$CREATE_STORE_EXE --input-path $INPUT_PATH --output-path $STORE_PATH --db-backend $DB"
+
   echo "Creating store for $INPUT_PATH"
   echo "Running command: $CREATE_STORE_CMD"
   $CREATE_STORE_CMD
 }
 
-run_kmv () {
-  local STORE_PATH=$1
-  local RESULTS_PATH=$2
-  local K_VALUES=$3
-  for k in $K_VALUES; do
-    local CMD="$BENCHMARK_EXE --input-path $STORE_PATH --output-path $RESULTS_PATH --sketch-type KMV --num-hashes $k"
-    echo "Running command: $CMD"
-    $CMD
-  done
-}
+run_benchmark () {
+  local DATASET_NAME=$1
+  local SKETCH=$2
+  local PARAMS=$3
 
-run_gkmv () {
-  local STORE_PATH=$1
-  local RESULTS_PATH=$2
-  local TAU=$3
-  for T in $TAU; do
-    local CMD="$BENCHMARK_EXE --input-path $STORE_PATH --output-path $RESULTS_PATH --sketch-type GKMV --num-hashes $T"
+  local STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
+  local RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
+
+  for PARAM in $PARAMS; do
+    local CMD="$BENCHMARK_EXE --input-path $STORE_PATH --output-path $RESULTS_PATH --sketch-type $SKETCH --num-hashes $PARAM --estimator $ESTIMATOR"
     echo "Running command: $CMD"
     $CMD
   done
@@ -58,18 +57,9 @@ fi
 # Test script on small synthetic data
 #
 
-#DATASET_NAME="synthetic-correlated-joinable-small"
-#TAU="0.003"
-#K_VALUES="128"
-#
-#  INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
-#  STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
-#RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
-#
-#create_store "$INPUT_PATH" "$STORE_PATH"
-#run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
-#run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
-
+DATASET_NAME="synthetic-correlated-joinable-small"
+TAU="0.003"
+K_VALUES="128"
 
 #
 #  Parameter equivalency for each method in the large synthetic dataset
@@ -83,14 +73,6 @@ fi
 #DATASET_NAME="synthetic-correlated-joinable-large"
 #TAU="0.003 0.007 0.013 0.027"
 #K_VALUES="128 256 512 1024"
-#
-#  INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
-#  STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
-#RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
-#
-#create_store "$INPUT_PATH" "$STORE_PATH"
-#run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
-#run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
 
 #
 #  Parameter equivalency for each method in the Worldbank Finances dataset
@@ -104,14 +86,6 @@ fi
 #DATASET_NAME="finances.worldbank.org"
 #TAU="0.110 0.221 0.442 0.883"
 #K_VALUES="128 256 512 1024"
-#
-#  INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
-#  STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
-#RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
-#
-#create_store "$INPUT_PATH" "$STORE_PATH"
-#run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
-#run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
 
 #
 #  Parameter equivalency for data.cityofnewyork.us
@@ -126,10 +100,7 @@ DATASET_NAME="data.cityofnewyork.us"
 TAU="0.04346 0.08693 0.17385 0.34770"
 K_VALUES="128 256 512 1024"
 
-  INPUT_PATH="$DATASETS_PATH/$DATASET_NAME"
-  STORE_PATH="$BASE_OUTPUT_PATH/db/$DATASET_NAME"
-RESULTS_PATH="$BASE_OUTPUT_PATH/results/$DATASET_NAME"
 
-#create_store "$INPUT_PATH" "$STORE_PATH"
-run_kmv  "$STORE_PATH" "$RESULTS_PATH" "$K_VALUES"
-run_gkmv "$STORE_PATH" "$RESULTS_PATH" "$TAU"
+#create_store "$DATASETS_PATH" "$DATASET_NAME"
+run_benchmark $DATASET_NAME "KMV"  "$K_VALUES"
+run_benchmark $DATASET_NAME "GKMV" "$TAU"
