@@ -33,7 +33,7 @@ public class Qn {
    * @param x an array containing the observations
    * @return the Qn estimate
    */
-  static QnEstimate estimateScale(final double[] x) {
+  static double estimateScale(final double[] x) {
     checkArgument(x.length > 1, "array length must be at least 2, found %s", x.length);
 
     double Qn = Double.NaN;
@@ -168,8 +168,13 @@ public class Qn {
     }
 
     double correctedQn = Qn * dn * GAUSSIAN_CONSISTENCY_FACTOR;
-    double correctedQnError = correctedQn / Math.sqrt(2.0 * (n - 1) * 0.8227);
-    return new QnEstimate(correctedQn, correctedQnError);
+    return correctedQn;
+  }
+
+  public QnEstimate estimateScaleWithError(double[] x) {
+    double qn = this.estimateScale(x);
+    double error = qn / Math.sqrt(2.0 * (x.length - 1) * 0.8227);
+    return new QnEstimate(qn, error);
   }
 
   /**
@@ -280,8 +285,8 @@ public class Qn {
   public static double correlation(double[] x, double[] y) {
     Preconditions.checkArgument(x.length == y.length, "x and y dimensions must match");
 
-    double stdx = estimateScale(x).correctedQn;
-    double stdy = estimateScale(y).correctedQn;
+    double stdx = estimateScale(x);
+    double stdy = estimateScale(y);
 
     int n = y.length;
     double[] u = new double[n];
@@ -294,8 +299,8 @@ public class Qn {
       v[i] = xstdsqrt2 - ystdsqrt2;
     }
 
-    double uscale = estimateScale(u).correctedQn;
-    double vscale = estimateScale(v).correctedQn;
+    double uscale = estimateScale(u);
+    double vscale = estimateScale(v);
 
     double us2 = uscale * uscale;
     double vs2 = vscale * vscale;
