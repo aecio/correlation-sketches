@@ -6,14 +6,15 @@ import smile.stat.distribution.TDistribution;
 public class PearsonCorrelation {
 
   /**
-   * Compute the Pearson product-moment correlation coefficient for two vectors.
+   * Computes the Pearson product-moment correlation coefficient for two vectors. When the vector
+   * covariances are zero (i.e., the series are constant) this implementation returns Double.NaN.
    *
    * <p>Implementation adapted from ELKI toolkit:
    * https://github.com/elki-project/elki/blob/master/elki-core-math/src/main/java/de/lmu/ifi/dbs/elki/math/PearsonCorrelation.java
    *
    * @param x first vector
    * @param y second vector
-   * @return the Pearson product-moment correlation coefficient for x and y
+   * @return the Pearson product-moment correlation coefficient for x and y.
    */
   public static double coefficient(double[] x, double[] y) {
     final int xdim = x.length;
@@ -41,7 +42,7 @@ public class PearsonCorrelation {
       // Update
       sumXX += f * deltaX * deltaX;
       sumYY += f * deltaY * deltaY;
-      // should equal deltaY * neltaX!
+      // should equal deltaY * deltaX!
       sumXY += f * deltaX * deltaY;
       // Update sums
       sumX += xv;
@@ -49,13 +50,13 @@ public class PearsonCorrelation {
     }
     // One or both series were constant:
     if (!(sumXX > 0. && sumYY > 0.)) {
-      return (sumXX == sumYY) ? 1. : 0.;
+      return Double.NaN;
     }
     return sumXY / Math.sqrt(sumXX * sumYY);
   }
 
   /**
-   * Given a Pearson correlation coefficient and the sample size, this fucntion computes the p-value
+   * Given a Pearson correlation coefficient and the sample size, this function computes the p-value
    * of a two-tailed t-test against the null hypothesis (correlation equal to zero).
    *
    * @param coefficient Pearson correlation coefficient
@@ -86,10 +87,10 @@ public class PearsonCorrelation {
    * Performs a significance t-test (against the null hypothesis that the Pearson's coefficient r is
    * equal to zero.
    *
-   * @param coefficient The Pearson coefficent r
+   * @param coefficient The Pearson coefficient r
    * @param sampleSize The sample sized used to calculate r
    * @param significance The level of significance (alpha) of the test
-   * @return true if it is statisticaly significant, false otherwise
+   * @return true if it is statistically significant, false otherwise
    */
   public static boolean isSignificant(double coefficient, int sampleSize, double significance) {
     int degreesOfFreedom = sampleSize - 2;
