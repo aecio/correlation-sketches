@@ -3,9 +3,9 @@ package sketches.correlation;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Ordering;
+import it.unimi.dsi.fastutil.doubles.DoubleComparators;
+import it.unimi.dsi.fastutil.doubles.DoubleHeapPriorityQueue;
 import java.util.Arrays;
-import java.util.Iterator;
 import smile.math.Math;
 
 /**
@@ -265,25 +265,21 @@ public class Qn {
     if (n == 1) {
       return x[0];
     }
-    // TODO: use an implementation that does not casts primitive values to Double objects.
-    return Ordering.natural()
-        .leastOf(() -> new Iterator<Double>() {
-          private int i = 0;
+    return heapSelect(x, n, k);
+  }
 
-          @Override
-          public boolean hasNext() {
-            return i < n;
-          }
-
-          @Override
-          public Double next() {
-            try {
-              return x[i];
-            } finally {
-              i++;
-            }
-          }
-        }, k).get(k - 1);
+  static double heapSelect(double[] x, int n, int k) {
+    DoubleHeapPriorityQueue q = new DoubleHeapPriorityQueue(k,
+        DoubleComparators.OPPOSITE_COMPARATOR);
+    for (int i = 0; i < n; i++) {
+      if (q.size() < k) {
+        q.enqueue(x[i]);
+      } else {
+        q.enqueue(x[i]);
+        q.dequeueDouble();
+      }
+    }
+    return q.firstDouble();
   }
 
   public static double correlation(double[] x, double[] y) {
