@@ -1,5 +1,7 @@
 package benchmark;
 
+import benchmark.ComputePairwiseCorrelationJoinsThreads.SketchParams;
+import benchmark.Tables.Correlations;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,6 +14,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringEscapeUtils;
+import sketches.correlation.Correlation;
 import sketches.correlation.CorrelationType;
 import sketches.correlation.KMVCorrelationSketch;
 import sketches.correlation.KMVCorrelationSketch.CorrelationEstimate;
@@ -19,6 +22,7 @@ import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.PearsonCorrelation.ConfidenceInterval;
 import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
+import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
@@ -29,6 +33,8 @@ import tech.tablesaw.io.csv.CsvReadOptions.Builder;
 import utils.Sets;
 
 public class BenchmarkUtils {
+
+  public static final Correlation QN_ESTIMATOR = CorrelationType.get(CorrelationType.ROBUST_QN);
 
   public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles, int minRows) {
     Set<ColumnPair> allPairs = new HashSet<>();
@@ -50,7 +56,7 @@ public class BenchmarkUtils {
   public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
     try {
       Table table = readTable(CsvReadOptions.builderFromFile(datasetFilePath));
-      return readColumnPairs(datasetFilePath, table, minRows);
+      return readColumnPairs(Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
     } catch (Exception e) {
       System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
       e.printStackTrace(System.out);
@@ -176,32 +182,59 @@ public class BenchmarkUtils {
     return allFiles;
   }
 
-  public static Result computeStatistics(
-      ColumnPair x, ColumnPair y, SketchType type, double nhf, CorrelationType estimator) {
+  public static List<Result> computeStatistics(
+      ColumnPair x, ColumnPair y, List<SketchParams> sketchParams) {
 
     Result result = new Result();
 
     // compute ground-truth statistics
-    computeSetStatisticsGroundTruth(x, y, result);
+    computeStatisticsGroundTruth(x, y, result);
+
+    List<Result> results = new ArrayList<>();
+    for (SketchParams params : sketchParams) {
+      results.add(computeSketchStatistics(result.clone(), x, y, params));
+    }
+
+    return results;
+  }
+
+  private static void computeStatisticsGroundTruth(ColumnPair x, ColumnPair y, Result result) {
+    HashSet<String> xKeys = new HashSet<>(x.keyValues);
+    HashSet<String> yKeys = new HashSet<>(y.keyValues);
+    result.cardx_actual = xKeys.size();
+    result.cardy_actual = yKeys.size();
+
+    result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
+    result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
+
+    result.jcx_actual = result.interxy_actual / (double) result.cardx_actual;
+    result.jcy_actual = result.interxy_actual / (double) result.cardy_actual;
+
+    result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
+
+    // correlation ground-truth
+    Correlations corrs = Tables.computePearsonAfterJoin(x, y);
+    result.corr_actual = corrs.pearsons;
+    result.qncorr_actual = corrs.qn;
+  }
+
+  public static KMVCorrelationSketch createCorrelationSketch(
+      ColumnPair x, SketchParams sketchParams) {
+    IKMV kmv;
+    if (sketchParams.type == SketchType.KMV) {
+      kmv = KMV.create(x.keyValues, x.columnValues, (int) sketchParams.budget);
+    } else {
+      kmv = GKMV.create(x.keyValues, x.columnValues, sketchParams.budget);
+    }
+    return KMVCorrelationSketch.create(kmv);
+  }
+
+  public static Result computeSketchStatistics(
+      Result result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
 
     // create correlation sketches for the data
-    KMVCorrelationSketch sketchX;
-    KMVCorrelationSketch sketchY;
-    if (type == SketchType.KMV) {
-      int k = (int) nhf;
-      result.parameters = "KMV(k=" + k + ")+" + estimator.toString();
-      KMV kmvX = KMV.create(x.keyValues, x.columnValues, k);
-      KMV kmvY = KMV.create(y.keyValues, y.columnValues, k);
-      sketchX = KMVCorrelationSketch.create(kmvX, CorrelationType.get(estimator));
-      sketchY = KMVCorrelationSketch.create(kmvY, CorrelationType.get(estimator));
-    } else {
-      double t = nhf;
-      result.parameters = "GKMV(t=" + t + ")+" + estimator.toString();
-      GKMV gkmvX = GKMV.create(x.keyValues, x.columnValues, t);
-      GKMV gkmvY = GKMV.create(y.keyValues, y.columnValues, t);
-      sketchX = new KMVCorrelationSketch(gkmvX);
-      sketchY = new KMVCorrelationSketch(gkmvY);
-    }
+    KMVCorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
+    KMVCorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
 
     //    synchronized (System.out) {
     //      System.out.println();
@@ -213,8 +246,8 @@ public class BenchmarkUtils {
     //          sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
     //    }
 
-    int mininumIntersection = 3; // minimum sample size for correlation is 3
-    int mininumSetSize = 3;
+    int mininumIntersection = 2; // minimum sample size for correlation is 2
+    int mininumSetSize = 2;
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check weather the actual cardinality and sketch sizes are large enough.
@@ -230,12 +263,12 @@ public class BenchmarkUtils {
 
       // correlation estimates
       CorrelationEstimate estimate = sketchX.correlationTo(sketchY);
+      result.corr_est = estimate.coefficient;
+      result.corr_est_sample_size = estimate.sampleSize;
+      result.corr_delta = result.corr_actual - result.corr_est;
 
-      if (estimate.sampleSize > mininumIntersection) {
-        result.corr_est = estimate.coefficient;
-        result.corr_est_sample_size = estimate.sampleSize;
-        result.corr_delta = result.corr_actual - result.corr_est;
-
+      if (estimate.sampleSize > 2) {
+        // statistical significance is only defined for sample size > 2
         int sampleSize = estimate.sampleSize;
         result.corr_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_est, sampleSize);
 
@@ -244,33 +277,20 @@ public class BenchmarkUtils {
             PearsonCorrelation.confidenceInterval(result.corr_est, sampleSize, 1. - alpha);
         result.corr_est_significance =
             PearsonCorrelation.isSignificant(result.corr_est, sampleSize, alpha);
-
-        // correlation ground-truth
-        result.corr_actual = Tables.computePearsonAfterJoin(x, y);
       }
+
+      CorrelationEstimate qncorr = sketchX.correlationTo(sketchY, QN_ESTIMATOR);
+      result.qncorr_est = qncorr.coefficient;
+      result.qncorr_delta = result.qncorr_actual - result.qncorr_est;
     }
 
+    result.parameters = sketchParams.toString();
     result.columnId =
         String.format(
             "X(%s,%s,%s) Y(%s,%s,%s)",
             x.keyName, x.columnName, x.datasetId, y.keyName, y.columnName, y.datasetId);
 
     return result;
-  }
-
-  private static void computeSetStatisticsGroundTruth(ColumnPair x, ColumnPair y, Result result) {
-    HashSet<String> xKeys = new HashSet<>(x.keyValues);
-    HashSet<String> yKeys = new HashSet<>(y.keyValues);
-    result.cardx_actual = xKeys.size();
-    result.cardy_actual = yKeys.size();
-
-    result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
-    result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
-
-    result.jcx_actual = result.interxy_actual / (double) result.cardx_actual;
-    result.jcy_actual = result.interxy_actual / (double) result.cardy_actual;
-
-    result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
   }
 
   private static void computeSetStatisticsEstimates(
@@ -284,7 +304,7 @@ public class BenchmarkUtils {
     result.unionxy_est = sketchX.unionSize(sketchY);
   }
 
-  public static class Result {
+  public static class Result implements Cloneable {
 
     // kmv estimation statistics
     public double jcx_est;
@@ -310,6 +330,10 @@ public class BenchmarkUtils {
     public double corr_est_pvalue2t;
     public ConfidenceInterval corr_est_intervals;
     public boolean corr_est_significance;
+    // qn correlation
+    public double qncorr_actual;
+    public double qncorr_est;
+    public double qncorr_delta;
     // others
     public String parameters;
     public String columnId;
@@ -348,6 +372,10 @@ public class BenchmarkUtils {
               + "corr_est_pvalue2t,"
               + "corr_est_intervals,"
               + "corr_est_significance,"
+              // Qn correlations
+              + "qncorr_est,"
+              + "qncorr_actual,"
+              + "qncorr_delta,"
               // others
               + "parameters,"
               + "column");
@@ -360,6 +388,7 @@ public class BenchmarkUtils {
               + "%.2f,%d,%.2f,%d,"
               + "%.2f,%d,%.2f,%d,"
               + "%.3f,%.3f,%.3f,%d,%.3f,%s,%s,"
+              + "%.3f,%.3f,%.3f,"
               + "%s,%s",
           // jaccard
           jcx_est,
@@ -386,6 +415,10 @@ public class BenchmarkUtils {
           corr_est_pvalue2t,
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_intervals)),
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_significance)),
+          // qn correlations
+          qncorr_est,
+          qncorr_actual,
+          qncorr_delta,
           // others
           StringEscapeUtils.escapeCsv(parameters),
           StringEscapeUtils.escapeCsv(columnId));
@@ -405,6 +438,15 @@ public class BenchmarkUtils {
           corr_est_intervals,
           corr_est_significance,
           columnId);
+    }
+
+    public Result clone() {
+      try {
+        return (Result) super.clone();
+      } catch (CloneNotSupportedException e) {
+        throw new IllegalStateException(
+            this.getClass() + " must implement the Cloneable interface.", e);
+      }
     }
   }
 }

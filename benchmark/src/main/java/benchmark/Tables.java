@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.util.ArrayList;
 import java.util.List;
 import sketches.correlation.PearsonCorrelation;
+import sketches.correlation.Qn;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
@@ -58,7 +59,7 @@ public class Tables {
         dataset, key.name(), keyValues, column.name(), columnValues.toDoubleArray());
   }
 
-  public static double computePearsonAfterJoin(ColumnPair query, ColumnPair column) {
+  public static Correlations computePearsonAfterJoin(ColumnPair query, ColumnPair column) {
 
     ColumnPair columnA = query;
     ColumnPair columnB = column;
@@ -87,10 +88,31 @@ public class Tables {
       }
     }
 
-    if (joinValuesA.isEmpty()) {
-      return Double.NaN;
+    // correlation is defined only for vectors of length at least two
+    Correlations correlations = new Correlations();
+    if (joinValuesA.size() < 2) {
+      correlations.pearsons = Double.NaN;
+      correlations.qn = Double.NaN;
+    } else {
+      double[] joinedA = joinValuesA.toDoubleArray();
+      double[] joinedB = joinValuesB.toDoubleArray();
+      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
+      try {
+        correlations.qn = Qn.correlation(joinedA, joinedB);
+      } catch (Exception e) {
+        correlations.qn = Double.NaN;
+        System.out.printf(
+            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
+                + "Array length after join is %d.\n",
+            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
+        System.out.printf("Error stack trace: %s\n", e.toString());
+      }
     }
+    return correlations;
+  }
 
-    return PearsonCorrelation.coefficient(joinValuesA.toDoubleArray(), joinValuesB.toDoubleArray());
+  static class Correlations {
+    double pearsons;
+    double qn;
   }
 }

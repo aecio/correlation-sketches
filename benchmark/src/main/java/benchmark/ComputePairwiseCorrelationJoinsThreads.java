@@ -14,14 +14,14 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import sketches.correlation.CorrelationType;
 import sketches.correlation.SketchType;
-import sketches.kmv.KMV;
 import utils.CliTool;
 
 @Command(
@@ -41,15 +41,12 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   @Option(name = "--output-path", description = "Output path for results file")
   String outputPath;
 
-  @Option(name = "--estimator", description = "The correlation estimator to be used")
-  CorrelationType estimator = CorrelationType.PEARSONS;
-
-  @Option(name = "--sketch-type", description = "The type sketch to be used")
-  SketchType sketch = SketchType.KMV;
-
   @Required
-  @Option(name = "--num-hashes", description = "Number of hashes per sketch")
-  double numHashes = KMV.DEFAULT_K;
+  @Option(
+      name = "--sketch-params",
+      description =
+          "A comma-separated list of sketch parameters in the format SKETCH_TYPE:BUDGET_VALUE,SKETCH_TYPE:BUDGET_VALUE,...")
+  String sketchParams = null;
 
   @Option(
       name = "--intra-dataset-combinations",
@@ -72,6 +69,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
 
   @Override
   public void execute() throws Exception {
+    System.out.println("sketchParams: " + this.sketchParams);
+    List<SketchParams> sketchParamsList = SketchParams.parse(this.sketchParams);
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
     BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
 
@@ -86,9 +85,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
 
     String baseInputPath = Paths.get(inputPath).getFileName().toString();
     String filename =
-        String.format(
-            "%s_sketch=%s_b=%.3f_estimator=%s.csv",
-            baseInputPath, sketch.toString().toLowerCase(), numHashes, estimator.toString());
+        String.format("%s_sketch-params=%s.csv", baseInputPath, sketchParams.toLowerCase());
 
     Files.createDirectories(Paths.get(outputPath));
     FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
@@ -109,7 +106,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
                 combinations
                     .stream()
                     .parallel()
-                    .map(computeStatistics(cache, columnStore, processed, total, this.sketch))
+                    .map(computeStatistics(cache, columnStore, processed, total, sketchParamsList))
                     .forEach(writeCSV(resultsFile)))
         .get();
     resultsFile.close();
@@ -122,7 +119,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
       BytesBytesHashtable hashtable,
       AtomicInteger processed,
       double total,
-      SketchType sketch) {
+      List<SketchParams> params) {
     return (ColumnCombination columnPair) -> {
       ColumnPair x = cache.getIfPresent(columnPair.x);
       if (x == null) {
@@ -137,16 +134,26 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
         cache.put(columnPair.y, y);
       }
 
-      Result result = BenchmarkUtils.computeStatistics(x, y, sketch, numHashes, estimator);
+      List<Result> results = BenchmarkUtils.computeStatistics(x, y, params);
 
       int current = processed.incrementAndGet();
-      if (current % 100 == 0) {
+      if (current % 1000 == 0) {
         double percent = 100 * current / total;
         synchronized (System.out) {
           System.out.printf("Progress: %.3f%%\n", percent);
         }
       }
-      return result == null ? "" : result.csvLine();
+
+      if (results == null || results.isEmpty()) {
+        return "";
+      } else {
+        StringBuilder builder = new StringBuilder();
+        for (Result result : results) {
+          builder.append(result.csvLine());
+          builder.append('\n');
+        }
+        return builder.toString();
+      }
     };
   }
 
@@ -156,7 +163,6 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
         synchronized (file) {
           try {
             file.write(line);
-            file.write("\n");
             file.flush();
           } catch (IOException e) {
             throw new RuntimeException("Failed to write line to file: " + line);
@@ -164,5 +170,44 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
         }
       }
     };
+  }
+
+  public static class SketchParams {
+
+    public final SketchType type;
+    public final double budget;
+
+    public SketchParams(SketchType type, double budget) {
+      this.type = type;
+      this.budget = budget;
+    }
+
+    public static List<SketchParams> parse(String params) {
+      String[] values = params.split(",");
+      List<SketchParams> result = new ArrayList<>();
+      for (int i = 0; i < values.length; i++) {
+        result.add(parseValue(values[i].trim()));
+      }
+      if (result.isEmpty()) {
+        throw new IllegalArgumentException(
+            String.format("[%s] does not have any valid sketch parameters", params));
+      }
+      return result;
+    }
+
+    public static SketchParams parseValue(String params) {
+      String[] values = params.split(":");
+      if (values.length == 2) {
+        return new SketchParams(
+            SketchType.valueOf(values[0].trim()), Double.valueOf(values[1].trim()));
+      } else {
+        throw new IllegalArgumentException(String.format("[%s] is not a valid parameter", params));
+      }
+    }
+
+    @Override
+    public String toString() {
+      return type.toString() + ":" + budget;
+    }
   }
 }

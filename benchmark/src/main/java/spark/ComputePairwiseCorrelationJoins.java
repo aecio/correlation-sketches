@@ -3,6 +3,7 @@ package spark;
 import benchmark.BenchmarkUtils;
 import benchmark.BenchmarkUtils.Result;
 import benchmark.ColumnPair;
+import benchmark.ComputePairwiseCorrelationJoinsThreads.SketchParams;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
@@ -13,10 +14,10 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -24,9 +25,6 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import scala.Tuple2;
-import sketches.correlation.CorrelationType;
-import sketches.correlation.SketchType;
-import sketches.kmv.KMV;
 import utils.CliTool;
 
 @Command(
@@ -44,15 +42,12 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
   @Option(name = "--output-path", description = "Output path for results file")
   private String outputPath;
 
-  @Option(name = "--estimator", description = "The correlation estimator to be used")
-  CorrelationType estimator = CorrelationType.PEARSONS;
-
-  @Option(name = "--sketch-type", description = "The type sketch to be used")
-  private SketchType sketchType = SketchType.KMV;
-
   @Required
-  @Option(name = "--num-hashes", description = "Number of hashes per sketch")
-  private double numHashes = KMV.DEFAULT_K;
+  @Option(
+      name = "--sketch-params",
+      description =
+          "A comma-separated list of sketch parameters in the format SKETCH_TYPE:BUDGET_VALUE,SKETCH_TYPE:BUDGET_VALUE,...")
+  String sketchParams = null;
 
   @Option(name = "--min-rows", description = "Minimum number of rows to consider table")
   int minRows = 1;
@@ -69,6 +64,8 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
 
   @Override
   public void execute() {
+    List<SketchParams> sketchParamsList = SketchParams.parse(this.sketchParams);
+
     SparkConf conf = SparkUtils.createSparkConf(JOB_NAME, this.sparkConf, ColumnPair.class);
     JavaSparkContext sc = new JavaSparkContext(conf);
 
@@ -104,10 +101,11 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
                 (kv) -> {
                   ColumnPair query = kv._1;
                   ColumnPair column = kv._2;
-                  Result result =
-                      BenchmarkUtils.computeStatistics(
-                          query, column, sketchType, numHashes, estimator);
-                  return result == null ? Collections.emptyList() : Arrays.asList(result.csvLine());
+                  List<Result> result =
+                      BenchmarkUtils.computeStatistics(query, column, sketchParamsList);
+                  return result == null
+                      ? Collections.emptyList()
+                      : result.stream().map(Result::csvLine).collect(Collectors.toList());
                 });
 
     resultsRDD.saveAsTextFile(outputPath);

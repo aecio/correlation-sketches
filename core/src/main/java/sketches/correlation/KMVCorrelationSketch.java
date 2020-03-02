@@ -35,6 +35,10 @@ public class KMVCorrelationSketch {
     this(KMV.create(keys, values, k));
   }
 
+  public static KMVCorrelationSketch create(IKMV kmv) {
+    return new KMVCorrelationSketch(kmv);
+  }
+
   public static KMVCorrelationSketch create(IKMV kmv, Correlation estimator) {
     return new KMVCorrelationSketch(kmv, -1, estimator);
   }
@@ -88,7 +92,7 @@ public class KMVCorrelationSketch {
     // compute intersection between both sketches
     IntSet commonHashes = commonValues(thisMinhashes, otherMinhashes);
     int sampleSize = commonHashes.size();
-    if (sampleSize <= 2) {
+    if (sampleSize < 2) {
       // legth must be at least 2 to compute the correlation
       return new CorrelationEstimate(Double.NaN, sampleSize);
     }
