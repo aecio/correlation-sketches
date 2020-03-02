@@ -2,6 +2,7 @@ package sketches.correlation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 public class QnTest {
@@ -133,5 +134,48 @@ public class QnTest {
     x = new double[]{1, 2, 3, 4, 5, 4, 3, 2};
     y = new double[]{2, 3, 4, 5, 6, 5, 4, 3};
     assertEquals(1.0, Qn.correlation(x, y), delta);
+  }
+
+  @Test
+  public void shouldComputeQnWithoutOverflowing() {
+    Random random = new Random(0);
+    double[] x = new double[1000000];
+    for (int i = 0; i < x.length; i++) {
+      x[i] = random.nextDouble();
+    }
+    // should not throw an exception
+    Qn.estimateScale(x);
+  }
+
+  @Test
+  public void shouldComputeWeightedHighMedianWithoutOverflowing() {
+    Random random = new Random(0);
+    final int n = 100000;
+    double[] x = new double[n];
+    int[] iw = new int[n];
+    for (int i = 0; i < x.length; i++) {
+      x[i] = random.nextDouble();
+      iw[i] = random.nextInt(Integer.MAX_VALUE);
+    }
+    // should not throw an exception
+    Qn.weightedHighMedian(x, iw, x.length);
+  }
+
+  @Test
+  public void shouldFindTheWeightedHighMedian() {
+    double[] x;
+    int[] iw;
+
+    x = new double[]{1, 2, 3, 4};
+    iw = new int[]{1000000000, 1000000000, 1000000000, 1000000000};
+    assertEquals(3, Qn.weightedHighMedian(x, iw, x.length));
+
+    x = new double[]{1, 2, 3, 4};
+    iw = new int[]{1000000000, 1000000000, 1000000000, 1000000000};
+    assertEquals(2, Qn.weightedHighMedian(x, iw, 3));
+
+    x = new double[]{1, 2, 3, 4};
+    iw = new int[]{2, 2, 2, 2};
+    assertEquals(3, Qn.weightedHighMedian(x, iw, x.length));
   }
 }

@@ -46,8 +46,11 @@ public class Qn {
     int[] weight = new int[n];
     double[] work = new double[n];
 
+    // the following need to be a long to avoid overflow
+    long k, knew, nL, nR, sumP, sumQ;
+
     int h = n / 2 + 1;
-    int k = h * (h - 1) / 2;
+    k = ((long) h) * (h - 1) / 2;
 
     double[] y = Arrays.copyOf(x, x.length);
     Arrays.sort(y);
@@ -57,14 +60,14 @@ public class Qn {
       right[i] = (i <= h) ? n : n - (i - h);
     }
 
-    int jhelp = n * (n + 1) / 2;
-    int knew = k + jhelp;
-    int nL = jhelp;
-    int nR = n * n;
-    boolean found = false;
+    nL = ((long) n) * (n + 1) / 2;
+    nR = ((long) n) * n;
+    knew = k + nL;
 
+    boolean found = false;
     double trial;
-    int j;
+    int j, jhelp;
+
     while ((!found) && (nR - nL > n)) {
       j = 0;
       for (int i = 1; i < n; i++) {
@@ -93,8 +96,8 @@ public class Qn {
         Q[i] = j;
       }
 
-      int sumQ = 0;
-      int sumP = 0;
+      sumQ = 0;
+      sumP = 0;
 
       for (int i = 0; i < n; i++) {
         sumP = sumP + P[i];
@@ -122,12 +125,12 @@ public class Qn {
       for (int i = 1; i < n; i++) {
         if (left[i] <= right[i]) {
           for (int jj = left[i]; jj <= right[i]; ++jj) {
-            work[j] = (double) (y[i] - y[n - jj]);
+            work[j] = y[i] - y[n - jj];
             j++;
           }
         }
       }
-      Qn = findKthOrderStatistic(work, j, knew - nL);
+      Qn = findKthOrderStatistic(work, j, (int) (knew - nL));
     }
 
     /* Corrections are consistent with the implementation of the 'robustbase' R package */
@@ -192,21 +195,23 @@ public class Qn {
     double[] acand = new double[n];
     int[] iwcand = new int[n];
 
+    // these need to be a long to avoid overflow
+    long wleft, wmid, wright, wtotal, wrest;
+    double trial;
+
     int nn = n;
-    int wtotal = 0;
+    wtotal = 0;
     for (int i = 0; i < nn; i++) {
       wtotal += iw[i];
     }
 
-    int wrest = 0;
-    double trial;
-
+    wrest = 0;
     while (true) {
       trial = findKthOrderStatistic(a, nn, nn / 2);
 
-      int wleft = 0;
-      int wmid = 0;
-      int wright = 0;
+      wleft = 0;
+      wmid = 0;
+      wright = 0;
 
       for (int i = 0; i < nn; i++) {
         if (a[i] < trial) {
@@ -218,8 +223,8 @@ public class Qn {
         }
       }
 
-      if ((2 * wrest + 2 * wleft) > wtotal) {
-        kcand = 0;
+      kcand = 0;
+      if (2 * (wrest + wleft) > wtotal) {
         for (int i = 0; i < nn; i++) {
           if (a[i] < trial) {
             acand[kcand] = a[i];
@@ -228,10 +233,7 @@ public class Qn {
           }
         }
         nn = kcand;
-      } else if ((2 * wrest + 2 * wleft + 2 * wmid) > wtotal) {
-        return trial;
-      } else {
-        kcand = 0;
+      } else if (2 * (wrest + wleft + wmid) <= wtotal) {
         for (int i = 0; i < nn; i++) {
           if (a[i] > trial) {
             acand[kcand] = a[i];
@@ -241,10 +243,12 @@ public class Qn {
         }
         nn = kcand;
         wrest += wleft + wmid;
+      } else {
+        return trial;
       }
       for (int i = 0; i < nn; i++) {
         a[i] = acand[i];
-        iw[i] = (int) iwcand[i];
+        iw[i] = iwcand[i];
       }
     }
   }
@@ -255,9 +259,9 @@ public class Qn {
   static double findKthOrderStatistic(double[] x, int n, int k) {
     // Check if arguments are valid
     final int N = x.length;
-    checkArgument(n <= N, "n=[%d] can't be greater than the length of array x=[%d]", n, N);
-    checkArgument(k <= n, "k=[%d] can't be greater than n", k, n);
-    checkArgument(k <= N, "k=[%d] can't be greater than the length of array x=[%d]", k, N);
+    checkArgument(n <= N, "n=[%s] can't be greater than the length of array x=[%s]", n, N);
+    checkArgument(k <= n, "k=[%s] can't be greater than n", k, n);
+    checkArgument(k <= N, "k=[%s] can't be greater than the length of array x=[%s]", k, N);
     if (n == 1) {
       return x[0];
     }
