@@ -42,8 +42,8 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
   @Option(name = "--output-path", description = "Output path for results file")
   String outputPath;
 
-//  @Option(name = "--estimator", description = "The correlation estimator to be used")
-//  CorrelationType estimator = CorrelationType.PEARSONS;
+  //  @Option(name = "--estimator", description = "The correlation estimator to be used")
+  //  CorrelationType estimator = CorrelationType.PEARSONS;
 
   @Option(name = "--sketch-type", description = "The type sketch to be used")
   SketchType sketchType = SketchType.KMV;
@@ -104,13 +104,9 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     }
 
     LongSummaryStatistics stats = times.stream().mapToLong(Long::longValue).summaryStatistics();
-    System.out.printf("query-time-statistics: count=%d, sum=%d, min=%d, average=%f, max=%d\n",
-        stats.getCount(),
-        stats.getSum(),
-        stats.getMin(),
-        stats.getAverage(),
-        stats.getMax()
-    );
+    System.out.printf(
+        "query-time-statistics: count=%d, sum=%d, min=%d, average=%f, max=%d\n",
+        stats.getCount(), stats.getSum(), stats.getMin(), stats.getAverage(), stats.getMax());
   }
 
   private List<String> selectQueriesRandomly(ColumnStoreMetadata storeMetadata, int sampleSize) {

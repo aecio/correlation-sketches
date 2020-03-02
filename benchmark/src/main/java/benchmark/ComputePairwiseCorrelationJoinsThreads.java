@@ -87,7 +87,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     String baseInputPath = Paths.get(inputPath).getFileName().toString();
     String filename =
         String.format(
-            "%s_sketch=%s_b=%.3f_estimator=%s.csv", baseInputPath, sketch.toString().toLowerCase(), numHashes, estimator.toString());
+            "%s_sketch=%s_b=%.3f_estimator=%s.csv",
+            baseInputPath, sketch.toString().toLowerCase(), numHashes, estimator.toString());
 
     Files.createDirectories(Paths.get(outputPath));
     FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
@@ -105,7 +106,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     forkJoinPool
         .submit(
             () ->
-                combinations.stream()
+                combinations
+                    .stream()
                     .parallel()
                     .map(computeStatistics(cache, columnStore, processed, total, this.sketch))
                     .forEach(writeCSV(resultsFile)))

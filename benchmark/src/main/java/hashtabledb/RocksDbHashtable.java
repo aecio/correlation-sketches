@@ -4,7 +4,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.BaseEncoding;
 import java.io.Closeable;
 import java.io.File;
-import java.io.UnsupportedEncodingException;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;

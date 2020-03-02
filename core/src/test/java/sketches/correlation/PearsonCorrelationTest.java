@@ -13,8 +13,8 @@ public class PearsonCorrelationTest {
 
   @Test
   public void shouldComputeCorrelationCoefficient() {
-    double[] x = {1,2,3};
-    double[] y = {1,2,3};
+    double[] x = {1, 2, 3};
+    double[] y = {1, 2, 3};
     assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
   }
 
@@ -38,9 +38,9 @@ public class PearsonCorrelationTest {
 
   @Test
   public void shouldComputeCorrelationCoefficient4() {
-//    double[] x = {0,0,0,0,1,1,0,0,0,0,0,0};
-    double[] y = {0,0,0,0,0,1,0,0,0,0,0,0};
-    double[] x = {1,1,1,1,1,2,1,1,1,1,1,1};
+    //    double[] x = {0,0,0,0,1,1,0,0,0,0,0,0};
+    double[] y = {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0};
+    double[] x = {1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1};
     assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
   }
 

@@ -58,8 +58,8 @@ public class BenchmarkUtils {
     }
   }
 
-  public static Iterator<ColumnPair> readColumnPairs(String datasetName, InputStream is,
-      int minRows) {
+  public static Iterator<ColumnPair> readColumnPairs(
+      String datasetName, InputStream is, int minRows) {
     try {
       Table table = readTable(CsvReadOptions.builder(is));
       return readColumnPairs(datasetName, table, minRows);
@@ -157,7 +157,8 @@ public class BenchmarkUtils {
   }
 
   private static List<CategoricalColumn<String>> getStringColumns(Table df) {
-    return df.columns().stream()
+    return df.columns()
+        .stream()
         .filter(e -> e.type() == ColumnType.STRING || e.type() == ColumnType.TEXT)
         .map(e -> (CategoricalColumn<String>) e)
         .collect(Collectors.toList());

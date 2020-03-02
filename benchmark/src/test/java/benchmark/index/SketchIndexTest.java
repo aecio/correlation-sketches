@@ -13,21 +13,18 @@ public class SketchIndexTest {
 
   @Test
   public void shouldIndexSketches() throws IOException {
-    ColumnPair q = createColumnPair(
-        Arrays.asList("a", "b", "c", "d", "e"),
-        new double[]{1.0, 2.0, 3.0, 4.0, 5.0});
+    ColumnPair q =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.0, 2.0, 3.0, 4.0, 5.0});
 
-    ColumnPair c0 = createColumnPair(
-        Arrays.asList("a", "b", "c", "d", "e"),
-        new double[]{1.0, 2.0, 3.0, 4.0, 5.0});
+    ColumnPair c0 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.0, 2.0, 3.0, 4.0, 5.0});
 
-    ColumnPair c1 = createColumnPair(
-        Arrays.asList("a", "b", "c", "d"),
-        new double[]{1.1, 2.5, 3.0, 4.4});
+    ColumnPair c1 =
+        createColumnPair(Arrays.asList("a", "b", "c", "d"), new double[] {1.1, 2.5, 3.0, 4.4});
 
-    ColumnPair c2 = createColumnPair(
-        Arrays.asList("a", "b", "c"),
-        new double[]{1.0, 3.1, 3.2});
+    ColumnPair c2 = createColumnPair(Arrays.asList("a", "b", "c"), new double[] {1.0, 3.1, 3.2});
 
     SketchIndex index = new SketchIndex();
     index.index("c0", c0);
@@ -39,7 +36,7 @@ public class SketchIndexTest {
     System.out.println("Total hits: " + hits.size());
     for (int i = 0; i < hits.size(); i++) {
       Hit hit = hits.get(i);
-      System.out.printf("\n[%d] ", i+1);
+      System.out.printf("\n[%d] ", i + 1);
       System.out.println("id: " + hit.id);
       System.out.println("    score: " + hit.score);
       System.out.println("    containment: " + hit.containment());
@@ -55,7 +52,7 @@ public class SketchIndexTest {
 
   @Test
   public void shouldEncodeAndDecodeDoubleArrayToBytes() {
-    double[] doubles = new double[]{1.1, 2.2, 3.3};
+    double[] doubles = new double[] {1.1, 2.2, 3.3};
     byte[] bytes = SketchIndex.toByteArray(doubles);
     double[] decoded = SketchIndex.toDoubleArray(bytes);
     for (int i = 0; i < decoded.length; i++) {

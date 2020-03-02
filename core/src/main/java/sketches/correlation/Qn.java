@@ -118,7 +118,6 @@ public class Qn {
         Qn = trial;
         found = true;
       }
-
     }
     if (!found) {
       j = 0;
@@ -183,7 +182,7 @@ public class Qn {
   /**
    * Algorithm to compute the weighted high median in O(n) time.
    *
-   * The Weighted High Median (whimed) is defined as the smallest a(j) such that the sum of the
+   * <p>The Weighted High Median (whimed) is defined as the smallest a(j) such that the sum of the
    * weights of all a(i) <= a(j) is strictly greater than half of the total weight.
    *
    * @param a real array containing the observations
@@ -253,9 +252,7 @@ public class Qn {
     }
   }
 
-  /**
-   * Finds the k-th order statistic of an array array a of length n.
-   */
+  /** Finds the k-th order statistic of an array array a of length n. */
   static double findKthOrderStatistic(double[] x, int n, int k) {
     // Check if arguments are valid
     final int N = x.length;
@@ -269,8 +266,8 @@ public class Qn {
   }
 
   static double heapSelect(double[] x, int n, int k) {
-    DoubleHeapPriorityQueue q = new DoubleHeapPriorityQueue(k,
-        DoubleComparators.OPPOSITE_COMPARATOR);
+    DoubleHeapPriorityQueue q =
+        new DoubleHeapPriorityQueue(k, DoubleComparators.OPPOSITE_COMPARATOR);
     for (int i = 0; i < n; i++) {
       if (q.size() < k) {
         q.enqueue(x[i]);
@@ -318,5 +315,4 @@ public class Qn {
       this.correctedQnError = correctedQnError;
     }
   }
-
 }

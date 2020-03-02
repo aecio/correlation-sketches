@@ -1,7 +1,6 @@
 package sketches.correlation;
 
 public enum CorrelationType {
-
   PEARSONS,
   ROBUST_QN;
 

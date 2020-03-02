@@ -166,8 +166,7 @@ public class SketchIndex {
   }
 
   private KMVCorrelationSketch createCorrelationSketch(
-      BytesRef[] hashesBytes,
-      BytesRef[] valuesRef) {
+      BytesRef[] hashesBytes, BytesRef[] valuesRef) {
 
     int[] hashes = new int[hashesBytes.length];
     for (int i = 0; i < hashes.length; i++) {
@@ -188,21 +187,19 @@ public class SketchIndex {
   }
 
   private BytesRef intToBytesRef(int value) {
-    byte[] bytes = new byte[]{
-        (byte) (value >> 24),
-        (byte) (value >> 16),
-        (byte) (value >> 8),
-        (byte) (value)
-    };
+    byte[] bytes =
+        new byte[] {
+          (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value)
+        };
     return new BytesRef(bytes);
   }
 
   private int bytesRefToInt(BytesRef bytesRef) {
     final byte[] bytes = bytesRef.bytes;
-    return ((bytes[0] & 0xFF) << 24) |
-        ((bytes[1] & 0xFF) << 16) |
-        ((bytes[2] & 0xFF) << 8) |
-        ((bytes[3] & 0xFF) << 0);
+    return ((bytes[0] & 0xFF) << 24)
+        | ((bytes[1] & 0xFF) << 16)
+        | ((bytes[2] & 0xFF) << 8)
+        | ((bytes[3] & 0xFF) << 0);
   }
 
   protected static byte[] toByteArray(double[] value) {

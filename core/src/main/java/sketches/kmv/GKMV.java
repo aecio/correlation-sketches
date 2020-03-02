@@ -1,6 +1,5 @@
 package sketches.kmv;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 import sketches.correlation.Hashes;

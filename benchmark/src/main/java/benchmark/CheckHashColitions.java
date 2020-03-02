@@ -7,7 +7,6 @@ import hashtabledb.Kryos;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -56,7 +55,8 @@ public class CheckHashColitions extends CliTool implements Serializable {
       int hash = hk.getIntKey();
       int collisions = numberOfkeys - 1;
       if (collisions > 0) {
-        System.out.printf("hash=%d #-collisions=%d  keys=%s\n", hash, collisions, hk.getValue().toString());
+        System.out.printf(
+            "hash=%d #-collisions=%d  keys=%s\n", hash, collisions, hk.getValue().toString());
       }
       totalCollisions += collisions;
       totalKeys += numberOfkeys;

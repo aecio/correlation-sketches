@@ -104,7 +104,9 @@ public class ComputePairwiseCorrelationJoins extends CliTool implements Serializ
                 (kv) -> {
                   ColumnPair query = kv._1;
                   ColumnPair column = kv._2;
-                  Result result = BenchmarkUtils.computeStatistics(query, column, sketchType, numHashes, estimator);
+                  Result result =
+                      BenchmarkUtils.computeStatistics(
+                          query, column, sketchType, numHashes, estimator);
                   return result == null ? Collections.emptyList() : Arrays.asList(result.csvLine());
                 });
 

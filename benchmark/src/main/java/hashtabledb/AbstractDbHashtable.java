@@ -60,7 +60,7 @@ public abstract class AbstractDbHashtable implements Closeable {
     }
   }
 
-  protected CloseableIterator<KV<byte[],byte[]>> createIterator() {
+  protected CloseableIterator<KV<byte[], byte[]>> createIterator() {
     return db.createIterator();
   }
 }

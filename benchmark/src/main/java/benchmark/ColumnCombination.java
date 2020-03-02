@@ -1,7 +1,6 @@
 package benchmark;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -9,7 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import jdk.nashorn.internal.ir.annotations.Immutable;
 
 public class ColumnCombination {
   public String x;
