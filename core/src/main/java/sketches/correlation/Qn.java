@@ -74,7 +74,7 @@ public class Qn {
         if (left[i] <= right[i]) {
           weight[j] = right[i] - left[i] + 1;
           jhelp = left[i] + weight[j] / 2;
-          work[j] = (y[i] - y[n - jhelp]);
+          work[j] = (float) (y[i] - y[n - jhelp]);
           j++;
         }
       }
@@ -82,7 +82,7 @@ public class Qn {
 
       j = 0;
       for (int i = n - 1; i >= 0; --i) {
-        while ((j < n) && ((y[i] - y[n - j - 1]) < trial)) {
+        while ((j < n) && ((float) (y[i] - y[n - j - 1]) < trial)) {
           j++;
         }
         P[i] = j;
@@ -90,7 +90,7 @@ public class Qn {
 
       j = n + 1;
       for (int i = 0; i < n; i++) {
-        while ((y[i] - y[n - j + 1]) > trial) {
+        while ((float) (y[i] - y[n - j + 1]) > trial) {
           j--;
         }
         Q[i] = j;
