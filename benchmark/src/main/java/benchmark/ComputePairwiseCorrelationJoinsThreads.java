@@ -149,8 +149,11 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
       } else {
         StringBuilder builder = new StringBuilder();
         for (Result result : results) {
-          builder.append(result.csvLine());
-          builder.append('\n');
+          // we don't need to report column pairs that have no intersection at all
+          if (Double.isFinite(result.interxy_actual) && result.interxy_actual >= 2) {
+            builder.append(result.csvLine());
+            builder.append('\n');
+          }
         }
         return builder.toString();
       }
