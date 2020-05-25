@@ -18,23 +18,33 @@ public class PearsonCorrelationTest {
     assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
   }
 
-  //
-  // NOTE: The following tests are disabled because we no longer want Pearson to return
-  // valid correlation values for constant vectors (with zero covariance)
-  //
-  //  @Test
-  //  public void shouldComputeCorrelationCoefficient2() {
-  //    double[] x = {0, 0, 0};
-  //    double[] y = {2, 2, 2};
-  //    assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
-  //  }
-  //
-  //  @Test
-  //  public void shouldComputeCorrelationCoefficient3() {
-  //    double[] x = {0, 0, 0.0001};
-  //    double[] y = {2, 2, 2};
-  //    assertEquals(0., PearsonCorrelation.coefficient(x, y), delta);
-  //  }
+  //   NOTE: The following tests are disabled because we no longer want Pearson to return
+  //   valid correlation values for constant vectors (with zero covariance)
+
+  @Test
+  public void shouldComputeCorrelationCoefficient2() {
+    double[] x = {0, 0, 0};
+    double[] y = {2, 2, 2};
+    assertEquals(Double.NaN, PearsonCorrelation.coefficient(x, y), delta);
+  }
+
+  @Test
+  public void shouldComputeCorrelationCoefficient3() {
+    double[] x;
+    double[] y;
+
+    x = new double[] {0, 0, 0.0001};
+    y = new double[] {2, 2, 2};
+    assertEquals(Double.NaN, PearsonCorrelation.coefficient(x, y), delta);
+
+    x = new double[] {39.2, 40.21, 15.41, 13.64, 33.2, 44.65, 30.91, 1.91};
+    y = new double[] {0.31, 0.31, 0.31, 0.31, 0.31, 0.31, 0.31, 0.31};
+    assertEquals(Double.NaN, PearsonCorrelation.coefficient(x, y), delta);
+
+    x = new double[] {29815.0, 76201.0, 3254.0, 79000.0, 15974.0, 3288.0, 27777.0};
+    y = new double[] {145.8, 145.8, 145.8, 145.8, 145.8, 145.8, 145.8};
+    assertEquals(Double.NaN, PearsonCorrelation.coefficient(x, y), delta);
+  }
 
   @Test
   public void shouldComputeCorrelationCoefficient4() {

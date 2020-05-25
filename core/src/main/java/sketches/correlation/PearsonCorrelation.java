@@ -1,58 +1,101 @@
 package sketches.correlation;
 
+import smile.math.Math;
 import smile.stat.distribution.GaussianDistribution;
 import smile.stat.distribution.TDistribution;
 
 public class PearsonCorrelation {
 
+  private static final double TINY = 1.0e-25;
+
+  //  /**
+  //   * Computes the Pearson product-moment correlation coefficient for two vectors. When the
+  // vector
+  //   * covariances are zero (i.e., the series are constant) this implementation returns
+  // Double.NaN.
+  //   *
+  //   * <p>Implementation adapted from ELKI toolkit:
+  //   *
+  // https://github.com/elki-project/elki/blob/master/elki-core-math/src/main/java/de/lmu/ifi/dbs/elki/math/PearsonCorrelation.java
+  //   *
+  //   * @param x first vector
+  //   * @param y second vector
+  //   * @return the Pearson product-moment correlation coefficient for x and y.
+  //   */
+  //  public static double coefficient(double[] x, double[] y) {
+  //    final int xdim = x.length;
+  //    final int ydim = y.length;
+  //    if (xdim != ydim) {
+  //      throw new IllegalArgumentException("Invalid arguments: arrays differ in length.");
+  //    }
+  //    if (xdim == 0) {
+  //      throw new IllegalArgumentException("Empty vector.");
+  //    }
+  //    // Inlined computation of Pearson correlation, to avoid allocating objects!
+  //    // This is a numerically stabilized version, avoiding sum-of-squares.
+  //    double sumXX = 0., sumYY = 0., sumXY = 0.;
+  //    double sumX = x[0], sumY = y[0];
+  //    int i = 1;
+  //    while (i < xdim) {
+  //      final double xv = x[i], yv = y[i];
+  //      // Delta to previous mean
+  //      final double deltaX = xv * i - sumX;
+  //      final double deltaY = yv * i - sumY;
+  //      // Increment count first
+  //      final double oldi = i; // Convert to double!
+  //      ++i;
+  //      final double f = 1. / (i * oldi);
+  //      // Update
+  //      sumXX += f * deltaX * deltaX;
+  //      sumYY += f * deltaY * deltaY;
+  //      // should equal deltaY * deltaX!
+  //      sumXY += f * deltaX * deltaY;
+  //      // Update sums
+  //      sumX += xv;
+  //      sumY += yv;
+  //      System.out.println();
+  //      System.out.println("f: " + f);
+  //      System.out.println("deltaY: " + deltaY);
+  //      System.out.println("sumXX: " + sumXX);
+  //      System.out.println("sumYY: " + sumYY);
+  //    }
+  //    // One or both series were constant:
+  //    if (!(sumXX > 0. && sumYY > 0.)) {
+  //      return Double.NaN;
+  //    }
+  //    return sumXY / Math.sqrt(sumXX * sumYY);
+  //  }
+
   /**
    * Computes the Pearson product-moment correlation coefficient for two vectors. When the vector
-   * covariances are zero (i.e., the series are constant) this implementation returns Double.NaN.
-   *
-   * <p>Implementation adapted from ELKI toolkit:
-   * https://github.com/elki-project/elki/blob/master/elki-core-math/src/main/java/de/lmu/ifi/dbs/elki/math/PearsonCorrelation.java
-   *
-   * @param x first vector
-   * @param y second vector
-   * @return the Pearson product-moment correlation coefficient for x and y.
+   * covariances are zero (or close to zero), i.e., the series are constant, this implementation
+   * returns Double.NaN.
    */
   public static double coefficient(double[] x, double[] y) {
-    final int xdim = x.length;
-    final int ydim = y.length;
-    if (xdim != ydim) {
-      throw new IllegalArgumentException("Invalid arguments: arrays differ in length.");
+
+    int n = x.length;
+    double syy = 0.0, sxy = 0.0, sxx = 0.0, ay = 0.0, ax = 0.0;
+
+    for (int i = 0; i < n; i++) {
+      ax += x[i];
+      ay += y[i];
     }
-    if (xdim == 0) {
-      throw new IllegalArgumentException("Empty vector.");
+
+    ax /= n;
+    ay /= n;
+
+    for (int i = 0; i < n; i++) {
+      double xt = x[i] - ax;
+      double yt = y[i] - ay;
+      sxx += xt * xt;
+      syy += yt * yt;
+      sxy += xt * yt;
     }
-    // Inlined computation of Pearson correlation, to avoid allocating objects!
-    // This is a numerically stabilized version, avoiding sum-of-squares.
-    double sumXX = 0., sumYY = 0., sumXY = 0.;
-    double sumX = x[0], sumY = y[0];
-    int i = 1;
-    while (i < xdim) {
-      final double xv = x[i], yv = y[i];
-      // Delta to previous mean
-      final double deltaX = xv * i - sumX;
-      final double deltaY = yv * i - sumY;
-      // Increment count first
-      final double oldi = i; // Convert to double!
-      ++i;
-      final double f = 1. / (i * oldi);
-      // Update
-      sumXX += f * deltaX * deltaX;
-      sumYY += f * deltaY * deltaY;
-      // should equal deltaY * deltaX!
-      sumXY += f * deltaX * deltaY;
-      // Update sums
-      sumX += xv;
-      sumY += yv;
-    }
-    // One or both series were constant:
-    if (!(sumXX > 0. && sumYY > 0.)) {
+
+    if (!(sxx > TINY && syy > TINY)) {
       return Double.NaN;
     }
-    return sumXY / Math.sqrt(sumXX * sumYY);
+    return sxy / Math.sqrt(sxx * syy);
   }
 
   /**
