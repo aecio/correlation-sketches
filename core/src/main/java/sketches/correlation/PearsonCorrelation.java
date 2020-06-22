@@ -6,65 +6,10 @@ import smile.stat.distribution.TDistribution;
 
 public class PearsonCorrelation {
 
-  private static final double TINY = 1.0e-25;
+  public static final double TINY = 1.0e-25;
 
-  //  /**
-  //   * Computes the Pearson product-moment correlation coefficient for two vectors. When the
-  // vector
-  //   * covariances are zero (i.e., the series are constant) this implementation returns
-  // Double.NaN.
-  //   *
-  //   * <p>Implementation adapted from ELKI toolkit:
-  //   *
-  // https://github.com/elki-project/elki/blob/master/elki-core-math/src/main/java/de/lmu/ifi/dbs/elki/math/PearsonCorrelation.java
-  //   *
-  //   * @param x first vector
-  //   * @param y second vector
-  //   * @return the Pearson product-moment correlation coefficient for x and y.
-  //   */
-  //  public static double coefficient(double[] x, double[] y) {
-  //    final int xdim = x.length;
-  //    final int ydim = y.length;
-  //    if (xdim != ydim) {
-  //      throw new IllegalArgumentException("Invalid arguments: arrays differ in length.");
-  //    }
-  //    if (xdim == 0) {
-  //      throw new IllegalArgumentException("Empty vector.");
-  //    }
-  //    // Inlined computation of Pearson correlation, to avoid allocating objects!
-  //    // This is a numerically stabilized version, avoiding sum-of-squares.
-  //    double sumXX = 0., sumYY = 0., sumXY = 0.;
-  //    double sumX = x[0], sumY = y[0];
-  //    int i = 1;
-  //    while (i < xdim) {
-  //      final double xv = x[i], yv = y[i];
-  //      // Delta to previous mean
-  //      final double deltaX = xv * i - sumX;
-  //      final double deltaY = yv * i - sumY;
-  //      // Increment count first
-  //      final double oldi = i; // Convert to double!
-  //      ++i;
-  //      final double f = 1. / (i * oldi);
-  //      // Update
-  //      sumXX += f * deltaX * deltaX;
-  //      sumYY += f * deltaY * deltaY;
-  //      // should equal deltaY * deltaX!
-  //      sumXY += f * deltaX * deltaY;
-  //      // Update sums
-  //      sumX += xv;
-  //      sumY += yv;
-  //      System.out.println();
-  //      System.out.println("f: " + f);
-  //      System.out.println("deltaY: " + deltaY);
-  //      System.out.println("sumXX: " + sumXX);
-  //      System.out.println("sumYY: " + sumYY);
-  //    }
-  //    // One or both series were constant:
-  //    if (!(sumXX > 0. && sumYY > 0.)) {
-  //      return Double.NaN;
-  //    }
-  //    return sumXY / Math.sqrt(sumXX * sumYY);
-  //  }
+  private static final GaussianDistribution NORMAL = new GaussianDistribution(0, 1);
+  private static final ConfidenceInterval NULL_CI = new ConfidenceInterval(Double.NaN, Double.NaN);
 
   /**
    * Computes the Pearson product-moment correlation coefficient for two vectors. When the vector
@@ -111,7 +56,7 @@ public class PearsonCorrelation {
   }
 
   /**
-   * Given a Pearson correlation coefficient and the sample size, this fucntion computes the p-value
+   * Given a Pearson correlation coefficient and the sample size, this function computes the p-value
    * of a one-tailed t-test against the null hypothesis (correlation equal to zero).
    *
    * @param coefficient Pearson correlation coefficient
@@ -140,21 +85,6 @@ public class PearsonCorrelation {
     TDistribution tDistribution = new TDistribution(degreesOfFreedom);
     double tScore = tScore(coefficient, sampleSize);
     double criticalT = tDistribution.quantile2tiled(1. - significance);
-    //        double criticalR = criticalR(degreesOfFreedom, criticalT);
-    //        double probability = tDistribution.cdf(tValue);
-    //        System.out.printf(
-    //            "significance=%.2f  pearson=%.2f df=%d t=%.3f  criticalT=%.3f  criticalR=%.3f
-    // prob=%.2f  sample-size=%d  result=%s\n",
-    //            significance,
-    //            coefficient,
-    //            degreesOfFreedom,
-    //            tValue,
-    //            criticalT,
-    //            criticalR,
-    //            probability,
-    //            sampleSize,
-    //            String.valueOf(criticalT < tValue)
-    //        );
     return tScore >= criticalT;
   }
 
@@ -181,20 +111,24 @@ public class PearsonCorrelation {
    * @return an object containing the interval (lower and upper bounds)
    */
   public static ConfidenceInterval confidenceInterval(double r, int n, double confidence) {
+    if (n < 4) {
+      return NULL_CI;
+    }
     double alpha = (1. - confidence) / 2;
-    double z = new GaussianDistribution(0, 1).quantile(1. - alpha);
-    double zstderr = 1 / Math.sqrt(n - 3);
+
+    double z = NORMAL.quantile(1. - alpha);
+    double zstderr = 1. / Math.sqrt(n - 3);
     double interval = z * zstderr;
+
+    r = r >= +1. ? (+1. - 1.0e-15) : r; // prevent Infinity error
+    r = r <= -1. ? (-1. + 1.0e-15) : r; // prevent Infinity error
     double zp = rtoz(r);
     double ubz = zp + interval;
     double lbz = zp - interval;
+
     double ub = ztor(ubz);
     double lb = ztor(lbz);
-    //        System.out.printf(
-    //                "r=%.2f  n=%d confidence=%.2f zp=%.3f  zstderr=%.3f  z=%.3f  interval=%.3f
-    // ubz=%.3f  lbz=%.3f  ub=%.3f  lb=%.3f\n",
-    //                r, n, confidence, zp, zstderr, z, interval, ubz, lbz, ub, lb
-    //        );
+
     return new ConfidenceInterval(lb, ub);
   }
 
@@ -235,11 +169,5 @@ public class PearsonCorrelation {
       return String.format("[%+.3f, %+.3f]", lowerBound, upperBound);
     }
   }
-
-  //    public boolean isSignificant(int degreesOfFreedom, double tScore, double
-  // levelOfSignificance) {
-  //        double cProb = new TDistribution(degreesOfFreedom).cdf(tScore);
-  //        return cProb > levelOfSignificance;
-  //    }
 
 }

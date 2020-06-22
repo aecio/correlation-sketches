@@ -18,9 +18,6 @@ public class PearsonCorrelationTest {
     assertEquals(1., PearsonCorrelation.coefficient(x, y), delta);
   }
 
-  //   NOTE: The following tests are disabled because we no longer want Pearson to return
-  //   valid correlation values for constant vectors (with zero covariance)
-
   @Test
   public void shouldComputeCorrelationCoefficient2() {
     double[] x = {0, 0, 0};
