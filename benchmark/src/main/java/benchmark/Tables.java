@@ -70,7 +70,7 @@ public class Tables {
       columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
     }
 
-    // loop over column B creating to new vectorsindex for primary key in column B
+    // loop over column B creating to new vectors index for primary key in column B
     DoubleList joinValuesA = new DoubleArrayList();
     DoubleList joinValuesB = new DoubleArrayList();
     for (int i = 0; i < columnA.keyValues.size(); i++) {
@@ -79,10 +79,10 @@ public class Tables {
       List<Double> rowsB = columnMapB.get(keyA);
       if (rowsB != null && !rowsB.isEmpty()) {
         // TODO: We should properly handle cases where 1:N relashionships happen.
-        // We could could consider the correlation of valueA with an any aggreation function of the
+        // We could could consider the correlation of valueA with an any aggregation function of the
         // list of values from B, e.g. mean, max, sum, count, etc.
         // Currently we are considering only the first seen value, and ignoring everything else,
-        // similarly to the correlation sketch implemenation.
+        // similarly to the correlation sketch implementation.
         joinValuesA.add(valueA);
         joinValuesB.add(rowsB.get(0).doubleValue());
       }
