@@ -35,6 +35,9 @@ import utils.Sets;
 public class BenchmarkUtils {
 
   public static final Correlation QN_ESTIMATOR = CorrelationType.get(CorrelationType.ROBUST_QN);
+  public static final Correlation RIN_ESTIMATOR = CorrelationType.get(CorrelationType.RIN);
+  public static final Correlation SPEARMANS_ESTIMATOR = CorrelationType
+      .get(CorrelationType.SPEARMANS);
 
   public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles, int minRows) {
     Set<ColumnPair> allPairs = new HashSet<>();
@@ -216,6 +219,8 @@ public class BenchmarkUtils {
     Correlations corrs = Tables.computePearsonAfterJoin(x, y);
     result.corr_actual = corrs.pearsons;
     result.qncorr_actual = corrs.qn;
+    result.corr_rin_actual = corrs.rin;
+    result.corr_spearman_actual = corrs.spearman;
   }
 
   public static KMVCorrelationSketch createCorrelationSketch(
@@ -282,6 +287,14 @@ public class BenchmarkUtils {
       CorrelationEstimate qncorr = sketchX.correlationTo(sketchY, QN_ESTIMATOR);
       result.qncorr_est = qncorr.coefficient;
       result.qncorr_delta = result.qncorr_actual - result.qncorr_est;
+
+      CorrelationEstimate corrSpearman = sketchX.correlationTo(sketchY, SPEARMANS_ESTIMATOR);
+      result.corr_spearman_est = corrSpearman.coefficient;
+      result.corr_spearman_delta = result.corr_spearman_actual - result.corr_spearman_est;
+
+      CorrelationEstimate corrRin = sketchX.correlationTo(sketchY, RIN_ESTIMATOR);
+      result.corr_rin_est = corrRin.coefficient;
+      result.corr_rin_delta = result.corr_rin_actual - result.corr_rin_est;
     }
 
     result.parameters = sketchParams.toString();
@@ -330,14 +343,23 @@ public class BenchmarkUtils {
     public double corr_est_pvalue2t;
     public ConfidenceInterval corr_est_intervals;
     public boolean corr_est_significance;
-    // qn correlation
+    // Qn correlation
     public double qncorr_actual;
     public double qncorr_est;
     public double qncorr_delta;
+    // Spearman correlation
+    public double corr_spearman_est;
+    public double corr_spearman_actual;
+    public double corr_spearman_delta;
+    // RIN correlation
+    public double corr_rin_est;
+    public double corr_rin_actual;
+    public double corr_rin_delta;
     // others
     public String parameters;
     public String columnId;
     public int corr_est_sample_size;
+
 
     public static String header() {
       return String.format(
@@ -376,6 +398,14 @@ public class BenchmarkUtils {
               + "qncorr_est,"
               + "qncorr_actual,"
               + "qncorr_delta,"
+              // Spearman correlations
+              + "corr_spearman_est,"
+              + "corr_spearman_actual,"
+              + "corr_spearman_delta,"
+              // RIN correlations
+              + "corr_rin_est,"
+              + "corr_rin_actual,"
+              + "corr_rin_delta,"
               // others
               + "parameters,"
               + "column");
@@ -388,7 +418,9 @@ public class BenchmarkUtils {
               + "%.2f,%d,%.2f,%d,"
               + "%.2f,%d,%.2f,%d,"
               + "%.3f,%.3f,%.3f,%d,%.3f,%s,%s,"
-              + "%.3f,%.3f,%.3f,"
+              + "%.3f,%.3f,%.3f," // Qn
+              + "%.3f,%.3f,%.3f," // Spearman
+              + "%.3f,%.3f,%.3f," // RIN
               + "%s,%s",
           // jaccard
           jcx_est,
@@ -415,10 +447,18 @@ public class BenchmarkUtils {
           corr_est_pvalue2t,
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_intervals)),
           StringEscapeUtils.escapeCsv(String.valueOf(corr_est_significance)),
-          // qn correlations
+          // Qn correlations
           qncorr_est,
           qncorr_actual,
           qncorr_delta,
+          // Spearman correlations
+          corr_spearman_est,
+          corr_spearman_actual,
+          corr_spearman_delta,
+          // RIN correlations
+          corr_rin_est,
+          corr_rin_actual,
+          corr_rin_delta,
           // others
           StringEscapeUtils.escapeCsv(parameters),
           StringEscapeUtils.escapeCsv(columnId));

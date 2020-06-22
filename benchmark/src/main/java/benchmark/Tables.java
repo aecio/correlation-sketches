@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.Qn;
+import sketches.correlation.estimators.RinCorrelation;
+import sketches.correlation.estimators.SpearmanCorrelation;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
@@ -78,7 +80,7 @@ public class Tables {
       double valueA = columnA.columnValues[i];
       List<Double> rowsB = columnMapB.get(keyA);
       if (rowsB != null && !rowsB.isEmpty()) {
-        // TODO: We should properly handle cases where 1:N relashionships happen.
+        // TODO: We should properly handle cases where 1:N relationships happen.
         // We could could consider the correlation of valueA with an any aggregation function of the
         // list of values from B, e.g. mean, max, sum, count, etc.
         // Currently we are considering only the first seen value, and ignoring everything else,
@@ -97,6 +99,8 @@ public class Tables {
       double[] joinedA = joinValuesA.toDoubleArray();
       double[] joinedB = joinValuesB.toDoubleArray();
       correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
+      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
+      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
       try {
         correlations.qn = Qn.correlation(joinedA, joinedB);
       } catch (Exception e) {
@@ -112,6 +116,8 @@ public class Tables {
   }
 
   static class Correlations {
+    public double spearman;
+    public double rin;
     double pearsons;
     double qn;
   }
