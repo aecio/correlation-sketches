@@ -4,13 +4,16 @@ import sketches.correlation.PearsonCorrelation;
 import sketches.statistics.Stats;
 import smile.sort.QuickSort;
 
+/**
+ * Implements the Rank-Based Inverse Normal (RIN) Transformation correlation coefficient
+ */
 public class RinCorrelation {
 
   /**
    * Applies the RIN transformation to the input vectors and computes the Pearson's correlation
-   * coefficient of transformed values. The RIN transformation produces approximate normality in
-   * the sample regardless of the original distribution shape, so long as ties are rare and the
-   * sample size is reasonable.
+   * coefficient of transformed values. The RIN transformation produces approximate normality in the
+   * sample regardless of the original distribution shape, so long as ties are rare and the sample
+   * size is reasonable.
    */
   public static double coefficient(double[] x, double[] y) {
 
