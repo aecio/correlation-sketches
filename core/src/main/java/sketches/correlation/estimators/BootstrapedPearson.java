@@ -2,6 +2,7 @@ package sketches.correlation.estimators;
 
 import java.util.Arrays;
 import java.util.Random;
+import sketches.correlation.Correlation.Estimate;
 import sketches.correlation.PearsonCorrelation;
 import sketches.statistics.Stats;
 import smile.math.Math;
@@ -74,15 +75,22 @@ public class BootstrapedPearson {
 //    return new CI(corr, corrMean, corrMedian, lb, ub);
 //  }
 
+  public static double coefficient(double[] x, double[] y) {
+    return estimate(x, y).corrBsMean;
+  }
 
-  public static CI coefficient(double[] x, double[] y) {
+  public static BootstrapEstimate estimate(double[] x, double[] y) {
     Random random = new Random(0);
 
-    int n = y.length;
-    int B = 299;
+    final int n = y.length;
+
+    int B = 10000;
     double[] estimates = new double[B];
 
     final double corr = PearsonCorrelation.coefficient(x, y);
+
+    double mean = 0.0;
+    int ind = 0;
 
     double[] sy = new double[n];
     double[] sx = new double[n];
@@ -94,6 +102,22 @@ public class BootstrapedPearson {
         estimates[i] = 0.0;
       } else {
         estimates[i] = sr;
+      }
+
+      // updated current mean
+      final int count = i + 1;
+      final double diff = (estimates[i] - mean) / count;
+      mean = mean + diff;
+
+      // evaluate early termination
+      final double absDiff = Math.abs(diff);
+      if (absDiff > 0.01) {
+        ind++;
+      }
+      final double p = ind / (double) count;
+      if (i >= 5 && p < 0.05) {
+        B = count;
+        break;
       }
     }
     Arrays.sort(estimates, 0, B);
@@ -109,7 +133,8 @@ public class BootstrapedPearson {
    *
    * PM1 adjusts the percentiles based on sample size.
    */
-  private static CI createPM1ConfidenceInterval(int B, double[] estimates, int n, double corr) {
+  private static BootstrapEstimate createPM1ConfidenceInterval(int B, double[] estimates, int n,
+      double corr) {
     double a, c;
     if (n < 40) {
       // n < 40
@@ -137,8 +162,8 @@ public class BootstrapedPearson {
     double lb = estimates[idxLb - 1];
     double ub = estimates[idxUb - 1];
     double corrMedian = estimates[((int) Math.ceil(0.5 * B)) - 1];
-    double corrMean = Stats.mean(estimates);
-    return new CI(corr, corrMean, corrMedian, lb, ub);
+    double corrMean = Stats.mean(estimates, B);
+    return new BootstrapEstimate(n, corr, corrMean, corrMedian, lb, ub);
   }
 
   /**
@@ -154,7 +179,7 @@ public class BootstrapedPearson {
     }
   }
 
-  public static class CI {
+  public static class BootstrapEstimate extends Estimate {
 
     public final double corrEst;
     public final double corrBsMean;
@@ -162,8 +187,9 @@ public class BootstrapedPearson {
     public final double lowerBound;
     public final double upperBound;
 
-    public CI(double corrEst, double corrMean, double corrMedian, double lowerBound,
-        double upperBound) {
+    public BootstrapEstimate(int sampleSize, double corrEst, double corrMean, double corrMedian,
+        double lowerBound, double upperBound) {
+      super(corrMean, sampleSize);
       this.corrEst = corrEst;
       this.corrBsMean = corrMean;
       this.corrBsMedian = corrMedian;

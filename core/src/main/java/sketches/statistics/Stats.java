@@ -25,10 +25,14 @@ public class Stats {
    * @return sum(x)/n
    */
   public static double mean(double[] x) {
+    return mean(x, x.length);
+  }
+
+  public static double mean(double[] x, int n) {
     double sum = 0.0;
-    for (int i = 0; i < x.length; i++) {
+    for (int i = 0; i < n; i++) {
       sum += x[i];
     }
-    return sum / x.length;
+    return sum / n;
   }
 }

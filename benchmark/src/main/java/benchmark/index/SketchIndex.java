@@ -32,9 +32,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
+import sketches.correlation.Correlation.Estimate;
 import sketches.correlation.CorrelationType;
 import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.KMVCorrelationSketch.CorrelationEstimate;
 import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
 import sketches.kmv.IKMV;
@@ -61,6 +61,7 @@ public class SketchIndex {
     this(MMapDirectory.open(Paths.get(indexPath)), sketchType, threshold);
   }
 
+  @SuppressWarnings("deprecation")
   public SketchIndex(SketchType sketchType, double threshold) {
     this(new RAMDirectory(), sketchType, threshold);
   }
@@ -241,7 +242,7 @@ public class SketchIndex {
     public final float score;
     private final KMVCorrelationSketch query;
     private final KMVCorrelationSketch hit;
-    private CorrelationEstimate correlation;
+    private Estimate correlation;
 
     public Hit(String id, KMVCorrelationSketch query, KMVCorrelationSketch sketch, float score) {
       this.id = id;

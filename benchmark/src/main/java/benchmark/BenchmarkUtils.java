@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -14,16 +15,22 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringEscapeUtils;
-import sketches.correlation.Correlation;
-import sketches.correlation.CorrelationType;
+import sketches.correlation.Correlation.Estimate;
 import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.KMVCorrelationSketch.CorrelationEstimate;
+import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch;
+import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch.Paired;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.PearsonCorrelation.ConfidenceInterval;
+import sketches.correlation.Qn;
 import sketches.correlation.SketchType;
+import sketches.correlation.estimators.BootstrapedPearson;
+import sketches.correlation.estimators.BootstrapedPearson.BootstrapEstimate;
+import sketches.correlation.estimators.RinCorrelation;
+import sketches.correlation.estimators.SpearmanCorrelation;
 import sketches.kmv.GKMV;
 import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
+import sketches.statistics.Kurtosis;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
@@ -33,11 +40,6 @@ import tech.tablesaw.io.csv.CsvReadOptions.Builder;
 import utils.Sets;
 
 public class BenchmarkUtils {
-
-  public static final Correlation QN_ESTIMATOR = CorrelationType.get(CorrelationType.ROBUST_QN);
-  public static final Correlation RIN_ESTIMATOR = CorrelationType.get(CorrelationType.RIN);
-  public static final Correlation SPEARMANS_ESTIMATOR = CorrelationType
-      .get(CorrelationType.SPEARMANS);
 
   public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles, int minRows) {
     Set<ColumnPair> allPairs = new HashSet<>();
@@ -215,12 +217,15 @@ public class BenchmarkUtils {
 
     result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
 
+    result.kurtx_g2_actual = Kurtosis.g2(x.columnValues);
+    result.kurty_g2_actual = Kurtosis.g2(y.columnValues);
+
     // correlation ground-truth
     Correlations corrs = Tables.computePearsonAfterJoin(x, y);
-    result.corr_actual = corrs.pearsons;
-    result.qncorr_actual = corrs.qn;
+    result.corr_rp_actual = corrs.pearsons;
+    result.corr_rqn_actual = corrs.qn;
     result.corr_rin_actual = corrs.rin;
-    result.corr_spearman_actual = corrs.spearman;
+    result.corr_rs_actual = corrs.spearman;
   }
 
   public static KMVCorrelationSketch createCorrelationSketch(
@@ -266,35 +271,9 @@ public class BenchmarkUtils {
       // set operations estimates (jaccard, cardinality, etc)
       computeSetStatisticsEstimates(result, sketchX, sketchY);
 
-      // correlation estimates
-      CorrelationEstimate estimate = sketchX.correlationTo(sketchY);
-      result.corr_est = estimate.coefficient;
-      result.corr_est_sample_size = estimate.sampleSize;
-      result.corr_delta = result.corr_actual - result.corr_est;
-
-      if (estimate.sampleSize > 2) {
-        // statistical significance is only defined for sample size > 2
-        int sampleSize = estimate.sampleSize;
-        result.corr_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_est, sampleSize);
-
-        double alpha = .05;
-        result.corr_est_intervals =
-            PearsonCorrelation.confidenceInterval(result.corr_est, sampleSize, 1. - alpha);
-        result.corr_est_significance =
-            PearsonCorrelation.isSignificant(result.corr_est, sampleSize, alpha);
-      }
-
-      CorrelationEstimate qncorr = sketchX.correlationTo(sketchY, QN_ESTIMATOR);
-      result.qncorr_est = qncorr.coefficient;
-      result.qncorr_delta = result.qncorr_actual - result.qncorr_est;
-
-      CorrelationEstimate corrSpearman = sketchX.correlationTo(sketchY, SPEARMANS_ESTIMATOR);
-      result.corr_spearman_est = corrSpearman.coefficient;
-      result.corr_spearman_delta = result.corr_spearman_actual - result.corr_spearman_est;
-
-      CorrelationEstimate corrRin = sketchX.correlationTo(sketchY, RIN_ESTIMATOR);
-      result.corr_rin_est = corrRin.coefficient;
-      result.corr_rin_delta = result.corr_rin_actual - result.corr_rin_est;
+      ImmutableCorrelationSketch iSketchX = createCorrelationSketch(x, sketchParams).toImmutable();
+      ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
+      computePairedStatistics(result, iSketchX, iSketchY);
     }
 
     result.parameters = sketchParams.toString();
@@ -304,6 +283,62 @@ public class BenchmarkUtils {
             x.keyName, x.columnName, x.datasetId, y.keyName, y.columnName, y.datasetId);
 
     return result;
+  }
+
+  private static void computePairedStatistics(Result result,
+      ImmutableCorrelationSketch sketchX, ImmutableCorrelationSketch sketchY) {
+
+    Paired paired = sketchX.intersection(sketchY);
+
+    // Sample size used to estimate correlations
+    result.corr_est_sample_size = paired.keys.length;
+
+    // correlation estimates
+    Estimate estimate = PearsonCorrelation.estimate(paired.x, paired.y);
+    result.corr_rp_est = estimate.coefficient;
+    result.corr_rp_delta = result.corr_rp_actual - result.corr_rp_est;
+
+//    if (estimate.sampleSize > 2) {
+//      // statistical significance is only defined for sample size > 2
+//      int sampleSize = estimate.sampleSize;
+//      result.corr_rp_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_rp_est, sampleSize);
+//
+//      double alpha = .05;
+//      result.corr_rp_est_fisher =
+//          PearsonCorrelation.confidenceInterval(result.corr_rp_est, sampleSize, 1. - alpha);
+//      result.corr_est_significance =
+//          PearsonCorrelation.isSignificant(result.corr_rp_est, sampleSize, alpha);
+//    }
+
+    Estimate qncorr = Qn.estimate(paired.x, paired.y);
+    result.corr_rqn_est = qncorr.coefficient;
+    result.corr_rqn_delta = result.corr_rqn_actual - result.corr_rqn_est;
+
+    Estimate corrSpearman = SpearmanCorrelation.estimate(paired.x, paired.y);
+    result.corr_rs_est = corrSpearman.coefficient;
+    result.corr_rs_delta = result.corr_rs_actual - result.corr_rs_est;
+
+    Estimate corrRin = RinCorrelation.estimate(paired.x, paired.y);
+    result.corr_rin_est = corrRin.coefficient;
+    result.corr_rin_delta = result.corr_rin_actual - result.corr_rin_est;
+
+    BootstrapEstimate corrPm1 = BootstrapedPearson.estimate(paired.x, paired.y);
+    result.corr_pm1_mean = corrPm1.corrBsMean;
+    result.corr_pm1_mean_delta = result.corr_rp_actual - result.corr_pm1_mean;
+
+    result.corr_pm1_median = corrPm1.corrBsMedian;
+    result.corr_pm1_median_delta = result.corr_rp_actual - result.corr_pm1_median;
+
+    result.corr_pm1_lb = corrPm1.lowerBound;
+    result.corr_pm1_ub = corrPm1.upperBound;
+
+    // Kurtosis of paired variables
+    result.kurtx_g2 = Kurtosis.g2(paired.x);
+    result.kurtx_G2 = Kurtosis.G2(paired.x);
+    result.kurtx_k5 = Kurtosis.k5(paired.x);
+    result.kurty_g2 = Kurtosis.G2(paired.y);
+    result.kurty_G2 = Kurtosis.G2(paired.y);
+    result.kurty_k5 = Kurtosis.k5(paired.y);
   }
 
   private static void computeSetStatisticsEstimates(
@@ -336,35 +371,48 @@ public class BenchmarkUtils {
     public double unionxy_est;
     public int interxy_actual;
     public int unionxy_actual;
-    // person estimation statistics
-    public double corr_actual;
-    public double corr_est;
-    public double corr_delta;
-    public double corr_est_pvalue2t;
-    public ConfidenceInterval corr_est_intervals;
-    public boolean corr_est_significance;
+    // Correlation sample size
+    public int corr_est_sample_size;
+    // Person's correlation
+    public double corr_rp_actual;
+    public double corr_rp_est;
+    public double corr_rp_delta;
+    // Pearson's Fisher CI
+//    public double corr_rp_est_pvalue2t;
+//    public ConfidenceInterval corr_rp_est_fisher;
+//    public boolean corr_est_significance;
     // Qn correlation
-    public double qncorr_actual;
-    public double qncorr_est;
-    public double qncorr_delta;
+    public double corr_rqn_actual;
+    public double corr_rqn_est;
+    public double corr_rqn_delta;
     // Spearman correlation
-    public double corr_spearman_est;
-    public double corr_spearman_actual;
-    public double corr_spearman_delta;
+    public double corr_rs_est;
+    public double corr_rs_actual;
+    public double corr_rs_delta;
     // RIN correlation
     public double corr_rin_est;
     public double corr_rin_actual;
     public double corr_rin_delta;
+    // PM1 bootstrap
+    public double corr_pm1_mean;
+    public double corr_pm1_mean_delta;
+    public double corr_pm1_median;
+    public double corr_pm1_median_delta;
+    public double corr_pm1_lb;
+    public double corr_pm1_ub;
+    // Kurtosis
+    public double kurtx_g2_actual;
+    public double kurty_g2_actual;
+    public double kurtx_g2;
+    public double kurtx_G2;
+    public double kurtx_k5;
+    public double kurty_g2;
+    public double kurty_G2;
+    public double kurty_k5;
     // others
     public String parameters;
     public String columnId;
-    public int corr_est_sample_size;
 
-
-    public static String header() {
-      return String.format(
-          "Contain  Pearson  Estimation  Error  CardQ  CardC  p-value  Interval           Sig    Name");
-    }
 
     public static String csvHeader() {
       return String.format(
@@ -386,26 +434,44 @@ public class BenchmarkUtils {
               + "interxy_actual,"
               + "unionxy_est,"
               + "unionxy_actual,"
-              // correlations
-              + "corr_est,"
-              + "corr_actual,"
-              + "corr_delta,"
+              // Correlation sample size
               + "corr_est_sample_size,"
-              + "corr_est_pvalue2t,"
-              + "corr_est_intervals,"
-              + "corr_est_significance,"
+              // Pearson's correlations
+              + "corr_rp_est,"
+              + "corr_rp_actual,"
+              + "corr_rp_delta,"
+              // Pearson's Fisher CI
+//              + "corr_rp_est_pvalue2t,"
+//              + "corr_rp_est_fisher_ub,"
+//              + "corr_rp_est_fisher_lb,"
               // Qn correlations
-              + "qncorr_est,"
-              + "qncorr_actual,"
-              + "qncorr_delta,"
+              + "corr_rqn_est,"
+              + "corr_rqn_actual,"
+              + "corr_rqn_delta,"
               // Spearman correlations
-              + "corr_spearman_est,"
-              + "corr_spearman_actual,"
-              + "corr_spearman_delta,"
+              + "corr_rs_est,"
+              + "corr_rs_actual,"
+              + "corr_rs_delta,"
               // RIN correlations
               + "corr_rin_est,"
               + "corr_rin_actual,"
               + "corr_rin_delta,"
+              // PM1 bootstrap
+              + "corr_pm1_mean,"
+              + "corr_pm1_mean_delta,"
+              + "corr_pm1_median,"
+              + "corr_pm1_median_delta,"
+              + "corr_pm1_lb,"
+              + "corr_pm1_ub,"
+              // Kurtosis
+              + "kurtx_g2_actual,"
+              + "kurtx_g2,"
+              + "kurtx_G2,"
+              + "kurtx_k5,"
+              + "kurty_g2_actual,"
+              + "kurty_g2,"
+              + "kurty_G2,"
+              + "kurty_k5,"
               // others
               + "parameters,"
               + "column");
@@ -414,13 +480,17 @@ public class BenchmarkUtils {
     public String csvLine() {
       return String.format(
           ""
-              + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,"
-              + "%.2f,%d,%.2f,%d,"
-              + "%.2f,%d,%.2f,%d,"
-              + "%.3f,%.3f,%.3f,%d,%.3f,%s,%s,"
+              + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // Jaccard
+              + "%.2f,%d,%.2f,%d," // cardinalities
+              + "%.2f,%d,%.2f,%d," // set statistics
+              + "%d," // sample size
+              + "%.3f,%.3f,%.3f," // Pearson's
+//              + "%.3f,%.3f,%.3f," // Pearson's Fisher CI
               + "%.3f,%.3f,%.3f," // Qn
-              + "%.3f,%.3f,%.3f," // Spearman
+              + "%.3f,%.3f,%.3f," // Spearman's
               + "%.3f,%.3f,%.3f," // RIN
+              + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // PM1
+              + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // Kurtosis
               + "%s,%s",
           // jaccard
           jcx_est,
@@ -439,45 +509,47 @@ public class BenchmarkUtils {
           interxy_actual,
           unionxy_est,
           unionxy_actual,
-          // correlations
-          corr_est,
-          corr_actual,
-          corr_delta,
+          // sample
           corr_est_sample_size,
-          corr_est_pvalue2t,
-          StringEscapeUtils.escapeCsv(String.valueOf(corr_est_intervals)),
-          StringEscapeUtils.escapeCsv(String.valueOf(corr_est_significance)),
+          // Pearson's correlations
+          corr_rp_est,
+          corr_rp_actual,
+          corr_rp_delta,
+          // Pearson's Fisher CI
+//          corr_rp_est_pvalue2t,
+//          corr_rp_est_fisher.lowerBound,
+//          corr_rp_est_fisher.upperBound,
           // Qn correlations
-          qncorr_est,
-          qncorr_actual,
-          qncorr_delta,
-          // Spearman correlations
-          corr_spearman_est,
-          corr_spearman_actual,
-          corr_spearman_delta,
+          corr_rqn_est,
+          corr_rqn_actual,
+          corr_rqn_delta,
+          // Spearman's correlations
+          corr_rs_est,
+          corr_rs_actual,
+          corr_rs_delta,
           // RIN correlations
           corr_rin_est,
           corr_rin_actual,
           corr_rin_delta,
+          // PM1 bootstrap
+          corr_pm1_mean,
+          corr_pm1_mean_delta,
+          corr_pm1_median,
+          corr_pm1_median_delta,
+          corr_pm1_lb,
+          corr_pm1_ub,
+          // Kurtosis
+          kurtx_g2_actual,
+          kurtx_g2,
+          kurtx_G2,
+          kurtx_k5,
+          kurty_g2_actual,
+          kurty_g2,
+          kurty_G2,
+          kurty_k5,
           // others
           StringEscapeUtils.escapeCsv(parameters),
           StringEscapeUtils.escapeCsv(columnId));
-    }
-
-    @Override
-    public String toString() {
-      return String.format(
-          "%+.4f  %+.4f  %+.7f  %+.2f  %.2f   %.2f   %.3f    %-17s  %-5s  %s\n",
-          jcx_est,
-          corr_actual,
-          corr_est,
-          corr_delta,
-          cardx_est,
-          cardy_est,
-          corr_est_pvalue2t,
-          corr_est_intervals,
-          corr_est_significance,
-          columnId);
     }
 
     public Result clone() {

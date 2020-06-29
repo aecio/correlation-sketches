@@ -1,5 +1,6 @@
 package sketches.correlation;
 
+import sketches.correlation.Correlation.Estimate;
 import smile.math.Math;
 import smile.stat.distribution.GaussianDistribution;
 import smile.stat.distribution.TDistribution;
@@ -10,6 +11,16 @@ public class PearsonCorrelation {
 
   private static final GaussianDistribution NORMAL = new GaussianDistribution(0, 1);
   private static final ConfidenceInterval NULL_CI = new ConfidenceInterval(Double.NaN, Double.NaN);
+
+  /**
+   * Computes the Pearson product-moment correlation coefficient for two vectors. When the vector
+   * covariances are zero (or close to zero), i.e., the series are constant, this implementation
+   * returns Double.NaN.
+   */
+  public static Estimate estimate(double[] x, double[] y) {
+    double r = coefficient(x, y);
+    return new Estimate(r, x.length);
+  }
 
   /**
    * Computes the Pearson product-moment correlation coefficient for two vectors. When the vector
@@ -156,8 +167,8 @@ public class PearsonCorrelation {
 
   public static class ConfidenceInterval {
 
-    double lowerBound;
-    double upperBound;
+    public final double lowerBound;
+    public final double upperBound;
 
     public ConfidenceInterval(double lowerBound, double upperBound) {
       this.lowerBound = lowerBound;

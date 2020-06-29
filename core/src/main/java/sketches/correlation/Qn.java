@@ -6,6 +6,7 @@ import com.google.common.base.Preconditions;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
 import it.unimi.dsi.fastutil.doubles.DoubleHeapPriorityQueue;
 import java.util.Arrays;
+import sketches.correlation.Correlation.Estimate;
 import smile.math.Math;
 
 /**
@@ -277,6 +278,10 @@ public class Qn {
       }
     }
     return q.firstDouble();
+  }
+
+  public static Estimate estimate(double[] x, double[] y) {
+    return new Estimate(correlation(x, y), x.length);
   }
 
   public static double correlation(double[] x, double[] y) {
