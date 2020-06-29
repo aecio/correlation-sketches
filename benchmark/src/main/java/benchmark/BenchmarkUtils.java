@@ -246,34 +246,23 @@ public class BenchmarkUtils {
     KMVCorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
     KMVCorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
 
-    //    synchronized (System.out) {
-    //      System.out.println();
-    //      System.out.printf("x=%s dataset=%s\n", x.columnName, x.datasetId);
-    //      System.out.printf("y=%s dataset=%s\n", y.columnName, y.datasetId);
-    //      System.out.printf("x.size=%d y.size=%d\n", x.keyValues.size(), y.keyValues.size());
-    //      System.out.printf(
-    //          "sketch.x.size=%d sketch.y.size=%d\n",
-    //          sketchX.getKMinValues().size(), sketchY.getKMinValues().size());
-    //    }
+    ImmutableCorrelationSketch iSketchX = createCorrelationSketch(x, sketchParams).toImmutable();
+    ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
+    Paired paired = iSketchX.intersection(iSketchY);
 
-    int mininumIntersection = 2; // minimum sample size for correlation is 2
-    int mininumSetSize = 2;
+    int minimumIntersection = 3; // minimum sample size for correlation is 2
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check weather the actual cardinality and sketch sizes are large enough.
 
-    if (result.interxy_actual >= mininumIntersection
-        && result.cardx_actual >= mininumSetSize
-        && result.cardy_actual >= mininumSetSize
-        && sketchX.getKMinValues().size() >= mininumSetSize
-        && sketchY.getKMinValues().size() >= mininumSetSize) {
+    if (result.interxy_actual >= minimumIntersection
+        && paired.keys.length > minimumIntersection) {
 
       // set operations estimates (jaccard, cardinality, etc)
       computeSetStatisticsEstimates(result, sketchX, sketchY);
 
-      ImmutableCorrelationSketch iSketchX = createCorrelationSketch(x, sketchParams).toImmutable();
-      ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
-      computePairedStatistics(result, iSketchX, iSketchY);
+      // computes statistics on joined data (e.g., correlations)
+      computePairedStatistics(result, paired);
     }
 
     result.parameters = sketchParams.toString();
@@ -285,10 +274,7 @@ public class BenchmarkUtils {
     return result;
   }
 
-  private static void computePairedStatistics(Result result,
-      ImmutableCorrelationSketch sketchX, ImmutableCorrelationSketch sketchY) {
-
-    Paired paired = sketchX.intersection(sketchY);
+  private static void computePairedStatistics(Result result, Paired paired) {
 
     // Sample size used to estimate correlations
     result.corr_est_sample_size = paired.keys.length;
