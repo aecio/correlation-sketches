@@ -20,7 +20,6 @@ import sketches.correlation.KMVCorrelationSketch;
 import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch;
 import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch.Paired;
 import sketches.correlation.PearsonCorrelation;
-import sketches.correlation.PearsonCorrelation.ConfidenceInterval;
 import sketches.correlation.Qn;
 import sketches.correlation.SketchType;
 import sketches.correlation.estimators.BootstrapedPearson;
@@ -31,6 +30,8 @@ import sketches.kmv.GKMV;
 import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
 import sketches.statistics.Kurtosis;
+import sketches.statistics.Stats;
+import sketches.statistics.Stats.Extent;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
@@ -40,6 +41,8 @@ import tech.tablesaw.io.csv.CsvReadOptions.Builder;
 import utils.Sets;
 
 public class BenchmarkUtils {
+
+  public static final int minimumIntersection = 3; // minimum sample size for correlation is 2
 
   public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles, int minRows) {
     Set<ColumnPair> allPairs = new HashSet<>();
@@ -196,8 +199,10 @@ public class BenchmarkUtils {
     computeStatisticsGroundTruth(x, y, result);
 
     List<Result> results = new ArrayList<>();
-    for (SketchParams params : sketchParams) {
-      results.add(computeSketchStatistics(result.clone(), x, y, params));
+    if (result.interxy_actual >= minimumIntersection) {
+      for (SketchParams params : sketchParams) {
+        results.add(computeSketchStatistics(result.clone(), x, y, params));
+      }
     }
 
     return results;
@@ -210,6 +215,12 @@ public class BenchmarkUtils {
     result.cardy_actual = yKeys.size();
 
     result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
+
+    // No need compute any statistics when there is not intersection
+    if (result.interxy_actual < minimumIntersection) {
+      return;
+    }
+
     result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
 
     result.jcx_actual = result.interxy_actual / (double) result.cardx_actual;
@@ -219,6 +230,14 @@ public class BenchmarkUtils {
 
     result.kurtx_g2_actual = Kurtosis.g2(x.columnValues);
     result.kurty_g2_actual = Kurtosis.g2(y.columnValues);
+
+    final Extent extentX = Stats.extent(x.columnValues);
+    result.x_min = extentX.min;
+    result.x_max = extentX.max;
+
+    final Extent extentY = Stats.extent(y.columnValues);
+    result.y_min = extentY.min;
+    result.y_max = extentY.max;
 
     // correlation ground-truth
     Correlations corrs = Tables.computePearsonAfterJoin(x, y);
@@ -250,13 +269,10 @@ public class BenchmarkUtils {
     ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
     Paired paired = iSketchX.intersection(iSketchY);
 
-    int minimumIntersection = 3; // minimum sample size for correlation is 2
-
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check weather the actual cardinality and sketch sizes are large enough.
-
     if (result.interxy_actual >= minimumIntersection
-        && paired.keys.length > minimumIntersection) {
+        && paired.keys.length >= minimumIntersection) {
 
       // set operations estimates (jaccard, cardinality, etc)
       computeSetStatisticsEstimates(result, sketchX, sketchY);
@@ -325,6 +341,15 @@ public class BenchmarkUtils {
     result.kurty_g2 = Kurtosis.G2(paired.y);
     result.kurty_G2 = Kurtosis.G2(paired.y);
     result.kurty_k5 = Kurtosis.k5(paired.y);
+
+    final Extent extentX = Stats.extent(paired.x);
+    result.x_min_sample = extentX.min;
+    result.x_max_sample = extentX.max;
+
+    final Extent extentY = Stats.extent(paired.y);
+    result.y_min_sample = extentY.min;
+    result.y_max_sample = extentY.max;
+
   }
 
   private static void computeSetStatisticsEstimates(
@@ -395,6 +420,16 @@ public class BenchmarkUtils {
     public double kurty_g2;
     public double kurty_G2;
     public double kurty_k5;
+    // Variable sample extents
+    public double y_min_sample;
+    public double y_max_sample;
+    public double x_min_sample;
+    public double x_max_sample;
+    // Variable extents
+    public double x_min;
+    public double x_max;
+    public double y_min;
+    public double y_max;
     // others
     public String parameters;
     public String columnId;
@@ -458,6 +493,16 @@ public class BenchmarkUtils {
               + "kurty_g2,"
               + "kurty_G2,"
               + "kurty_k5,"
+              // Variable sample extents
+              + "y_min_sample,"
+              + "y_max_sample,"
+              + "x_min_sample,"
+              + "x_max_sample,"
+              // Variable extents
+              + "x_min,"
+              + "x_max,"
+              + "y_min,"
+              + "y_max,"
               // others
               + "parameters,"
               + "column");
@@ -477,6 +522,8 @@ public class BenchmarkUtils {
               + "%.3f,%.3f,%.3f," // RIN
               + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // PM1
               + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // Kurtosis
+              + "%f,%f,%f,%f," // Variable sample extents
+              + "%f,%f,%f,%f," // Variable extents
               + "%s,%s",
           // jaccard
           jcx_est,
@@ -533,6 +580,16 @@ public class BenchmarkUtils {
           kurty_g2,
           kurty_G2,
           kurty_k5,
+          // Variable sample extents
+          y_min_sample,
+          y_max_sample,
+          x_min_sample,
+          x_max_sample,
+          // Variable extents
+          x_min,
+          x_max,
+          y_min,
+          y_max,
           // others
           StringEscapeUtils.escapeCsv(parameters),
           StringEscapeUtils.escapeCsv(columnId));
