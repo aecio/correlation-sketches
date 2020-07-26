@@ -56,6 +56,14 @@ public class Stats {
     return new Extent(min, max);
   }
 
+  public static double[] unitRange(double[] x, double x_min, double x_max) {
+    double[] xu = new double[x.length];
+    for (int i = 0; i < x.length; i++) {
+      xu[i] = (x[i] - x_min) / (x_max - x_min);
+    }
+    return xu;
+  }
+
   public static class Extent {
 
     public final double min;
@@ -65,5 +73,14 @@ public class Stats {
       this.min = min;
       this.max = max;
     }
+  }
+
+  public static double dot(double[] x, double[] y) {
+    final int n = x.length;
+    double sum = 0;
+    for (int i = 0; i < n; i++) {
+      sum += x[i] * y[i];
+    }
+    return sum / n;
   }
 }

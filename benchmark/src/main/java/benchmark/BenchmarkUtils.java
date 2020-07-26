@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -32,6 +31,7 @@ import sketches.kmv.KMV;
 import sketches.statistics.Kurtosis;
 import sketches.statistics.Stats;
 import sketches.statistics.Stats.Extent;
+import sketches.statistics.Variance;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
@@ -350,6 +350,16 @@ public class BenchmarkUtils {
     result.y_min_sample = extentY.min;
     result.y_max_sample = extentY.max;
 
+    double[] unitRangeX = Stats.unitRange(paired.x, result.x_min, result.x_max);
+    double[] unitRangeY = Stats.unitRange(paired.y, result.y_min, result.y_max);
+    result.x_sample_mean = Stats.mean(unitRangeX);
+    result.y_sample_mean = Stats.mean(unitRangeY);
+    result.x_sample_var = Variance.var(unitRangeX);
+    result.y_sample_var = Variance.var(unitRangeY);
+    result.nu_xy = Stats.dot(unitRangeX, unitRangeY);
+    result.nu_x = Stats.dot(unitRangeX, unitRangeX);
+    result.nu_y = Stats.dot(unitRangeY, unitRangeY);
+
   }
 
   private static void computeSetStatisticsEstimates(
@@ -430,6 +440,15 @@ public class BenchmarkUtils {
     public double x_max;
     public double y_min;
     public double y_max;
+    // Variable sample means and variances
+    public double x_sample_mean;
+    public double y_sample_mean;
+    public double x_sample_var;
+    public double y_sample_var;
+    // Sum of squares of variables' samples
+    public double nu_xy;
+    public double nu_x;
+    public double nu_y;
     // others
     public String parameters;
     public String columnId;
@@ -503,6 +522,15 @@ public class BenchmarkUtils {
               + "x_max,"
               + "y_min,"
               + "y_max,"
+              // Variable sample means and variances
+              + "x_sample_mean,"
+              + "y_sample_mean,"
+              + "x_sample_var,"
+              + "y_sample_var,"
+              // Sum of squares of variables' samples
+              + "nu_xy,"
+              + "nu_x,"
+              + "nu_y,"
               // others
               + "parameters,"
               + "column");
@@ -524,6 +552,8 @@ public class BenchmarkUtils {
               + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // Kurtosis
               + "%f,%f,%f,%f," // Variable sample extents
               + "%f,%f,%f,%f," // Variable extents
+              + "%f,%f,%f,%f," // Variable sample means and variances
+              + "%f,%f,%f," // Sum of squares of variables' samples
               + "%s,%s",
           // jaccard
           jcx_est,
@@ -590,6 +620,15 @@ public class BenchmarkUtils {
           x_max,
           y_min,
           y_max,
+          // Variable sample means and variances
+          x_sample_mean,
+          y_sample_mean,
+          x_sample_var,
+          y_sample_var,
+          // Sum of squares of variables' samples
+          nu_xy,
+          nu_x,
+          nu_y,
           // others
           StringEscapeUtils.escapeCsv(parameters),
           StringEscapeUtils.escapeCsv(columnId));

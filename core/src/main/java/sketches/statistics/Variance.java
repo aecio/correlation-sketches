@@ -5,7 +5,7 @@ import smile.stat.distribution.GaussianDistribution;
 
 public class Variance {
 
-  private static final GaussianDistribution GAUSSIAN = new GaussianDistribution(0, 1);
+  private static final GaussianDistribution GAUSSIAN = GaussianDistribution.getInstance();
 
   /**
    * Computes the unbiased sample variance of the given vector.
