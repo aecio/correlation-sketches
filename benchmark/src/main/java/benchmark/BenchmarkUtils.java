@@ -226,33 +226,35 @@ public class BenchmarkUtils {
     time0 = System.nanoTime();
     Paired paired = iSketchX.intersection(iSketchY);
     result.sketch_join_time = System.nanoTime() - time0;
+    result.sketch_join_size = paired.keys.length;
 
-    result.sketch_join_size = paired.x.length;
+    if (result.interxy_actual >= minimumIntersection
+        && paired.keys.length >= minimumIntersection) {
 
-    time0 = System.nanoTime();
-    PearsonCorrelation.estimate(paired.x, paired.y);
-    result.rp_time = System.nanoTime() - time0;
+      time0 = System.nanoTime();
+      PearsonCorrelation.estimate(paired.x, paired.y);
+      result.rp_time = System.nanoTime() - time0;
 
-    time0 = System.nanoTime();
-    Qn.estimate(paired.x, paired.y);
-    result.rqn_time = System.nanoTime() - time0;
+      time0 = System.nanoTime();
+      Qn.estimate(paired.x, paired.y);
+      result.rqn_time = System.nanoTime() - time0;
 
-    time0 = System.nanoTime();
-    SpearmanCorrelation.estimate(paired.x, paired.y);
-    result.rs_time = System.nanoTime() - time0;
+      time0 = System.nanoTime();
+      SpearmanCorrelation.estimate(paired.x, paired.y);
+      result.rs_time = System.nanoTime() - time0;
 
-    time0 = System.nanoTime();
-    RinCorrelation.estimate(paired.x, paired.y);
-    result.rrin_time = System.nanoTime() - time0;
+      time0 = System.nanoTime();
+      RinCorrelation.estimate(paired.x, paired.y);
+      result.rrin_time = System.nanoTime() - time0;
 
-    time0 = System.nanoTime();
-    BootstrapedPearson.estimate(paired.x, paired.y);
-    result.rpm1_time = System.nanoTime() - time0;
+      time0 = System.nanoTime();
+      BootstrapedPearson.estimate(paired.x, paired.y);
+      result.rpm1_time = System.nanoTime() - time0;
 
-    time0 = System.nanoTime();
-    BootstrapedPearson.simpleEstimate(paired.x, paired.y);
-    result.rpm1s_time = System.nanoTime() - time0;
-
+      time0 = System.nanoTime();
+      BootstrapedPearson.simpleEstimate(paired.x, paired.y);
+      result.rpm1s_time = System.nanoTime() - time0;
+    }
 
     result.parameters = sketchParams.toString();
     result.columnId =
