@@ -1,6 +1,7 @@
 package benchmark;
 
 import benchmark.ComputePairwiseCorrelationJoinsThreads.SketchParams;
+import benchmark.Tables.ComputingTime;
 import benchmark.Tables.Correlations;
 import java.io.IOException;
 import java.io.InputStream;
@@ -188,6 +189,96 @@ public class BenchmarkUtils {
             .collect(Collectors.toList());
 
     return allFiles;
+  }
+
+  public static List<PerfResult> computePerformanceStatistics(
+      ColumnPair x, ColumnPair y, List<SketchParams> sketchParams) {
+    PerfResult result = new PerfResult();
+
+    computeJoinPerformance(x, y, result);
+
+    List<PerfResult> results = new ArrayList<>();
+    if (result.interxy_actual >= minimumIntersection) {
+      for (SketchParams params : sketchParams) {
+        results.add(computeSketchPerformance(result.clone(), x, y, params));
+      }
+    }
+
+    return results;
+  }
+
+  public static PerfResult computeSketchPerformance(
+      PerfResult result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
+    // create correlation sketches for the data
+    long time0 = System.nanoTime();
+    KMVCorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
+    result.build_x_time = System.nanoTime() - time0;
+
+    time0 = System.nanoTime();
+    KMVCorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
+    result.build_y_time = System.nanoTime() - time0;
+
+    result.build_time = result.build_x_time + result.build_y_time;
+
+    ImmutableCorrelationSketch iSketchX = createCorrelationSketch(x, sketchParams).toImmutable();
+    ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
+
+    time0 = System.nanoTime();
+    Paired paired = iSketchX.intersection(iSketchY);
+    result.sketch_join_time = System.nanoTime() - time0;
+
+    result.sketch_join_size = paired.x.length;
+
+    time0 = System.nanoTime();
+    PearsonCorrelation.estimate(paired.x, paired.y);
+    result.rp_time = System.nanoTime() - time0;
+
+    time0 = System.nanoTime();
+    Qn.estimate(paired.x, paired.y);
+    result.rqn_time = System.nanoTime() - time0;
+
+    time0 = System.nanoTime();
+    SpearmanCorrelation.estimate(paired.x, paired.y);
+    result.rs_time = System.nanoTime() - time0;
+
+    time0 = System.nanoTime();
+    RinCorrelation.estimate(paired.x, paired.y);
+    result.rrin_time = System.nanoTime() - time0;
+
+    time0 = System.nanoTime();
+    BootstrapedPearson.estimate(paired.x, paired.y);
+    result.rpm1_time = System.nanoTime() - time0;
+
+    time0 = System.nanoTime();
+    BootstrapedPearson.simpleEstimate(paired.x, paired.y);
+    result.rpm1s_time = System.nanoTime() - time0;
+
+
+    result.parameters = sketchParams.toString();
+    result.columnId =
+        String.format(
+            "X(%s,%s,%s) Y(%s,%s,%s)",
+            x.keyName, x.columnName, x.datasetId, y.keyName, y.columnName, y.datasetId);
+
+    return result;
+  }
+
+  static void computeJoinPerformance(ColumnPair x, ColumnPair y, PerfResult result) {
+    HashSet<String> xKeys = new HashSet<>(x.keyValues);
+    HashSet<String> yKeys = new HashSet<>(y.keyValues);
+    result.cardx_actual = xKeys.size();
+    result.cardy_actual = yKeys.size();
+
+    result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
+
+    // No need compute any statistics when there is not intersection
+    if (result.interxy_actual < minimumIntersection) {
+      return;
+    }
+
+    // correlation ground-truth
+    ComputingTime time = Tables.timedComputePearsonAfterJoin(x, y);
+    result.time = time;
   }
 
   public static List<Result> computeStatistics(
@@ -637,6 +728,109 @@ public class BenchmarkUtils {
     public Result clone() {
       try {
         return (Result) super.clone();
+      } catch (CloneNotSupportedException e) {
+        throw new IllegalStateException(
+            this.getClass() + " must implement the Cloneable interface.", e);
+      }
+    }
+  }
+
+  public static class PerfResult implements Cloneable {
+
+    public String parameters;
+    public String columnId;
+    // Full data statistics
+    public ComputingTime time;
+    public int cardx_actual;
+    public int cardy_actual;
+    public int interxy_actual;
+    // Sketch statistics
+    public long build_x_time;
+    public long build_y_time;
+    public long build_time;
+    public long sketch_join_time;
+
+    public int sketch_join_size;
+    public long rp_time;
+    public long rqn_time;
+    public long rs_time;
+    public long rrin_time;
+    public long rpm1_time;
+    public long rpm1s_time;
+
+    public static String csvHeader() {
+      return String.format(
+          ""
+              // full correlation times
+              + "join_time,"
+              + "spearmans_time,"
+              + "pearsons_time,"
+              + "rin_time,"
+              + "qn_time,"
+              // cardinalities
+              + "cardx_actual,"
+              + "cardy_actual,"
+              + "interxy_actual,"
+              // sketch times
+              + "build_x_time,"
+              + "build_y_time,"
+              + "build_time,"
+              + "sketch_join_time,"
+              // sketch join size
+              + "sketch_join_size,"
+              // sketch correlation times
+              + "rp_time,"
+              + "rqn_time,"
+              + "rs_time,"
+              + "rrin_time,"
+              + "rpm1_time,"
+              + "rpm1s_time,"
+              // others
+              + "parameters,"
+              + "column");
+    }
+
+    public String csvLine() {
+      return String.format(
+          ""
+              + "%d,%d,%d,%d,%d," // full correlations
+              + "%d,%d,%d," // cardinalities
+              + "%d,%d,%d,%d," // sketch times
+              + "%d," // sketch join size
+              + "%d,%d,%d,%d,%d,%d," // sketch correlation times
+              + "%s,%s",
+          // full correlation times
+          time.join,
+          time.spearmans,
+          time.pearsons,
+          time.rin,
+          time.qn,
+          // cardinalities
+          cardx_actual,
+          cardy_actual,
+          interxy_actual,
+          // sketch times
+          build_x_time,
+          build_y_time,
+          build_time,
+          sketch_join_time,
+          // sketch join size
+          sketch_join_size,
+          // sketch correlation times
+          rp_time,
+          rqn_time,
+          rs_time,
+          rrin_time,
+          rpm1_time,
+          rpm1s_time,
+          // others
+          StringEscapeUtils.escapeCsv(parameters),
+          StringEscapeUtils.escapeCsv(columnId));
+    }
+
+    public PerfResult clone() {
+      try {
+        return (PerfResult) super.clone();
       } catch (CloneNotSupportedException e) {
         throw new IllegalStateException(
             this.getClass() + " must implement the Cloneable interface.", e);

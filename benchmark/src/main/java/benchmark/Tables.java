@@ -4,7 +4,6 @@ import com.google.common.collect.ArrayListMultimap;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.Qn;
@@ -118,6 +117,86 @@ public class Tables {
 
 
     return correlations;
+  }
+
+  public static ComputingTime timedComputePearsonAfterJoin(ColumnPair query, ColumnPair column) {
+    ComputingTime time = new ComputingTime();
+
+    ColumnPair columnA = query;
+    ColumnPair columnB = column;
+    long time0 = System.nanoTime();
+
+    // create index for primary key in column B
+    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
+    for (int i = 0; i < columnB.keyValues.size(); i++) {
+      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
+    }
+
+    // loop over column B creating to new vectors index for primary key in column B
+    DoubleList joinValuesA = new DoubleArrayList();
+    DoubleList joinValuesB = new DoubleArrayList();
+    for (int i = 0; i < columnA.keyValues.size(); i++) {
+      String keyA = columnA.keyValues.get(i);
+      double valueA = columnA.columnValues[i];
+      List<Double> rowsB = columnMapB.get(keyA);
+      if (rowsB != null && !rowsB.isEmpty()) {
+        // TODO: We should properly handle cases where 1:N relationships happen.
+        // We could could consider the correlation of valueA with an any aggregation function of the
+        // list of values from B, e.g. mean, max, sum, count, etc.
+        // Currently we are considering only the first seen value, and ignoring everything else,
+        // similarly to the correlation sketch implementation.
+        joinValuesA.add(valueA);
+        joinValuesB.add(rowsB.get(0).doubleValue());
+      }
+    }
+    time.join = System.nanoTime() - time0;
+
+    // correlation is defined only for vectors of length at least two
+    Correlations correlations = new Correlations();
+    if (joinValuesA.size() < 2) {
+      correlations.pearsons = Double.NaN;
+      correlations.qn = Double.NaN;
+      correlations.spearman = Double.NaN;
+      correlations.rin = Double.NaN;
+    } else {
+      double[] joinedA = joinValuesA.toDoubleArray();
+      double[] joinedB = joinValuesB.toDoubleArray();
+
+      time0 = System.nanoTime();
+      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
+      time.spearmans = System.nanoTime() - time0;
+
+      time0 = System.nanoTime();
+      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
+      time.pearsons = System.nanoTime() - time0;
+
+      time0 = System.nanoTime();
+      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
+      time.rin = System.nanoTime() - time0;
+
+      try {
+        time0 = System.nanoTime();
+        correlations.qn = Qn.correlation(joinedA, joinedB);
+        time.qn = System.nanoTime() - time0;
+      } catch (Exception e) {
+        correlations.qn = Double.NaN;
+        System.out.printf(
+            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
+                + "Array length after join is %d.\n",
+            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
+        System.out.printf("Error stack trace: %s\n", e.toString());
+      }
+    }
+
+    return time;
+  }
+
+  static class ComputingTime {
+    public long join = -1;
+    public long spearmans = -1;
+    public long pearsons = -1;
+    public long rin = -1;
+    public long qn = -1;
   }
 
   static class Correlations {

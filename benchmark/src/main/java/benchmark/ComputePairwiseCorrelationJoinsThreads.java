@@ -1,5 +1,6 @@
 package benchmark;
 
+import benchmark.BenchmarkUtils.PerfResult;
 import benchmark.BenchmarkUtils.Result;
 import benchmark.CreateColumnStore.ColumnStoreMetadata;
 import com.github.rvesse.airline.annotations.Command;
@@ -54,6 +55,11 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
   Boolean intraDatasetCombinations = false;
 
   @Option(
+      name = "--performance",
+      description = "Run performance experiments")
+  Boolean performance = false;
+
+  @Option(
       name = "--max-combinations",
       description = "The maximum number of columns to consider for creating combinations.")
   private int maxSamples = 5000;
@@ -86,11 +92,18 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
     String baseInputPath = Paths.get(inputPath).getFileName().toString();
     String filename =
         String.format("%s_sketch-params=%s.csv", baseInputPath, sketchParams.toLowerCase());
+    if (performance) {
+      filename = filename.replace("_sketch-params=", "_perf_sketch-params=");
+    }
 
     Files.createDirectories(Paths.get(outputPath));
     FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
 
-    resultsFile.write(Result.csvHeader() + "\n");
+    if (performance) {
+      resultsFile.write(PerfResult.csvHeader() + "\n");
+    } else {
+      resultsFile.write(Result.csvHeader() + "\n");
+    }
 
     System.out.println("Number of combinations: " + combinations.size());
     final AtomicInteger processed = new AtomicInteger(0);
@@ -100,15 +113,28 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
 
     int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-    forkJoinPool
-        .submit(
-            () ->
-                combinations
-                    .stream()
-                    .parallel()
-                    .map(computeStatistics(cache, columnStore, processed, total, sketchParamsList))
-                    .forEach(writeCSV(resultsFile)))
-        .get();
+    if (performance) {
+      forkJoinPool
+          .submit(
+              () ->
+                  combinations
+                      .stream()
+                      .parallel()
+                      .map(computePerformanceStatistics(cache, columnStore, processed, total, sketchParamsList))
+                      .forEach(writeCSV(resultsFile)))
+          .get();
+    } else {
+      forkJoinPool
+          .submit(
+              () ->
+                  combinations
+                      .stream()
+                      .parallel()
+                      .map(computeStatistics(cache, columnStore, processed, total, sketchParamsList))
+                      .forEach(writeCSV(resultsFile)))
+          .get();
+    }
+
     resultsFile.close();
     columnStore.close();
     System.out.println(getClass().getSimpleName() + " finished successfully.");
@@ -149,6 +175,52 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
       } else {
         StringBuilder builder = new StringBuilder();
         for (Result result : results) {
+          // we don't need to report column pairs that have no intersection at all
+          if (Double.isFinite(result.interxy_actual) && result.interxy_actual >= 2) {
+            builder.append(result.csvLine());
+            builder.append('\n');
+          }
+        }
+        return builder.toString();
+      }
+    };
+  }
+
+  private Function<ColumnCombination, String> computePerformanceStatistics(
+      Cache<String, ColumnPair> cache,
+      BytesBytesHashtable hashtable,
+      AtomicInteger processed,
+      double total,
+      List<SketchParams> params) {
+    return (ColumnCombination columnPair) -> {
+      ColumnPair x = cache.getIfPresent(columnPair.x);
+      if (x == null) {
+        byte[] xId = columnPair.x.getBytes();
+        x = KRYO.unserializeObject(hashtable.get(xId));
+        cache.put(columnPair.x, x);
+      }
+      ColumnPair y = cache.getIfPresent(columnPair.y);
+      if (y == null) {
+        byte[] yId = columnPair.y.getBytes();
+        y = KRYO.unserializeObject(hashtable.get(yId));
+        cache.put(columnPair.y, y);
+      }
+
+      List<PerfResult> results = BenchmarkUtils.computePerformanceStatistics(x, y, params);
+
+      int current = processed.incrementAndGet();
+      if (current % 1000 == 0) {
+        double percent = 100 * current / total;
+        synchronized (System.out) {
+          System.out.printf("Progress: %.3f%%\n", percent);
+        }
+      }
+
+      if (results == null || results.isEmpty()) {
+        return "";
+      } else {
+        StringBuilder builder = new StringBuilder();
+        for (PerfResult result : results) {
           // we don't need to report column pairs that have no intersection at all
           if (Double.isFinite(result.interxy_actual) && result.interxy_actual >= 2) {
             builder.append(result.csvLine());

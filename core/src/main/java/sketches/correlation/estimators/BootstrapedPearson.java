@@ -126,6 +126,36 @@ public class BootstrapedPearson {
   }
 
   /**
+   * PM1 Bootstrap without early termination.
+   */
+  public static BootstrapEstimate simpleEstimate(double[] x, double[] y) {
+    Random random = new Random(0);
+
+    final int n = y.length;
+
+    int B = 10000;
+    double[] estimates = new double[B];
+
+    final double corr = PearsonCorrelation.coefficient(x, y);
+
+    double[] sy = new double[n];
+    double[] sx = new double[n];
+    for (int i = 0; i < B; i++) {
+      resample(x, y, random, n, sy, sx);
+      // compute correlation estimate on bootstrapped sample
+      double sr = PearsonCorrelation.coefficient(sx, sy);
+      if (Double.isNaN(sr)) {
+        estimates[i] = 0.0;
+      } else {
+        estimates[i] = sr;
+      }
+    }
+    Arrays.sort(estimates, 0, B);
+
+    return createPM1ConfidenceInterval(B, estimates, n, corr);
+  }
+
+  /**
    * Creates confidence interval using the modified percentiles (PM1) as described by Bishara et.
    * al. in "Asymptotic confidence intervals for the Pearson correlation via skewness and kurtosis",
    * and originally proposed by Rand R. Wilcox from the paper "Confidence intervals for the slope of
