@@ -89,8 +89,15 @@ public class KMVCorrelationSketch {
   public static class ImmutableCorrelationSketch {
 
     Correlation correlation;
+
     int[] keys; // sorted in ascending order
     double[] values; // values associated with the keys
+
+    public ImmutableCorrelationSketch(int[] keys, double[] values, Correlation correlation) {
+      this.keys = keys;
+      this.values = values;
+      this.correlation = correlation;
+    }
 
     public ImmutableCorrelationSketch(KMVCorrelationSketch cs) {
       this.correlation = cs.estimator;
@@ -104,6 +111,14 @@ public class KMVCorrelationSketch {
         i++;
       }
       QuickSort.sort(keys, values);
+    }
+
+    public int[] getKeys() {
+      return keys;
+    }
+
+    public double[] getValues() {
+      return values;
     }
 
     public Estimate correlationTo(ImmutableCorrelationSketch other) {

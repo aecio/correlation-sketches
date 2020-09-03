@@ -35,6 +35,8 @@ import org.apache.lucene.util.BytesRef;
 import sketches.correlation.Correlation.Estimate;
 import sketches.correlation.CorrelationType;
 import sketches.correlation.KMVCorrelationSketch;
+import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch;
+import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
 import sketches.kmv.IKMV;
@@ -98,6 +100,10 @@ public class SketchIndex {
     }
   }
 
+  public void close() throws IOException {
+    this.writer.close();
+  }
+
   public void index(String id, ColumnPair columnPair) throws IOException {
 
     KMVCorrelationSketch sketch = createCorrelationSketch(columnPair);
@@ -107,12 +113,16 @@ public class SketchIndex {
     Field idField = new StringField(ID_FIELD_NAME, id, Field.Store.YES);
     doc.add(idField);
 
-    TreeSet<ValueHash> hashes = sketch.getKMinValues();
-    for (ValueHash hash : hashes) {
-      doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(hash.hashValue), Field.Store.YES));
+    final ImmutableCorrelationSketch immutable = sketch.toImmutable();
+
+    // add keys to document
+    final int[] keys = immutable.getKeys();
+    for (int i = 0; i < keys.length; i++) {
+      doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(keys[i]), Field.Store.YES));
     }
 
-    double[] values = hashes.stream().mapToDouble(v -> v.value).toArray();
+    // add values to documents
+    final double[] values = immutable.getValues();
     byte[] valuesBytes = toByteArray(values);
     doc.add(new StoredField(VALUES_FIELD_NAME, valuesBytes));
 
@@ -138,10 +148,11 @@ public class SketchIndex {
 
       TopDocs hits = searcher.search(bq.build(), k);
 
+      ImmutableCorrelationSketch immutable = query.toImmutable();
       List<Hit> results = new ArrayList<>();
       for (int i = 0; i < hits.scoreDocs.length; i++) {
         final ScoreDoc scoreDoc = hits.scoreDocs[i];
-        final Hit hit = createSearchHit(query, searcher.doc(scoreDoc.doc), scoreDoc.score);
+        final Hit hit = createSearchHit(immutable, searcher.doc(scoreDoc.doc), scoreDoc.score);
         results.add(hit);
       }
 
@@ -153,7 +164,7 @@ public class SketchIndex {
     }
   }
 
-  private Hit createSearchHit(KMVCorrelationSketch query, Document doc, float score) {
+  private Hit createSearchHit(ImmutableCorrelationSketch query, Document doc, float score) {
 
     // retrieve data from index fields
     String id = doc.getValues(ID_FIELD_NAME)[0];
@@ -161,12 +172,11 @@ public class SketchIndex {
     BytesRef[] valuesRef = doc.getBinaryValues(VALUES_FIELD_NAME);
 
     // re-construct sketch data structures from bytes
-    KMVCorrelationSketch hitSketch = createCorrelationSketch(hashesRef, valuesRef);
-
+    ImmutableCorrelationSketch hitSketch = deserializeCorrelationSketch(hashesRef, valuesRef);
     return new Hit(id, query, hitSketch, score);
   }
 
-  private KMVCorrelationSketch createCorrelationSketch(
+  private ImmutableCorrelationSketch deserializeCorrelationSketch(
       BytesRef[] hashesBytes, BytesRef[] valuesRef) {
 
     int[] hashes = new int[hashesBytes.length];
@@ -176,21 +186,13 @@ public class SketchIndex {
 
     double[] values = toDoubleArray(valuesRef[0].bytes);
 
-    IKMV kmv;
-    if (sketchType == SketchType.KMV) {
-      kmv = KMV.fromHashedKeys(hashes, values, hashes.length);
-    } else if (sketchType == SketchType.GKMV) {
-      kmv = GKMV.fromHashedKeys(hashes, values, threshold);
-    } else {
-      throw new IllegalArgumentException("Not supported yet!");
-    }
-    return new KMVCorrelationSketch(kmv);
+    return new ImmutableCorrelationSketch(hashes, values, PearsonCorrelation::estimate);
   }
 
   private BytesRef intToBytesRef(int value) {
     byte[] bytes =
-        new byte[] {
-          (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value)
+        new byte[]{
+            (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value)
         };
     return new BytesRef(bytes);
   }
@@ -240,20 +242,21 @@ public class SketchIndex {
 
     public final String id;
     public final float score;
-    private final KMVCorrelationSketch query;
-    private final KMVCorrelationSketch hit;
+    private final ImmutableCorrelationSketch query;
+    private final ImmutableCorrelationSketch hit;
     private Estimate correlation;
 
-    public Hit(String id, KMVCorrelationSketch query, KMVCorrelationSketch sketch, float score) {
+    public Hit(String id, ImmutableCorrelationSketch query, ImmutableCorrelationSketch sketch,
+        float score) {
       this.id = id;
       this.query = query;
       this.hit = sketch;
       this.score = score;
     }
 
-    public double containment() {
-      return query.containment(hit);
-    }
+//    public double containment() {
+//      return query.containment(hit);
+//    }
 
     public double correlation() {
       if (this.correlation == null) {

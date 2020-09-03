@@ -1,5 +1,6 @@
 package benchmark;
 
+import benchmark.index.SketchIndex;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
@@ -18,6 +19,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import sketches.correlation.SketchType;
 import utils.CliTool;
 
 @Command(
@@ -55,7 +57,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
   public void execute() throws Exception {
     Path db = Paths.get(outputPath);
 
-    BytesBytesHashtable hashtable = new BytesBytesHashtable(dbType, db.toString());
+    ColumnStore store = createColumnStore(db, dbType);
     System.out.println("Created DB at " + db.toString());
 
     List<String> allCSVs = BenchmarkUtils.findAllCSVs(inputPath);
@@ -76,7 +78,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
       while (columnPairs.hasNext()) {
         ColumnPair cp = columnPairs.next();
         String id = cp.id();
-        hashtable.put(id.getBytes(), KRYO.serializeObject(cp));
+        store.store(id, cp);
         columnIds.add(id);
       }
       metadataFile.write(COLUMNS_KEY + ":");
@@ -86,7 +88,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
     }
 
     metadataFile.close();
-    hashtable.close();
+    store.close();
 
     System.out.println(getClass().getSimpleName() + " finished successfully.");
 
@@ -94,7 +96,15 @@ public class CreateColumnStore extends CliTool implements Serializable {
     ColumnStoreMetadata metadata = readMetadata(outputPath);
     Preconditions.checkArgument(metadata.columnSets.size() == allColumns.size());
     Preconditions.checkArgument(metadata.dbType == dbType);
-    System.out.println("Check successfull.");
+    System.out.println("Check successful.");
+  }
+
+  private ColumnStore createColumnStore(Path db, DBType dbType) {
+    if (dbType == DBType.LUCENE) {
+      return new IndexColumnStore(db);
+    } else {
+      return new KVColumnStore(this.dbType, db);
+    }
   }
 
   private static Path getMetadataFilePath(String outputPath) {
@@ -133,7 +143,61 @@ public class CreateColumnStore extends CliTool implements Serializable {
     return new ColumnStoreMetadata(dbType, allColumns);
   }
 
+  interface ColumnStore {
+
+    void store(String id, ColumnPair cp);
+
+    void close() throws IOException;
+  }
+
+  public static class IndexColumnStore implements ColumnStore {
+
+    SketchIndex index;
+
+    public IndexColumnStore(Path path) {
+      try {
+        index = new SketchIndex(path.toString(), SketchType.KMV, 512);
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to initialize index at " + path.toString(), e);
+      }
+    }
+
+    @Override
+    public void store(String id, ColumnPair cp) {
+      try {
+        index.index(id, cp);
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to index column pair: " + id);
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      index.close();
+    }
+  }
+
+  public static class KVColumnStore implements ColumnStore {
+
+    BytesBytesHashtable hashtable;
+
+    public KVColumnStore(DBType dbType, Path db) {
+      hashtable = new BytesBytesHashtable(dbType, db.toString());
+    }
+
+    @Override
+    public void store(String id, ColumnPair cp) {
+      hashtable.put(id.getBytes(), KRYO.serializeObject(cp));
+    }
+
+    @Override
+    public void close() {
+      hashtable.close();
+    }
+  }
+
   public static class ColumnStoreMetadata {
+
     final DBType dbType;
     final Set<Set<String>> columnSets;
 
