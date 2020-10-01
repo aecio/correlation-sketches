@@ -1,8 +1,6 @@
 package sketches.statistics;
 
-/**
- * Implements multiple Kurtosis estimators.
- */
+/** Implements multiple Kurtosis estimators. */
 public class Kurtosis {
 
   /**
@@ -30,9 +28,7 @@ public class Kurtosis {
     return g2;
   }
 
-  /**
-   * Computes the excess kurtosis using the G2 estimator.
-   */
+  /** Computes the excess kurtosis using the G2 estimator. */
   public static double G2(final double[] x) {
     final int n = x.length;
     if (n < 4) {

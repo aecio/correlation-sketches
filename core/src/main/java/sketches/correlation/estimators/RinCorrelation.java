@@ -5,9 +5,7 @@ import sketches.correlation.PearsonCorrelation;
 import sketches.statistics.Stats;
 import smile.sort.QuickSort;
 
-/**
- * Implements the Rank-Based Inverse Normal (RIN) Transformation correlation coefficient
- */
+/** Implements the Rank-Based Inverse Normal (RIN) Transformation correlation coefficient */
 public class RinCorrelation {
 
   /**
@@ -16,11 +14,10 @@ public class RinCorrelation {
    * sample regardless of the original distribution shape, so long as ties are rare and the sample
    * size is reasonable.
    */
-  static public Estimate estimate(double[] x, double[] y) {
+  public static Estimate estimate(double[] x, double[] y) {
     final double rin = coefficient(x, y);
     return new Estimate(rin, x.length);
   }
-
 
   /**
    * Applies the RIN transformation to the input vectors and computes the Pearson's correlation
@@ -59,5 +56,4 @@ public class RinCorrelation {
       x[i] = Stats.NORMAL.quantile((x[i] - .5) / n);
     }
   }
-
 }

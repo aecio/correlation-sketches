@@ -39,7 +39,6 @@ import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
-import sketches.kmv.IKMV;
 import sketches.kmv.KMV;
 import sketches.kmv.ValueHash;
 
@@ -191,8 +190,8 @@ public class SketchIndex {
 
   private BytesRef intToBytesRef(int value) {
     byte[] bytes =
-        new byte[]{
-            (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value)
+        new byte[] {
+          (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value)
         };
     return new BytesRef(bytes);
   }
@@ -246,7 +245,10 @@ public class SketchIndex {
     private final ImmutableCorrelationSketch hit;
     private Estimate correlation;
 
-    public Hit(String id, ImmutableCorrelationSketch query, ImmutableCorrelationSketch sketch,
+    public Hit(
+        String id,
+        ImmutableCorrelationSketch query,
+        ImmutableCorrelationSketch sketch,
         float score) {
       this.id = id;
       this.query = query;
@@ -254,9 +256,9 @@ public class SketchIndex {
       this.score = score;
     }
 
-//    public double containment() {
-//      return query.containment(hit);
-//    }
+    //    public double containment() {
+    //      return query.containment(hit);
+    //    }
 
     public double correlation() {
       if (this.correlation == null) {

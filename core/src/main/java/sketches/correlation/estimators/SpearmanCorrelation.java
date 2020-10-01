@@ -63,5 +63,4 @@ public class SpearmanCorrelation {
       x[n - 1] = n;
     }
   }
-
 }

@@ -228,8 +228,7 @@ public class BenchmarkUtils {
     result.sketch_join_time = System.nanoTime() - time0;
     result.sketch_join_size = paired.keys.length;
 
-    if (result.interxy_actual >= minimumIntersection
-        && paired.keys.length >= minimumIntersection) {
+    if (result.interxy_actual >= minimumIntersection && paired.keys.length >= minimumIntersection) {
 
       time0 = System.nanoTime();
       PearsonCorrelation.estimate(paired.x, paired.y);
@@ -364,8 +363,7 @@ public class BenchmarkUtils {
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check weather the actual cardinality and sketch sizes are large enough.
-    if (result.interxy_actual >= minimumIntersection
-        && paired.keys.length >= minimumIntersection) {
+    if (result.interxy_actual >= minimumIntersection && paired.keys.length >= minimumIntersection) {
 
       // set operations estimates (jaccard, cardinality, etc)
       computeSetStatisticsEstimates(result, sketchX, sketchY);
@@ -393,17 +391,18 @@ public class BenchmarkUtils {
     result.corr_rp_est = estimate.coefficient;
     result.corr_rp_delta = result.corr_rp_actual - result.corr_rp_est;
 
-//    if (estimate.sampleSize > 2) {
-//      // statistical significance is only defined for sample size > 2
-//      int sampleSize = estimate.sampleSize;
-//      result.corr_rp_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_rp_est, sampleSize);
-//
-//      double alpha = .05;
-//      result.corr_rp_est_fisher =
-//          PearsonCorrelation.confidenceInterval(result.corr_rp_est, sampleSize, 1. - alpha);
-//      result.corr_est_significance =
-//          PearsonCorrelation.isSignificant(result.corr_rp_est, sampleSize, alpha);
-//    }
+    //    if (estimate.sampleSize > 2) {
+    //      // statistical significance is only defined for sample size > 2
+    //      int sampleSize = estimate.sampleSize;
+    //      result.corr_rp_est_pvalue2t = PearsonCorrelation.pValueTwoTailed(result.corr_rp_est,
+    // sampleSize);
+    //
+    //      double alpha = .05;
+    //      result.corr_rp_est_fisher =
+    //          PearsonCorrelation.confidenceInterval(result.corr_rp_est, sampleSize, 1. - alpha);
+    //      result.corr_est_significance =
+    //          PearsonCorrelation.isSignificant(result.corr_rp_est, sampleSize, alpha);
+    //    }
 
     Estimate qncorr = Qn.estimate(paired.x, paired.y);
     result.corr_rqn_est = qncorr.coefficient;
@@ -452,7 +451,6 @@ public class BenchmarkUtils {
     result.nu_xy = Stats.dot(unitRangeX, unitRangeY);
     result.nu_x = Stats.dot(unitRangeX, unitRangeX);
     result.nu_y = Stats.dot(unitRangeY, unitRangeY);
-
   }
 
   private static void computeSetStatisticsEstimates(
@@ -492,9 +490,9 @@ public class BenchmarkUtils {
     public double corr_rp_est;
     public double corr_rp_delta;
     // Pearson's Fisher CI
-//    public double corr_rp_est_pvalue2t;
-//    public ConfidenceInterval corr_rp_est_fisher;
-//    public boolean corr_est_significance;
+    //    public double corr_rp_est_pvalue2t;
+    //    public ConfidenceInterval corr_rp_est_fisher;
+    //    public boolean corr_est_significance;
     // Qn correlation
     public double corr_rqn_actual;
     public double corr_rqn_est;
@@ -546,7 +544,6 @@ public class BenchmarkUtils {
     public String parameters;
     public String columnId;
 
-
     public static String csvHeader() {
       return String.format(
           ""
@@ -574,9 +571,9 @@ public class BenchmarkUtils {
               + "corr_rp_actual,"
               + "corr_rp_delta,"
               // Pearson's Fisher CI
-//              + "corr_rp_est_pvalue2t,"
-//              + "corr_rp_est_fisher_ub,"
-//              + "corr_rp_est_fisher_lb,"
+              //              + "corr_rp_est_pvalue2t,"
+              //              + "corr_rp_est_fisher_ub,"
+              //              + "corr_rp_est_fisher_lb,"
               // Qn correlations
               + "corr_rqn_est,"
               + "corr_rqn_actual,"
@@ -637,7 +634,7 @@ public class BenchmarkUtils {
               + "%.2f,%d,%.2f,%d," // set statistics
               + "%d," // sample size
               + "%.3f,%.3f,%.3f," // Pearson's
-//              + "%.3f,%.3f,%.3f," // Pearson's Fisher CI
+              //              + "%.3f,%.3f,%.3f," // Pearson's Fisher CI
               + "%.3f,%.3f,%.3f," // Qn
               + "%.3f,%.3f,%.3f," // Spearman's
               + "%.3f,%.3f,%.3f," // RIN
@@ -672,9 +669,9 @@ public class BenchmarkUtils {
           corr_rp_actual,
           corr_rp_delta,
           // Pearson's Fisher CI
-//          corr_rp_est_pvalue2t,
-//          corr_rp_est_fisher.lowerBound,
-//          corr_rp_est_fisher.upperBound,
+          //          corr_rp_est_pvalue2t,
+          //          corr_rp_est_fisher.lowerBound,
+          //          corr_rp_est_fisher.upperBound,
           // Qn correlations
           corr_rqn_est,
           corr_rqn_actual,

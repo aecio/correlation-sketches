@@ -168,11 +168,14 @@ public class KMVCorrelationSketch {
 
       @Override
       public String toString() {
-        return "Paired{" +
-            "keys=" + Arrays.toString(keys) +
-            ", x=" + Arrays.toString(x) +
-            ", y=" + Arrays.toString(y) +
-            '}';
+        return "Paired{"
+            + "keys="
+            + Arrays.toString(keys)
+            + ", x="
+            + Arrays.toString(x)
+            + ", y="
+            + Arrays.toString(y)
+            + '}';
       }
     }
   }

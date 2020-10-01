@@ -39,7 +39,7 @@ public class SketchIndexTest {
       System.out.printf("\n[%d] ", i + 1);
       System.out.println("id: " + hit.id);
       System.out.println("    score: " + hit.score);
-//      System.out.println("    containment: " + hit.containment());
+      //      System.out.println("    containment: " + hit.containment());
       System.out.println("    correlation: " + hit.correlation());
       System.out.println("    robust-correlation: " + hit.robustCorrelation());
     }

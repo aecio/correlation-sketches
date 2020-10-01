@@ -180,5 +180,4 @@ public class PearsonCorrelation {
       return String.format("[%+.3f, %+.3f]", lowerBound, upperBound);
     }
   }
-
 }

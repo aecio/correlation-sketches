@@ -78,9 +78,13 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     columnStore.close();
   }
 
-  public void buildIndex(BytesBytesHashtable columnStore,
-      String outputPath, SketchType sketchType, double numHashes,
-      QueryStats querySample) throws IOException {
+  public void buildIndex(
+      BytesBytesHashtable columnStore,
+      String outputPath,
+      SketchType sketchType,
+      double numHashes,
+      QueryStats querySample)
+      throws IOException {
 
     Set<String> queryColumns = querySample.queries;
 
@@ -127,7 +131,7 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
 
     System.out.println("Running queries against the index...");
     Set<String> queryColumns = querySample.queries;
-//    DoubleList times = new DoubleArrayList();
+    //    DoubleList times = new DoubleArrayList();
     for (String query : queryColumns) {
       byte[] columnPairBytes = columnStore.get(query.getBytes());
       ColumnPair columnPair = KRYO.unserializeObject(columnPairBytes);
@@ -138,8 +142,8 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
       long elapsedTime = System.nanoTime() - start;
 
       final double timeMs = elapsedTime / 1000000d;
-      final String csvLine = String
-          .format("%s,%f,%.3f,%d\n", query, numHashes, timeMs, columnPair.keyValues.size());
+      final String csvLine =
+          String.format("%s,%f,%.3f,%d\n", query, numHashes, timeMs, columnPair.keyValues.size());
       csv.write(csvLine);
     }
 

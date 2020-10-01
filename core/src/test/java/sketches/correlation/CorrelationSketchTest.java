@@ -17,15 +17,15 @@ public class CorrelationSketchTest {
 
   @Test
   public void test() {
-    List<String> pk = Arrays.asList(new String[]{"a", "b", "c", "d", "e"});
-    double[] q = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
+    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
     KMVCorrelationSketch qsk = new KMVCorrelationSketch(pk, q);
 
     double delta = 0.1;
 
-    List<String> c4fk = Arrays.asList(new String[]{"a", "b", "c", "z", "x"});
-    double[] c4 = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
+    List<String> c4fk = Arrays.asList(new String[] {"a", "b", "c", "z", "x"});
+    double[] c4 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
     //        List<String> c4fk = Arrays.asList(new String[]{"a", "b", "c", "d"});
     //        double[] c4 = new double[]{1.0, 2.0, 3.0, 4.0};
 
@@ -54,13 +54,13 @@ public class CorrelationSketchTest {
 
   @Test
   public void shouldEstimateCorrelationUsingKMVSketch() {
-    List<String> pk = Arrays.asList(new String[]{"a", "b", "c", "d", "e"});
-    double[] q = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
+    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> fk = Arrays.asList(new String[]{"a", "b", "c", "d", "e"});
-    double[] c0 = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
-    double[] c1 = new double[]{1.1, 2.5, 3.0, 4.4, 5.9};
-    double[] c2 = new double[]{1.0, 3.2, 3.1, 4.9, 5.4};
+    List<String> fk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
+    double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
+    double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
 
     KMVCorrelationSketch qsk = new KMVCorrelationSketch(pk, q);
     KMVCorrelationSketch c0sk = new KMVCorrelationSketch(fk, c0);
@@ -76,13 +76,13 @@ public class CorrelationSketchTest {
 
   @Test
   public void shouldCreateImmutableCorrelationSketch() {
-    List<String> pk = Arrays.asList(new String[]{"a", "b", "c", "d", "e"});
-    double[] q = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
+    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> fk = Arrays.asList(new String[]{"a", "b", "c", "d", "e"});
-    double[] c0 = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
-    double[] c1 = new double[]{1.1, 2.5, 3.0, 4.4, 5.9};
-    double[] c2 = new double[]{1.0, 3.2, 3.1, 4.9, 5.4};
+    List<String> fk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
+    double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
+    double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
 
     KMVCorrelationSketch qsk = new KMVCorrelationSketch(pk, q);
     KMVCorrelationSketch c0sk = new KMVCorrelationSketch(fk, c0);
@@ -110,11 +110,11 @@ public class CorrelationSketchTest {
 
   @Test
   public void shouldCreateImmutableSketch() {
-    List<String> xkeys = Arrays.asList(new String[]{"a", "b", "c", "d", "f"});
-    double[] xvalues = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
+    List<String> xkeys = Arrays.asList(new String[] {"a", "b", "c", "d", "f"});
+    double[] xvalues = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> ykeys = Arrays.asList(new String[]{"!", "a", "b", "c", "d", "e"});
-    double[] yvalues = new double[]{0.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    List<String> ykeys = Arrays.asList(new String[] {"!", "a", "b", "c", "d", "e"});
+    double[] yvalues = new double[] {0.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
     KMVCorrelationSketch xs = new KMVCorrelationSketch(xkeys, xvalues, 5);
     KMVCorrelationSketch ys = new KMVCorrelationSketch(ykeys, yvalues, 5);
@@ -144,7 +144,7 @@ public class CorrelationSketchTest {
 
     for (int i = 0; i < runs; i++) {
       final double jc = r.nextDouble();
-//      final int n = (25 + r.nextInt(512)) * 1000;
+      //      final int n = (25 + r.nextInt(512)) * 1000;
       final int n = 10_000;
       double[] y = new double[n];
       double[] x = new double[n];
@@ -152,9 +152,10 @@ public class CorrelationSketchTest {
       String[] ky = new String[n];
       for (int j = 0; j < n; j++) {
         x[j] = r.nextGaussian() * (1_000_000);
-//      y[j] = r.nextGaussian();
-//      y[j] = x[j] + (r.nextGaussian() > r.nextGaussian() ? 3 : Math.log(1-r.nextDouble())/-1); // r.nextGaussian());
-//      y[j] = x[j]*(-10)*r.nextGaussian();
+        //      y[j] = r.nextGaussian();
+        //      y[j] = x[j] + (r.nextGaussian() > r.nextGaussian() ? 3 :
+        // Math.log(1-r.nextDouble())/-1); // r.nextGaussian());
+        //      y[j] = x[j]*(-10)*r.nextGaussian();
         y[j] = Math.log(1 - r.nextDouble()) / (-1);
 
         if (r.nextDouble() < jc) {
@@ -220,13 +221,13 @@ public class CorrelationSketchTest {
 
   @Test
   public void shouldEstimateCorrelation() {
-    List<String> pk = Arrays.asList(new String[]{"a", "b", "c", "d", "e"});
-    double[] q1 = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
+    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    double[] q1 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> fk = Arrays.asList(new String[]{"a", "b", "c", "d", "e"});
-    double[] c0 = new double[]{1.0, 2.0, 3.0, 4.0, 5.0};
-    double[] c1 = new double[]{1.1, 2.5, 3.0, 4.4, 5.9};
-    double[] c2 = new double[]{1.0, 3.2, 3.1, 4.9, 5.4};
+    List<String> fk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
+    double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
+    double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
 
     MinhashCorrelationSketch q1sk = new MinhashCorrelationSketch(pk, q1);
     MinhashCorrelationSketch c0sk = new MinhashCorrelationSketch(fk, c0);

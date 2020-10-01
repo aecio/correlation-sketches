@@ -14,5 +14,4 @@ public interface Correlation {
   }
 
   Estimate correlation(double[] x, double[] y);
-
 }

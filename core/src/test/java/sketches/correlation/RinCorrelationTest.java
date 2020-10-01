@@ -15,8 +15,8 @@ public class RinCorrelationTest {
     ConfidenceInterval ci;
     double rrin;
 
-    x = new double[]{1.3, 2.4, 30.5};
-    y = new double[]{1.0, 2.0, 2.0};
+    x = new double[] {1.3, 2.4, 30.5};
+    y = new double[] {1.0, 2.0, 2.0};
     rrin = RinCorrelation.coefficient(x, y);
     ci = PearsonCorrelation.confidenceInterval(rrin, x.length, .95);
 
@@ -24,8 +24,8 @@ public class RinCorrelationTest {
     assertEquals(Double.NaN, ci.lowerBound);
     assertEquals(Double.NaN, ci.upperBound);
 
-    y = new double[]{1.0, 2.0, 2.0, 3.9};
-    x = new double[]{1.3, 9.0, 2.4, 3.5};
+    y = new double[] {1.0, 2.0, 2.0, 3.9};
+    x = new double[] {1.3, 9.0, 2.4, 3.5};
     rrin = RinCorrelation.coefficient(x, y);
     ci = PearsonCorrelation.confidenceInterval(rrin, x.length, .95);
 
@@ -33,8 +33,8 @@ public class RinCorrelationTest {
     assertEquals(-0.8461710, ci.lowerBound, 0.00001);
     assertEquals(0.9905939, ci.upperBound, 0.00001);
 
-    y = new double[]{1.0, 2.0, 2.0, 4.0};
-    x = new double[]{1.0, 2.0, 2.0, 4.0};
+    y = new double[] {1.0, 2.0, 2.0, 4.0};
+    x = new double[] {1.0, 2.0, 2.0, 4.0};
     rrin = RinCorrelation.coefficient(x, y);
     ci = PearsonCorrelation.confidenceInterval(rrin, x.length, .95);
 
@@ -42,8 +42,8 @@ public class RinCorrelationTest {
     assertEquals(1, ci.lowerBound, 0.00001);
     assertEquals(1, ci.upperBound, 0.00001);
 
-    y = new double[]{3.0, 2.0, 5.0, 1.0, 4.0};
-    x = new double[]{3.0, 4.0, 1.0, 5.0, 2.0};
+    y = new double[] {3.0, 2.0, 5.0, 1.0, 4.0};
+    x = new double[] {3.0, 4.0, 1.0, 5.0, 2.0};
     rrin = RinCorrelation.coefficient(x, y);
     ci = PearsonCorrelation.confidenceInterval(rrin, x.length, .95);
 
@@ -51,5 +51,4 @@ public class RinCorrelationTest {
     assertEquals(-1, ci.lowerBound, 0.00001);
     assertEquals(-1, ci.upperBound, 0.00001);
   }
-
 }

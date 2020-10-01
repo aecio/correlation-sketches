@@ -54,9 +54,7 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
       description = "Whether to consider only intra-dataset column combinations")
   Boolean intraDatasetCombinations = false;
 
-  @Option(
-      name = "--performance",
-      description = "Run performance experiments")
+  @Option(name = "--performance", description = "Run performance experiments")
   Boolean performance = false;
 
   @Option(
@@ -120,7 +118,9 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
                   combinations
                       .stream()
                       .parallel()
-                      .map(computePerformanceStatistics(cache, columnStore, processed, total, sketchParamsList))
+                      .map(
+                          computePerformanceStatistics(
+                              cache, columnStore, processed, total, sketchParamsList))
                       .forEach(writeCSV(resultsFile)))
           .get();
     } else {
@@ -130,7 +130,8 @@ public class ComputePairwiseCorrelationJoinsThreads extends CliTool implements S
                   combinations
                       .stream()
                       .parallel()
-                      .map(computeStatistics(cache, columnStore, processed, total, sketchParamsList))
+                      .map(
+                          computeStatistics(cache, columnStore, processed, total, sketchParamsList))
                       .forEach(writeCSV(resultsFile)))
           .get();
     }

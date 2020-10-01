@@ -36,5 +36,4 @@ public class RandomArrays {
       this.ub = ub;
     }
   }
-
 }

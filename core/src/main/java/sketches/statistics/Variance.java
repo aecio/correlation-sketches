@@ -7,9 +7,7 @@ public class Variance {
 
   private static final GaussianDistribution GAUSSIAN = GaussianDistribution.getInstance();
 
-  /**
-   * Computes the unbiased sample variance of the given vector.
-   */
+  /** Computes the unbiased sample variance of the given vector. */
   public static double var(double[] x) {
     if (x.length == 0) {
       return 0.0;

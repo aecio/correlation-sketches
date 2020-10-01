@@ -21,12 +21,12 @@ public class BootstrapedPearsonTest {
       double[] y = new double[n];
       double[] x = new double[n];
       for (int j = 0; j < n; j++) {
-//        x[j] = r.nextGaussian() * (1_000_000);
+        //        x[j] = r.nextGaussian() * (1_000_000);
         x[j] = Math.log(1 - r.nextDouble()) / (-1);
-//      y[j] = r.nextGaussian();
-        y[j] = (r.nextGaussian() > 0.1 ? 0 : x[j]*.2+ Math.log(1 - r.nextDouble()) / -1);
-//        y[j] = x[j] * (-10) * r.nextGaussian();
-//        y[j] = Math.log(1 - r.nextDouble()) / (-1);
+        //      y[j] = r.nextGaussian();
+        y[j] = (r.nextGaussian() > 0.1 ? 0 : x[j] * .2 + Math.log(1 - r.nextDouble()) / -1);
+        //        y[j] = x[j] * (-10) * r.nextGaussian();
+        //        y[j] = Math.log(1 - r.nextDouble()) / (-1);
       }
 
       long t0 = System.nanoTime();
@@ -49,5 +49,4 @@ public class BootstrapedPearsonTest {
 
     System.out.println(Arrays.toString(estimates));
   }
-
 }

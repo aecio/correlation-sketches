@@ -1,6 +1,5 @@
 package sketches.correlation;
 
-import sketches.correlation.Correlation.Estimate;
 import sketches.correlation.estimators.BootstrapedPearson;
 import sketches.correlation.estimators.RinCorrelation;
 import sketches.correlation.estimators.SpearmanCorrelation;
