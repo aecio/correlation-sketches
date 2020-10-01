@@ -18,6 +18,8 @@ PERFORMANCE=${PERFORMANCE:-"false"}
 BENCHMARK_EXE="java $JVM_ARGS -cp $JAR benchmark.ComputePairwiseCorrelationJoinsThreads"
 CREATE_STORE_EXE="java $JVM_ARGS -cp $JAR benchmark.CreateColumnStore"
 
+set -x
+
 create_store () {
   local DATASETS_PATH=$1
   local DATASET_NAME=$2
@@ -53,7 +55,7 @@ run_benchmark () {
 if [ "$COMPILE" = "true" ]
 then
   echo "Compiling application..."
-  gradle shadowJar
+  ./gradlew shadowJar
 fi
 
 #
