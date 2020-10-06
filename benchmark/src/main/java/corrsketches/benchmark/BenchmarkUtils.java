@@ -1,12 +1,13 @@
 package corrsketches.benchmark;
 
+import com.google.common.collect.ArrayListMultimap;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
 import corrsketches.SketchType;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
-import corrsketches.benchmark.Tables.ComputingTime;
-import corrsketches.benchmark.Tables.Correlations;
+import corrsketches.benchmark.MetricsResult.Correlations;
+import corrsketches.benchmark.PerfResult.ComputingTime;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.BootstrapedPearson;
 import corrsketches.correlation.BootstrapedPearson.BootstrapEstimate;
@@ -22,174 +23,15 @@ import corrsketches.statistics.Kurtosis;
 import corrsketches.statistics.Stats;
 import corrsketches.statistics.Stats.Extent;
 import corrsketches.statistics.Variance;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.apache.commons.text.StringEscapeUtils;
-import tech.tablesaw.api.CategoricalColumn;
-import tech.tablesaw.api.ColumnType;
-import tech.tablesaw.api.NumericColumn;
-import tech.tablesaw.api.Table;
-import tech.tablesaw.io.csv.CsvReadOptions;
-import tech.tablesaw.io.csv.CsvReadOptions.Builder;
 
 public class BenchmarkUtils {
 
   public static final int minimumIntersection = 3; // minimum sample size for correlation is 2
-
-  public static Set<ColumnPair> readAllColumnPairs(List<String> allFiles, int minRows) {
-    Set<ColumnPair> allPairs = new HashSet<>();
-    for (int i = 0; i < allFiles.size(); i++) {
-      String dataset = allFiles.get(i);
-      try {
-        Iterator<ColumnPair> it = readColumnPairs(dataset, minRows);
-        while (it.hasNext()) {
-          allPairs.add(it.next());
-        }
-      } catch (Exception e) {
-        System.err.println("Failed to read dataset: " + dataset);
-        System.err.println(e.toString());
-      }
-    }
-    return allPairs;
-  }
-
-  public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
-    try {
-      Table table = readTable(CsvReadOptions.builderFromFile(datasetFilePath));
-      return readColumnPairs(Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
-    } catch (Exception e) {
-      System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
-      e.printStackTrace(System.out);
-      return Collections.emptyIterator();
-    }
-  }
-
-  public static Iterator<ColumnPair> readColumnPairs(
-      String datasetName, InputStream is, int minRows) {
-    try {
-      Table table = readTable(CsvReadOptions.builder(is));
-      return readColumnPairs(datasetName, table, minRows);
-    } catch (Exception e) {
-      System.out.println("\nFailed to read dataset from input stream: " + datasetName);
-      e.printStackTrace(System.out);
-      return Collections.emptyIterator();
-    }
-  }
-
-  public static Iterator<ColumnPair> readColumnPairs(String datasetName, Table df, int minRows) {
-    System.out.println("\nDataset: " + datasetName);
-
-    System.out.printf("Row count: %d \n", df.rowCount());
-
-    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
-    System.out.println("Categorical columns: " + categoricalColumns.size());
-
-    List<NumericColumn<?>> numericColumns = df.numericColumns();
-    System.out.println("Numeric columns: " + numericColumns.size());
-
-    if (df.rowCount() < minRows) {
-      System.out.println("Column pairs: 0");
-      return Collections.emptyIterator();
-    }
-
-    // Create a list of all column pairs
-    List<ColumnEntry> pairs = new ArrayList<>();
-    for (CategoricalColumn<?> key : categoricalColumns) {
-      for (NumericColumn<?> column : numericColumns) {
-        pairs.add(new ColumnEntry(key, column));
-      }
-    }
-    System.out.println("Column pairs: " + pairs.size());
-    if (pairs.isEmpty()) {
-      return Collections.emptyIterator();
-    }
-
-    // Create a "lazy" iterator that creates one ColumnPair at a time to avoid overloading memory
-    // with many large column pairs.
-    Iterator<ColumnEntry> it = pairs.iterator();
-    return new Iterator<ColumnPair>() {
-      ColumnEntry nextPair = it.next();
-
-      @Override
-      public boolean hasNext() {
-        return nextPair != null;
-      }
-
-      @Override
-      public ColumnPair next() {
-        ColumnEntry tmp = nextPair;
-        nextPair = it.hasNext() ? it.next() : null;
-        return Tables.createColumnPair(datasetName, tmp.key, tmp.column);
-      }
-    };
-  }
-
-  static class ColumnEntry {
-
-    CategoricalColumn<?> key;
-    NumericColumn<?> column;
-
-    ColumnEntry(CategoricalColumn<?> key, NumericColumn<?> column) {
-      this.key = key;
-      this.column = column;
-    }
-  }
-
-  private static Table readTable(Builder csvReadOptionsBuilder) throws IOException {
-    Table table =
-        Table.read()
-            .csv(
-                csvReadOptionsBuilder
-                    .sample(true)
-                    .sampleSize(5_000_000)
-                    .maxCharsPerColumn(10_000)
-                    .missingValueIndicator("-"));
-    return table;
-  }
-
-  public static List<Set<String>> readAllKeyColumns(String dataset) throws IOException {
-    Table df = readTable(CsvReadOptions.builderFromFile(dataset));
-    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
-    List<Set<String>> allColumns = new ArrayList<>();
-    for (CategoricalColumn<String> column : categoricalColumns) {
-      Set<String> keySet = new HashSet<>();
-      Iterator<String> it = column.iterator();
-      while (it.hasNext()) {
-        keySet.add(it.next());
-      }
-      allColumns.add(keySet);
-    }
-    return allColumns;
-  }
-
-  private static List<CategoricalColumn<String>> getStringColumns(Table df) {
-    return df.columns()
-        .stream()
-        .filter(e -> e.type() == ColumnType.STRING || e.type() == ColumnType.TEXT)
-        .map(e -> (CategoricalColumn<String>) e)
-        .collect(Collectors.toList());
-  }
-
-  public static List<String> findAllCSVs(String basePath) throws IOException {
-
-    List<String> allFiles =
-        Files.walk(Paths.get(basePath))
-            .filter(p -> p.toString().endsWith(".csv"))
-            .filter(Files::isRegularFile)
-            .map(p -> p.toString())
-            .collect(Collectors.toList());
-
-    return allFiles;
-  }
 
   public static List<PerfResult> computePerformanceStatistics(
       ColumnPair x, ColumnPair y, List<SketchParams> sketchParams) {
@@ -278,19 +120,18 @@ public class BenchmarkUtils {
     }
 
     // correlation ground-truth
-    ComputingTime time = Tables.timedComputePearsonAfterJoin(x, y);
-    result.time = time;
+    result.time = timedComputePearsonAfterJoin(x, y);
   }
 
-  public static List<Result> computeStatistics(
+  public static List<MetricsResult> computeStatistics(
       ColumnPair x, ColumnPair y, List<SketchParams> sketchParams) {
 
-    Result result = new Result();
+    MetricsResult result = new MetricsResult();
 
     // compute ground-truth statistics
     computeStatisticsGroundTruth(x, y, result);
 
-    List<Result> results = new ArrayList<>();
+    List<MetricsResult> results = new ArrayList<>();
     if (result.interxy_actual >= minimumIntersection) {
       for (SketchParams params : sketchParams) {
         results.add(computeSketchStatistics(result.clone(), x, y, params));
@@ -300,7 +141,8 @@ public class BenchmarkUtils {
     return results;
   }
 
-  private static void computeStatisticsGroundTruth(ColumnPair x, ColumnPair y, Result result) {
+  private static void computeStatisticsGroundTruth(
+      ColumnPair x, ColumnPair y, MetricsResult result) {
     HashSet<String> xKeys = new HashSet<>(x.keyValues);
     HashSet<String> yKeys = new HashSet<>(y.keyValues);
     result.cardx_actual = xKeys.size();
@@ -332,7 +174,7 @@ public class BenchmarkUtils {
     result.y_max = extentY.max;
 
     // correlation ground-truth
-    Correlations corrs = Tables.computePearsonAfterJoin(x, y);
+    Correlations corrs = computePearsonAfterJoin(x, y);
     result.corr_rp_actual = corrs.pearsons;
     result.corr_rqn_actual = corrs.qn;
     result.corr_rin_actual = corrs.rin;
@@ -349,8 +191,8 @@ public class BenchmarkUtils {
     return CorrelationSketch.create(kmv);
   }
 
-  public static Result computeSketchStatistics(
-      Result result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
+  public static MetricsResult computeSketchStatistics(
+      MetricsResult result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
 
     // create correlation sketches for the data
     CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
@@ -380,7 +222,7 @@ public class BenchmarkUtils {
     return result;
   }
 
-  private static void computePairedStatistics(Result result, Paired paired) {
+  private static void computePairedStatistics(MetricsResult result, Paired paired) {
 
     // Sample size used to estimate correlations
     result.corr_est_sample_size = paired.keys.length;
@@ -453,7 +295,7 @@ public class BenchmarkUtils {
   }
 
   private static void computeSetStatisticsEstimates(
-      Result result, CorrelationSketch sketchX, CorrelationSketch sketchY) {
+      MetricsResult result, CorrelationSketch sketchX, CorrelationSketch sketchY) {
     result.jcx_est = sketchX.containment(sketchY);
     result.jcy_est = sketchY.containment(sketchX);
     result.jsxy_est = sketchX.jaccard(sketchY);
@@ -463,376 +305,132 @@ public class BenchmarkUtils {
     result.unionxy_est = sketchX.unionSize(sketchY);
   }
 
-  public static class Result implements Cloneable {
+  public static Correlations computePearsonAfterJoin(ColumnPair query, ColumnPair column) {
 
-    // kmv estimation statistics
-    public double jcx_est;
-    public double jcy_est;
-    public double jsxy_est;
-    public double jcx_actual;
-    public double jcy_actual;
-    public double jsxy_actual;
-    // cardinality statistics
-    public double cardx_est;
-    public double cardy_est;
-    public int cardx_actual;
-    public int cardy_actual;
-    // set statistics
-    public double interxy_est;
-    public double unionxy_est;
-    public int interxy_actual;
-    public int unionxy_actual;
-    // Correlation sample size
-    public int corr_est_sample_size;
-    // Person's correlation
-    public double corr_rp_actual;
-    public double corr_rp_est;
-    public double corr_rp_delta;
-    // Pearson's Fisher CI
-    //    public double corr_rp_est_pvalue2t;
-    //    public ConfidenceInterval corr_rp_est_fisher;
-    //    public boolean corr_est_significance;
-    // Qn correlation
-    public double corr_rqn_actual;
-    public double corr_rqn_est;
-    public double corr_rqn_delta;
-    // Spearman correlation
-    public double corr_rs_est;
-    public double corr_rs_actual;
-    public double corr_rs_delta;
-    // RIN correlation
-    public double corr_rin_est;
-    public double corr_rin_actual;
-    public double corr_rin_delta;
-    // PM1 bootstrap
-    public double corr_pm1_mean;
-    public double corr_pm1_mean_delta;
-    public double corr_pm1_median;
-    public double corr_pm1_median_delta;
-    public double corr_pm1_lb;
-    public double corr_pm1_ub;
-    // Kurtosis
-    public double kurtx_g2_actual;
-    public double kurty_g2_actual;
-    public double kurtx_g2;
-    public double kurtx_G2;
-    public double kurtx_k5;
-    public double kurty_g2;
-    public double kurty_G2;
-    public double kurty_k5;
-    // Variable sample extents
-    public double y_min_sample;
-    public double y_max_sample;
-    public double x_min_sample;
-    public double x_max_sample;
-    // Variable extents
-    public double x_min;
-    public double x_max;
-    public double y_min;
-    public double y_max;
-    // Variable sample means and variances
-    public double x_sample_mean;
-    public double y_sample_mean;
-    public double x_sample_var;
-    public double y_sample_var;
-    // Sum of squares of variables' samples
-    public double nu_xy;
-    public double nu_x;
-    public double nu_y;
-    // others
-    public String parameters;
-    public String columnId;
+    ColumnPair columnA = query;
+    ColumnPair columnB = column;
 
-    public static String csvHeader() {
-      return String.format(
-          ""
-              // jaccard
-              + "jcx_est,"
-              + "jcy_est,"
-              + "jcx_actual,"
-              + "jcy_actual,"
-              + "jsxy_est,"
-              + "jsxy_actual,"
-              // cardinalities
-              + "cardx_est,"
-              + "cardx_actual,"
-              + "cardy_est,"
-              + "cardy_actual,"
-              // set statistics
-              + "interxy_est,"
-              + "interxy_actual,"
-              + "unionxy_est,"
-              + "unionxy_actual,"
-              // Correlation sample size
-              + "corr_est_sample_size,"
-              // Pearson's correlations
-              + "corr_rp_est,"
-              + "corr_rp_actual,"
-              + "corr_rp_delta,"
-              // Pearson's Fisher CI
-              //              + "corr_rp_est_pvalue2t,"
-              //              + "corr_rp_est_fisher_ub,"
-              //              + "corr_rp_est_fisher_lb,"
-              // Qn correlations
-              + "corr_rqn_est,"
-              + "corr_rqn_actual,"
-              + "corr_rqn_delta,"
-              // Spearman correlations
-              + "corr_rs_est,"
-              + "corr_rs_actual,"
-              + "corr_rs_delta,"
-              // RIN correlations
-              + "corr_rin_est,"
-              + "corr_rin_actual,"
-              + "corr_rin_delta,"
-              // PM1 bootstrap
-              + "corr_pm1_mean,"
-              + "corr_pm1_mean_delta,"
-              + "corr_pm1_median,"
-              + "corr_pm1_median_delta,"
-              + "corr_pm1_lb,"
-              + "corr_pm1_ub,"
-              // Kurtosis
-              + "kurtx_g2_actual,"
-              + "kurtx_g2,"
-              + "kurtx_G2,"
-              + "kurtx_k5,"
-              + "kurty_g2_actual,"
-              + "kurty_g2,"
-              + "kurty_G2,"
-              + "kurty_k5,"
-              // Variable sample extents
-              + "y_min_sample,"
-              + "y_max_sample,"
-              + "x_min_sample,"
-              + "x_max_sample,"
-              // Variable extents
-              + "x_min,"
-              + "x_max,"
-              + "y_min,"
-              + "y_max,"
-              // Variable sample means and variances
-              + "x_sample_mean,"
-              + "y_sample_mean,"
-              + "x_sample_var,"
-              + "y_sample_var,"
-              // Sum of squares of variables' samples
-              + "nu_xy,"
-              + "nu_x,"
-              + "nu_y,"
-              // others
-              + "parameters,"
-              + "column");
+    // create index for primary key in column B
+    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
+    for (int i = 0; i < columnB.keyValues.size(); i++) {
+      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
     }
 
-    public String csvLine() {
-      return String.format(
-          ""
-              + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // Jaccard
-              + "%.2f,%d,%.2f,%d," // cardinalities
-              + "%.2f,%d,%.2f,%d," // set statistics
-              + "%d," // sample size
-              + "%.3f,%.3f,%.3f," // Pearson's
-              //              + "%.3f,%.3f,%.3f," // Pearson's Fisher CI
-              + "%.3f,%.3f,%.3f," // Qn
-              + "%.3f,%.3f,%.3f," // Spearman's
-              + "%.3f,%.3f,%.3f," // RIN
-              + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // PM1
-              + "%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f," // Kurtosis
-              + "%f,%f,%f,%f," // Variable sample extents
-              + "%f,%f,%f,%f," // Variable extents
-              + "%f,%f,%f,%f," // Variable sample means and variances
-              + "%f,%f,%f," // Sum of squares of variables' samples
-              + "%s,%s",
-          // jaccard
-          jcx_est,
-          jcy_est,
-          jcx_actual,
-          jcy_actual,
-          jsxy_est,
-          jsxy_actual,
-          // cardinalities
-          cardx_est,
-          cardx_actual,
-          cardy_est,
-          cardy_actual,
-          // set statistics
-          interxy_est,
-          interxy_actual,
-          unionxy_est,
-          unionxy_actual,
-          // sample
-          corr_est_sample_size,
-          // Pearson's correlations
-          corr_rp_est,
-          corr_rp_actual,
-          corr_rp_delta,
-          // Pearson's Fisher CI
-          //          corr_rp_est_pvalue2t,
-          //          corr_rp_est_fisher.lowerBound,
-          //          corr_rp_est_fisher.upperBound,
-          // Qn correlations
-          corr_rqn_est,
-          corr_rqn_actual,
-          corr_rqn_delta,
-          // Spearman's correlations
-          corr_rs_est,
-          corr_rs_actual,
-          corr_rs_delta,
-          // RIN correlations
-          corr_rin_est,
-          corr_rin_actual,
-          corr_rin_delta,
-          // PM1 bootstrap
-          corr_pm1_mean,
-          corr_pm1_mean_delta,
-          corr_pm1_median,
-          corr_pm1_median_delta,
-          corr_pm1_lb,
-          corr_pm1_ub,
-          // Kurtosis
-          kurtx_g2_actual,
-          kurtx_g2,
-          kurtx_G2,
-          kurtx_k5,
-          kurty_g2_actual,
-          kurty_g2,
-          kurty_G2,
-          kurty_k5,
-          // Variable sample extents
-          y_min_sample,
-          y_max_sample,
-          x_min_sample,
-          x_max_sample,
-          // Variable extents
-          x_min,
-          x_max,
-          y_min,
-          y_max,
-          // Variable sample means and variances
-          x_sample_mean,
-          y_sample_mean,
-          x_sample_var,
-          y_sample_var,
-          // Sum of squares of variables' samples
-          nu_xy,
-          nu_x,
-          nu_y,
-          // others
-          StringEscapeUtils.escapeCsv(parameters),
-          StringEscapeUtils.escapeCsv(columnId));
-    }
-
-    public Result clone() {
-      try {
-        return (Result) super.clone();
-      } catch (CloneNotSupportedException e) {
-        throw new IllegalStateException(
-            this.getClass() + " must implement the Cloneable interface.", e);
+    // loop over column B creating to new vectors index for primary key in column B
+    DoubleList joinValuesA = new DoubleArrayList();
+    DoubleList joinValuesB = new DoubleArrayList();
+    for (int i = 0; i < columnA.keyValues.size(); i++) {
+      String keyA = columnA.keyValues.get(i);
+      double valueA = columnA.columnValues[i];
+      List<Double> rowsB = columnMapB.get(keyA);
+      if (rowsB != null && !rowsB.isEmpty()) {
+        // TODO: We should properly handle cases where 1:N relationships happen.
+        // We could could consider the correlation of valueA with an any aggregation function of the
+        // list of values from B, e.g. mean, max, sum, count, etc.
+        // Currently we are considering only the first seen value, and ignoring everything else,
+        // similarly to the correlation sketch implementation.
+        joinValuesA.add(valueA);
+        joinValuesB.add(rowsB.get(0).doubleValue());
       }
     }
+
+    // correlation is defined only for vectors of length at least two
+    Correlations correlations = new Correlations();
+    if (joinValuesA.size() < 2) {
+      correlations.pearsons = Double.NaN;
+      correlations.qn = Double.NaN;
+      correlations.spearman = Double.NaN;
+      correlations.rin = Double.NaN;
+    } else {
+      double[] joinedA = joinValuesA.toDoubleArray();
+      double[] joinedB = joinValuesB.toDoubleArray();
+      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
+      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
+      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
+      try {
+        correlations.qn = QnCorrelation.correlation(joinedA, joinedB);
+      } catch (Exception e) {
+        correlations.qn = Double.NaN;
+        System.out.printf(
+            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
+                + "Array length after join is %d.\n",
+            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
+        System.out.printf("Error stack trace: %s\n", e.toString());
+      }
+    }
+
+    return correlations;
   }
 
-  public static class PerfResult implements Cloneable {
+  public static ComputingTime timedComputePearsonAfterJoin(ColumnPair query, ColumnPair column) {
+    ComputingTime time = new ComputingTime();
 
-    public String parameters;
-    public String columnId;
-    // Full data statistics
-    public ComputingTime time;
-    public int cardx_actual;
-    public int cardy_actual;
-    public int interxy_actual;
-    // Sketch statistics
-    public long build_x_time;
-    public long build_y_time;
-    public long build_time;
-    public long sketch_join_time;
+    ColumnPair columnA = query;
+    ColumnPair columnB = column;
+    long time0 = System.nanoTime();
 
-    public int sketch_join_size;
-    public long rp_time;
-    public long rqn_time;
-    public long rs_time;
-    public long rrin_time;
-    public long rpm1_time;
-    public long rpm1s_time;
-
-    public static String csvHeader() {
-      return String.format(
-          ""
-              // full correlation times
-              + "join_time,"
-              + "spearmans_time,"
-              + "pearsons_time,"
-              + "rin_time,"
-              + "qn_time,"
-              // cardinalities
-              + "cardx_actual,"
-              + "cardy_actual,"
-              + "interxy_actual,"
-              // sketch times
-              + "build_x_time,"
-              + "build_y_time,"
-              + "build_time,"
-              + "sketch_join_time,"
-              // sketch join size
-              + "sketch_join_size,"
-              // sketch correlation times
-              + "rp_time,"
-              + "rqn_time,"
-              + "rs_time,"
-              + "rrin_time,"
-              + "rpm1_time,"
-              + "rpm1s_time,"
-              // others
-              + "parameters,"
-              + "column");
+    // create index for primary key in column B
+    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
+    for (int i = 0; i < columnB.keyValues.size(); i++) {
+      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
     }
 
-    public String csvLine() {
-      return String.format(
-          ""
-              + "%d,%d,%d,%d,%d," // full correlations
-              + "%d,%d,%d," // cardinalities
-              + "%d,%d,%d,%d," // sketch times
-              + "%d," // sketch join size
-              + "%d,%d,%d,%d,%d,%d," // sketch correlation times
-              + "%s,%s",
-          // full correlation times
-          time.join,
-          time.spearmans,
-          time.pearsons,
-          time.rin,
-          time.qn,
-          // cardinalities
-          cardx_actual,
-          cardy_actual,
-          interxy_actual,
-          // sketch times
-          build_x_time,
-          build_y_time,
-          build_time,
-          sketch_join_time,
-          // sketch join size
-          sketch_join_size,
-          // sketch correlation times
-          rp_time,
-          rqn_time,
-          rs_time,
-          rrin_time,
-          rpm1_time,
-          rpm1s_time,
-          // others
-          StringEscapeUtils.escapeCsv(parameters),
-          StringEscapeUtils.escapeCsv(columnId));
-    }
-
-    public PerfResult clone() {
-      try {
-        return (PerfResult) super.clone();
-      } catch (CloneNotSupportedException e) {
-        throw new IllegalStateException(
-            this.getClass() + " must implement the Cloneable interface.", e);
+    // loop over column B creating to new vectors index for primary key in column B
+    DoubleList joinValuesA = new DoubleArrayList();
+    DoubleList joinValuesB = new DoubleArrayList();
+    for (int i = 0; i < columnA.keyValues.size(); i++) {
+      String keyA = columnA.keyValues.get(i);
+      double valueA = columnA.columnValues[i];
+      List<Double> rowsB = columnMapB.get(keyA);
+      if (rowsB != null && !rowsB.isEmpty()) {
+        // TODO: We should properly handle cases where 1:N relationships happen.
+        // We could could consider the correlation of valueA with an any aggregation function of the
+        // list of values from B, e.g. mean, max, sum, count, etc.
+        // Currently we are considering only the first seen value, and ignoring everything else,
+        // similarly to the correlation sketch implementation.
+        joinValuesA.add(valueA);
+        joinValuesB.add(rowsB.get(0).doubleValue());
       }
     }
+    time.join = System.nanoTime() - time0;
+
+    // correlation is defined only for vectors of length at least two
+    Correlations correlations = new Correlations();
+    if (joinValuesA.size() < 2) {
+      correlations.pearsons = Double.NaN;
+      correlations.qn = Double.NaN;
+      correlations.spearman = Double.NaN;
+      correlations.rin = Double.NaN;
+    } else {
+      double[] joinedA = joinValuesA.toDoubleArray();
+      double[] joinedB = joinValuesB.toDoubleArray();
+
+      time0 = System.nanoTime();
+      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
+      time.spearmans = System.nanoTime() - time0;
+
+      time0 = System.nanoTime();
+      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
+      time.pearsons = System.nanoTime() - time0;
+
+      time0 = System.nanoTime();
+      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
+      time.rin = System.nanoTime() - time0;
+
+      try {
+        time0 = System.nanoTime();
+        correlations.qn = QnCorrelation.correlation(joinedA, joinedB);
+        time.qn = System.nanoTime() - time0;
+      } catch (Exception e) {
+        correlations.qn = Double.NaN;
+        System.out.printf(
+            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
+                + "Array length after join is %d.\n",
+            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
+        System.out.printf("Error stack trace: %s\n", e.toString());
+      }
+    }
+
+    return time;
   }
 }

@@ -28,13 +28,13 @@ public class TablesTest {
     ColumnPair columnD = new ColumnPair("D", "fk_d", keyD, "values_d", valuesD);
 
     double delta = 0.0001;
-    assertEquals(1.000, Tables.computePearsonAfterJoin(columnA, columnB).pearsons, delta);
-    assertEquals(1.000, Tables.computePearsonAfterJoin(columnB, columnA).pearsons, delta);
+    assertEquals(1.000, BenchmarkUtils.computePearsonAfterJoin(columnA, columnB).pearsons, delta);
+    assertEquals(1.000, BenchmarkUtils.computePearsonAfterJoin(columnB, columnA).pearsons, delta);
 
-    assertEquals(0.866, Tables.computePearsonAfterJoin(columnB, columnC).pearsons, delta);
-    assertEquals(0.866, Tables.computePearsonAfterJoin(columnC, columnB).pearsons, delta);
+    assertEquals(0.866, BenchmarkUtils.computePearsonAfterJoin(columnB, columnC).pearsons, delta);
+    assertEquals(0.866, BenchmarkUtils.computePearsonAfterJoin(columnC, columnB).pearsons, delta);
 
-    assertEquals(-1.000, Tables.computePearsonAfterJoin(columnB, columnD).pearsons, delta);
-    assertEquals(-1.000, Tables.computePearsonAfterJoin(columnD, columnB).pearsons, delta);
+    assertEquals(-1.000, BenchmarkUtils.computePearsonAfterJoin(columnB, columnD).pearsons, delta);
+    assertEquals(-1.000, BenchmarkUtils.computePearsonAfterJoin(columnD, columnB).pearsons, delta);
   }
 }

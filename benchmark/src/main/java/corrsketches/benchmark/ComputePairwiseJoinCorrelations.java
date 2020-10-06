@@ -6,8 +6,6 @@ import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import corrsketches.SketchType;
-import corrsketches.benchmark.BenchmarkUtils.PerfResult;
-import corrsketches.benchmark.BenchmarkUtils.Result;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.utils.CliTool;
 import hashtabledb.BytesBytesHashtable;
@@ -100,7 +98,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     if (performance) {
       resultsFile.write(PerfResult.csvHeader() + "\n");
     } else {
-      resultsFile.write(Result.csvHeader() + "\n");
+      resultsFile.write(MetricsResult.csvHeader() + "\n");
     }
 
     System.out.println("Number of combinations: " + combinations.size());
@@ -111,30 +109,28 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
     int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
+    final Runnable task;
     if (performance) {
-      forkJoinPool
-          .submit(
-              () ->
-                  combinations
-                      .stream()
-                      .parallel()
-                      .map(
-                          computePerformanceStatistics(
-                              cache, columnStore, processed, total, sketchParamsList))
-                      .forEach(writeCSV(resultsFile)))
-          .get();
+      task =
+          () ->
+              combinations
+                  .stream()
+                  .parallel()
+                  .map(
+                      computePerformanceStatistics(
+                          cache, columnStore, processed, total, sketchParamsList))
+                  .forEach(writeCSV(resultsFile));
+      forkJoinPool.submit(task).get();
     } else {
-      forkJoinPool
-          .submit(
-              () ->
-                  combinations
-                      .stream()
-                      .parallel()
-                      .map(
-                          computeStatistics(cache, columnStore, processed, total, sketchParamsList))
-                      .forEach(writeCSV(resultsFile)))
-          .get();
+      task =
+          () ->
+              combinations
+                  .stream()
+                  .parallel()
+                  .map(computeStatistics(cache, columnStore, processed, total, sketchParamsList))
+                  .forEach(writeCSV(resultsFile));
     }
+    forkJoinPool.submit(task).get();
 
     resultsFile.close();
     columnStore.close();
@@ -148,20 +144,10 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       double total,
       List<SketchParams> params) {
     return (ColumnCombination columnPair) -> {
-      ColumnPair x = cache.getIfPresent(columnPair.x);
-      if (x == null) {
-        byte[] xId = columnPair.x.getBytes();
-        x = KRYO.unserializeObject(hashtable.get(xId));
-        cache.put(columnPair.x, x);
-      }
-      ColumnPair y = cache.getIfPresent(columnPair.y);
-      if (y == null) {
-        byte[] yId = columnPair.y.getBytes();
-        y = KRYO.unserializeObject(hashtable.get(yId));
-        cache.put(columnPair.y, y);
-      }
+      ColumnPair x = getColumnPair(cache, hashtable, columnPair.x);
+      ColumnPair y = getColumnPair(cache, hashtable, columnPair.y);
 
-      List<Result> results = BenchmarkUtils.computeStatistics(x, y, params);
+      List<MetricsResult> results = BenchmarkUtils.computeStatistics(x, y, params);
 
       int current = processed.incrementAndGet();
       if (current % 1000 == 0) {
@@ -175,7 +161,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
         return "";
       } else {
         StringBuilder builder = new StringBuilder();
-        for (Result result : results) {
+        for (MetricsResult result : results) {
           // we don't need to report column pairs that have no intersection at all
           if (Double.isFinite(result.interxy_actual) && result.interxy_actual >= 2) {
             builder.append(result.csvLine());
@@ -194,13 +180,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       double total,
       List<SketchParams> params) {
     return (ColumnCombination columnPair) -> {
-      ColumnPair x = getColumnPair(cache, hashtable, columnPair);
-      ColumnPair y = cache.getIfPresent(columnPair.y);
-      if (y == null) {
-        byte[] yId = columnPair.y.getBytes();
-        y = KRYO.unserializeObject(hashtable.get(yId));
-        cache.put(columnPair.y, y);
-      }
+      ColumnPair x = getColumnPair(cache, hashtable, columnPair.x);
+      ColumnPair y = getColumnPair(cache, hashtable, columnPair.y);
 
       List<PerfResult> results = BenchmarkUtils.computePerformanceStatistics(x, y, params);
 
@@ -228,15 +209,15 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     };
   }
 
-  private ColumnPair getColumnPair(Cache<String, ColumnPair> cache, BytesBytesHashtable hashtable,
-      ColumnCombination columnPair) {
-    ColumnPair x = cache.getIfPresent(columnPair.x);
-    if (x == null) {
-      byte[] xId = columnPair.x.getBytes();
-      x = KRYO.unserializeObject(hashtable.get(xId));
-      cache.put(columnPair.x, x);
+  private ColumnPair getColumnPair(
+      Cache<String, ColumnPair> cache, BytesBytesHashtable hashtable, String key) {
+    ColumnPair cp = cache.getIfPresent(key);
+    if (cp == null) {
+      byte[] keyBytes = key.getBytes();
+      cp = KRYO.unserializeObject(hashtable.get(keyBytes));
+      cache.put(key, cp);
     }
-    return x;
+    return cp;
   }
 
   private Consumer<String> writeCSV(FileWriter file) {

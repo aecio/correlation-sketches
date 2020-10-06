@@ -30,11 +30,11 @@ public class CheckHashColitions extends CliTool implements Serializable {
 
   @Override
   public void execute() throws Exception {
-    List<String> allCSVs = BenchmarkUtils.findAllCSVs(inputPath);
+    List<String> allCSVs = Tables.findAllCSVs(inputPath);
     System.out.println("> Found  " + allCSVs.size() + " CSV files at " + inputPath);
     Int2ObjectOpenHashMap<TreeSet<String>> allKeys = new Int2ObjectOpenHashMap<>();
     for (String csv : allCSVs) {
-      List<Set<String>> keyColumns = BenchmarkUtils.readAllKeyColumns(csv);
+      List<Set<String>> keyColumns = Tables.readAllKeyColumns(csv);
       for (Set<String> column : keyColumns) {
         for (String key : column) {
           int h = Hashes.murmur3_32(key);

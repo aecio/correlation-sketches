@@ -1,19 +1,95 @@
 package corrsketches.benchmark;
 
-import com.google.common.collect.ArrayListMultimap;
-import corrsketches.correlation.PearsonCorrelation;
-import corrsketches.correlation.QnCorrelation;
-import corrsketches.correlation.RinCorrelation;
-import corrsketches.correlation.SpearmanCorrelation;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.doubles.DoubleList;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
+import tech.tablesaw.api.Table;
+import tech.tablesaw.io.csv.CsvReadOptions;
+import tech.tablesaw.io.csv.CsvReadOptions.Builder;
 
 public class Tables {
+
+  public static List<String> findAllCSVs(String basePath) throws IOException {
+
+    List<String> allFiles =
+        Files.walk(Paths.get(basePath))
+            .filter(p -> p.toString().endsWith(".csv"))
+            .filter(Files::isRegularFile)
+            .map(p -> p.toString())
+            .collect(Collectors.toList());
+
+    return allFiles;
+  }
+
+  public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
+    try {
+      Table table = readTable(CsvReadOptions.builderFromFile(datasetFilePath));
+      return readColumnPairs(Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
+    } catch (Exception e) {
+      System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
+      e.printStackTrace(System.out);
+      return Collections.emptyIterator();
+    }
+  }
+
+  public static Iterator<ColumnPair> readColumnPairs(String datasetName, Table df, int minRows) {
+    System.out.println("\nDataset: " + datasetName);
+
+    System.out.printf("Row count: %d \n", df.rowCount());
+
+    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
+    System.out.println("Categorical columns: " + categoricalColumns.size());
+
+    List<NumericColumn<?>> numericColumns = df.numericColumns();
+    System.out.println("Numeric columns: " + numericColumns.size());
+
+    if (df.rowCount() < minRows) {
+      System.out.println("Column pairs: 0");
+      return Collections.emptyIterator();
+    }
+
+    // Create a list of all column pairs
+    List<ColumnEntry> pairs = new ArrayList<>();
+    for (CategoricalColumn<?> key : categoricalColumns) {
+      for (NumericColumn<?> column : numericColumns) {
+        pairs.add(new ColumnEntry(key, column));
+      }
+    }
+    System.out.println("Column pairs: " + pairs.size());
+    if (pairs.isEmpty()) {
+      return Collections.emptyIterator();
+    }
+
+    // Create a "lazy" iterator that creates one ColumnPair at a time to avoid overloading memory
+    // with many large column pairs.
+    Iterator<ColumnEntry> it = pairs.iterator();
+    return new Iterator<ColumnPair>() {
+      ColumnEntry nextPair = it.next();
+
+      @Override
+      public boolean hasNext() {
+        return nextPair != null;
+      }
+
+      @Override
+      public ColumnPair next() {
+        ColumnEntry tmp = nextPair;
+        nextPair = it.hasNext() ? it.next() : null;
+        return Tables.createColumnPair(datasetName, tmp.key, tmp.column);
+      }
+    };
+  }
 
   public static ColumnPair createColumnPair(
       String dataset, CategoricalColumn<?> key, NumericColumn<?> column) {
@@ -61,147 +137,49 @@ public class Tables {
         dataset, key.name(), keyValues, column.name(), columnValues.toDoubleArray());
   }
 
-  public static Correlations computePearsonAfterJoin(ColumnPair query, ColumnPair column) {
-
-    ColumnPair columnA = query;
-    ColumnPair columnB = column;
-
-    // create index for primary key in column B
-    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
-    for (int i = 0; i < columnB.keyValues.size(); i++) {
-      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
-    }
-
-    // loop over column B creating to new vectors index for primary key in column B
-    DoubleList joinValuesA = new DoubleArrayList();
-    DoubleList joinValuesB = new DoubleArrayList();
-    for (int i = 0; i < columnA.keyValues.size(); i++) {
-      String keyA = columnA.keyValues.get(i);
-      double valueA = columnA.columnValues[i];
-      List<Double> rowsB = columnMapB.get(keyA);
-      if (rowsB != null && !rowsB.isEmpty()) {
-        // TODO: We should properly handle cases where 1:N relationships happen.
-        // We could could consider the correlation of valueA with an any aggregation function of the
-        // list of values from B, e.g. mean, max, sum, count, etc.
-        // Currently we are considering only the first seen value, and ignoring everything else,
-        // similarly to the correlation sketch implementation.
-        joinValuesA.add(valueA);
-        joinValuesB.add(rowsB.get(0).doubleValue());
-      }
-    }
-
-    // correlation is defined only for vectors of length at least two
-    Correlations correlations = new Correlations();
-    if (joinValuesA.size() < 2) {
-      correlations.pearsons = Double.NaN;
-      correlations.qn = Double.NaN;
-      correlations.spearman = Double.NaN;
-      correlations.rin = Double.NaN;
-    } else {
-      double[] joinedA = joinValuesA.toDoubleArray();
-      double[] joinedB = joinValuesB.toDoubleArray();
-      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
-      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
-      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
-      try {
-        correlations.qn = QnCorrelation.correlation(joinedA, joinedB);
-      } catch (Exception e) {
-        correlations.qn = Double.NaN;
-        System.out.printf(
-            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
-                + "Array length after join is %d.\n",
-            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
-        System.out.printf("Error stack trace: %s\n", e.toString());
-      }
-    }
-
-    return correlations;
+  private static Table readTable(Builder csvReadOptionsBuilder) throws IOException {
+    Table table =
+        Table.read()
+            .csv(
+                csvReadOptionsBuilder
+                    .sample(true)
+                    .sampleSize(5_000_000)
+                    .maxCharsPerColumn(10_000)
+                    .missingValueIndicator("-"));
+    return table;
   }
 
-  public static ComputingTime timedComputePearsonAfterJoin(ColumnPair query, ColumnPair column) {
-    ComputingTime time = new ComputingTime();
-
-    ColumnPair columnA = query;
-    ColumnPair columnB = column;
-    long time0 = System.nanoTime();
-
-    // create index for primary key in column B
-    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
-    for (int i = 0; i < columnB.keyValues.size(); i++) {
-      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
-    }
-
-    // loop over column B creating to new vectors index for primary key in column B
-    DoubleList joinValuesA = new DoubleArrayList();
-    DoubleList joinValuesB = new DoubleArrayList();
-    for (int i = 0; i < columnA.keyValues.size(); i++) {
-      String keyA = columnA.keyValues.get(i);
-      double valueA = columnA.columnValues[i];
-      List<Double> rowsB = columnMapB.get(keyA);
-      if (rowsB != null && !rowsB.isEmpty()) {
-        // TODO: We should properly handle cases where 1:N relationships happen.
-        // We could could consider the correlation of valueA with an any aggregation function of the
-        // list of values from B, e.g. mean, max, sum, count, etc.
-        // Currently we are considering only the first seen value, and ignoring everything else,
-        // similarly to the correlation sketch implementation.
-        joinValuesA.add(valueA);
-        joinValuesB.add(rowsB.get(0).doubleValue());
+  public static List<Set<String>> readAllKeyColumns(String dataset) throws IOException {
+    Table df = readTable(CsvReadOptions.builderFromFile(dataset));
+    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
+    List<Set<String>> allColumns = new ArrayList<>();
+    for (CategoricalColumn<String> column : categoricalColumns) {
+      Set<String> keySet = new HashSet<>();
+      Iterator<String> it = column.iterator();
+      while (it.hasNext()) {
+        keySet.add(it.next());
       }
+      allColumns.add(keySet);
     }
-    time.join = System.nanoTime() - time0;
-
-    // correlation is defined only for vectors of length at least two
-    Correlations correlations = new Correlations();
-    if (joinValuesA.size() < 2) {
-      correlations.pearsons = Double.NaN;
-      correlations.qn = Double.NaN;
-      correlations.spearman = Double.NaN;
-      correlations.rin = Double.NaN;
-    } else {
-      double[] joinedA = joinValuesA.toDoubleArray();
-      double[] joinedB = joinValuesB.toDoubleArray();
-
-      time0 = System.nanoTime();
-      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
-      time.spearmans = System.nanoTime() - time0;
-
-      time0 = System.nanoTime();
-      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
-      time.pearsons = System.nanoTime() - time0;
-
-      time0 = System.nanoTime();
-      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
-      time.rin = System.nanoTime() - time0;
-
-      try {
-        time0 = System.nanoTime();
-        correlations.qn = QnCorrelation.correlation(joinedA, joinedB);
-        time.qn = System.nanoTime() - time0;
-      } catch (Exception e) {
-        correlations.qn = Double.NaN;
-        System.out.printf(
-            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
-                + "Array length after join is %d.\n",
-            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
-        System.out.printf("Error stack trace: %s\n", e.toString());
-      }
-    }
-
-    return time;
+    return allColumns;
   }
 
-  static class ComputingTime {
-    public long join = -1;
-    public long spearmans = -1;
-    public long pearsons = -1;
-    public long rin = -1;
-    public long qn = -1;
+  private static List<CategoricalColumn<String>> getStringColumns(Table df) {
+    return df.columns()
+        .stream()
+        .filter(e -> e.type() == ColumnType.STRING || e.type() == ColumnType.TEXT)
+        .map(e -> (CategoricalColumn<String>) e)
+        .collect(Collectors.toList());
   }
 
-  static class Correlations {
-    public double spearman;
-    public double rin;
-    double pearsons;
-    double qn;
+  static class ColumnEntry {
+
+    CategoricalColumn<?> key;
+    NumericColumn<?> column;
+
+    ColumnEntry(CategoricalColumn<?> key, NumericColumn<?> column) {
+      this.key = key;
+      this.column = column;
+    }
   }
 }
