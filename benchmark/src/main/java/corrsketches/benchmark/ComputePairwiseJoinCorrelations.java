@@ -113,8 +113,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     if (performance) {
       task =
           () ->
-              combinations
-                  .stream()
+              combinations.stream()
                   .parallel()
                   .map(
                       computePerformanceStatistics(
@@ -124,8 +123,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     } else {
       task =
           () ->
-              combinations
-                  .stream()
+              combinations.stream()
                   .parallel()
                   .map(computeStatistics(cache, columnStore, processed, total, sketchParamsList))
                   .forEach(writeCSV(resultsFile));

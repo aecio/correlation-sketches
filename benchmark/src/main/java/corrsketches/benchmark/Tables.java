@@ -165,8 +165,7 @@ public class Tables {
   }
 
   private static List<CategoricalColumn<String>> getStringColumns(Table df) {
-    return df.columns()
-        .stream()
+    return df.columns().stream()
         .filter(e -> e.type() == ColumnType.STRING || e.type() == ColumnType.TEXT)
         .map(e -> (CategoricalColumn<String>) e)
         .collect(Collectors.toList());

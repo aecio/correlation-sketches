@@ -17,7 +17,7 @@ public class Kryos<T> {
       new ThreadLocal<Kryo>() {
         protected Kryo initialValue() {
           return new Kryo();
-        };
+        }
       };
 
   private Class<T> contentClass;
