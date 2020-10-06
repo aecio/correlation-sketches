@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sketches.correlation.KMVCorrelationSketch;
+import sketches.correlation.CorrelationSketch;
 import sketches.correlation.PearsonCorrelation;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.NumericColumn;
@@ -46,7 +46,7 @@ public class RankFeaturesFromCSV {
       //            MinwiseHasher minHasher = new MinwiseHasher(nhf);
       //            MinhashCorrelationSketch targetSketch = new MinhashCorrelationSketch(keyValues,
       // targetValues, minHasher);
-      KMVCorrelationSketch targetSketch = new KMVCorrelationSketch(keyValues, targetValues, nhf);
+      CorrelationSketch targetSketch = new CorrelationSketch(keyValues, targetValues, nhf);
 
       double[] sketchCorrelations = new double[targetValues.length];
       double[] pearsonCorrelations = new double[targetValues.length];
@@ -56,7 +56,7 @@ public class RankFeaturesFromCSV {
         double[] columnValues = column.asDoubleArray();
         //                MinhashCorrelationSketch columnSketch = new
         // MinhashCorrelationSketch(keyValues, columnValues, minHasher);
-        KMVCorrelationSketch columnSketch = new KMVCorrelationSketch(keyValues, columnValues, nhf);
+        CorrelationSketch columnSketch = new CorrelationSketch(keyValues, columnValues, nhf);
         sketchCorrelations[i] = targetSketch.correlationTo(columnSketch).coefficient;
         pearsonCorrelations[i] = PearsonCorrelation.coefficient(targetValues, columnValues);
 

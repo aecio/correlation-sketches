@@ -16,9 +16,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.text.StringEscapeUtils;
 import sketches.correlation.Correlation.Estimate;
-import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch;
-import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch.Paired;
+import sketches.correlation.CorrelationSketch;
+import sketches.correlation.CorrelationSketch.ImmutableCorrelationSketch;
+import sketches.correlation.CorrelationSketch.ImmutableCorrelationSketch.Paired;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.Qn;
 import sketches.correlation.SketchType;
@@ -211,11 +211,11 @@ public class BenchmarkUtils {
       PerfResult result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
     // create correlation sketches for the data
     long time0 = System.nanoTime();
-    KMVCorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
     result.build_x_time = System.nanoTime() - time0;
 
     time0 = System.nanoTime();
-    KMVCorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
+    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
     result.build_y_time = System.nanoTime() - time0;
 
     result.build_time = result.build_x_time + result.build_y_time;
@@ -339,23 +339,22 @@ public class BenchmarkUtils {
     result.corr_rs_actual = corrs.spearman;
   }
 
-  public static KMVCorrelationSketch createCorrelationSketch(
-      ColumnPair x, SketchParams sketchParams) {
+  public static CorrelationSketch createCorrelationSketch(ColumnPair x, SketchParams sketchParams) {
     IKMV kmv;
     if (sketchParams.type == SketchType.KMV) {
       kmv = KMV.create(x.keyValues, x.columnValues, (int) sketchParams.budget);
     } else {
       kmv = GKMV.create(x.keyValues, x.columnValues, sketchParams.budget);
     }
-    return KMVCorrelationSketch.create(kmv);
+    return CorrelationSketch.create(kmv);
   }
 
   public static Result computeSketchStatistics(
       Result result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
 
     // create correlation sketches for the data
-    KMVCorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
-    KMVCorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
+    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
 
     ImmutableCorrelationSketch iSketchX = createCorrelationSketch(x, sketchParams).toImmutable();
     ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
@@ -454,7 +453,7 @@ public class BenchmarkUtils {
   }
 
   private static void computeSetStatisticsEstimates(
-      Result result, KMVCorrelationSketch sketchX, KMVCorrelationSketch sketchY) {
+      Result result, CorrelationSketch sketchX, CorrelationSketch sketchY) {
     result.jcx_est = sketchX.containment(sketchY);
     result.jcy_est = sketchY.containment(sketchX);
     result.jsxy_est = sketchX.jaccard(sketchY);

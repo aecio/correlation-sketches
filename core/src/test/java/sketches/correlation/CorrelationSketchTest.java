@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 import sketches.correlation.Correlation.Estimate;
-import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch;
-import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch.Paired;
+import sketches.correlation.CorrelationSketch.ImmutableCorrelationSketch;
+import sketches.correlation.CorrelationSketch.ImmutableCorrelationSketch.Paired;
 import sketches.kmv.KMV;
 import sketches.util.RandomArrays;
 import sketches.util.RandomArrays.CI;
@@ -20,7 +20,7 @@ public class CorrelationSketchTest {
     List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
     double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    KMVCorrelationSketch qsk = new KMVCorrelationSketch(pk, q);
+    CorrelationSketch qsk = new CorrelationSketch(pk, q);
 
     double delta = 0.1;
 
@@ -29,7 +29,7 @@ public class CorrelationSketchTest {
     //        List<String> c4fk = Arrays.asList(new String[]{"a", "b", "c", "d"});
     //        double[] c4 = new double[]{1.0, 2.0, 3.0, 4.0};
 
-    KMVCorrelationSketch c4sk = new KMVCorrelationSketch(c4fk, c4);
+    CorrelationSketch c4sk = new CorrelationSketch(c4fk, c4);
     System.out.println();
     System.out.println("         union: " + qsk.unionSize(c4sk));
     System.out.println("  intersection: " + qsk.intersectionSize(c4sk));
@@ -62,10 +62,10 @@ public class CorrelationSketchTest {
     double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
     double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
 
-    KMVCorrelationSketch qsk = new KMVCorrelationSketch(pk, q);
-    KMVCorrelationSketch c0sk = new KMVCorrelationSketch(fk, c0);
-    KMVCorrelationSketch c1sk = new KMVCorrelationSketch(fk, c1);
-    KMVCorrelationSketch c2sk = new KMVCorrelationSketch(fk, c2);
+    CorrelationSketch qsk = new CorrelationSketch(pk, q);
+    CorrelationSketch c0sk = new CorrelationSketch(fk, c0);
+    CorrelationSketch c1sk = new CorrelationSketch(fk, c1);
+    CorrelationSketch c2sk = new CorrelationSketch(fk, c2);
 
     double delta = 0.1;
     assertEquals(1.000, qsk.correlationTo(qsk).coefficient, delta);
@@ -84,10 +84,10 @@ public class CorrelationSketchTest {
     double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
     double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
 
-    KMVCorrelationSketch qsk = new KMVCorrelationSketch(pk, q);
-    KMVCorrelationSketch c0sk = new KMVCorrelationSketch(fk, c0);
-    KMVCorrelationSketch c1sk = new KMVCorrelationSketch(fk, c1);
-    KMVCorrelationSketch c2sk = new KMVCorrelationSketch(fk, c2);
+    CorrelationSketch qsk = new CorrelationSketch(pk, q);
+    CorrelationSketch c0sk = new CorrelationSketch(fk, c0);
+    CorrelationSketch c1sk = new CorrelationSketch(fk, c1);
+    CorrelationSketch c2sk = new CorrelationSketch(fk, c2);
 
     ImmutableCorrelationSketch iqsk = qsk.toImmutable();
     ImmutableCorrelationSketch ic0sk = c0sk.toImmutable();
@@ -116,8 +116,8 @@ public class CorrelationSketchTest {
     List<String> ykeys = Arrays.asList(new String[] {"!", "a", "b", "c", "d", "e"});
     double[] yvalues = new double[] {0.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
-    KMVCorrelationSketch xs = new KMVCorrelationSketch(xkeys, xvalues, 5);
-    KMVCorrelationSketch ys = new KMVCorrelationSketch(ykeys, yvalues, 5);
+    CorrelationSketch xs = new CorrelationSketch(xkeys, xvalues, 5);
+    CorrelationSketch ys = new CorrelationSketch(ykeys, yvalues, 5);
 
     final ImmutableCorrelationSketch xsi = xs.toImmutable();
     final ImmutableCorrelationSketch ysi = ys.toImmutable();
@@ -172,11 +172,11 @@ public class CorrelationSketchTest {
 
       final KMV xkmv = new KMV(k);
       xkmv.updateAll(Arrays.asList(kx), x);
-      KMVCorrelationSketch xsketch = new KMVCorrelationSketch(xkmv);
+      CorrelationSketch xsketch = new CorrelationSketch(xkmv);
 
       final KMV ykmv = new KMV(k);
       ykmv.updateAll(Arrays.asList(ky), y);
-      KMVCorrelationSketch ysketch = new KMVCorrelationSketch(ykmv);
+      CorrelationSketch ysketch = new CorrelationSketch(ykmv);
 
       final Estimate estimate1;
       final Estimate estimate2;

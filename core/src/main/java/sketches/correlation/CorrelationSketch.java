@@ -11,36 +11,36 @@ import sketches.kmv.KMV;
 import sketches.kmv.ValueHash;
 import sketches.util.QuickSort;
 
-public class KMVCorrelationSketch {
+public class CorrelationSketch {
 
   private final Correlation estimator;
   private final IKMV kmv;
   private int cardinality;
 
-  public KMVCorrelationSketch(IKMV kmv) {
+  public CorrelationSketch(IKMV kmv) {
     this(kmv, -1, PearsonCorrelation::estimate);
   }
 
-  public KMVCorrelationSketch(IKMV kmv, int cardinality, Correlation estimator) {
+  public CorrelationSketch(IKMV kmv, int cardinality, Correlation estimator) {
     this.kmv = kmv;
     this.cardinality = cardinality;
     this.estimator = estimator;
   }
 
-  public KMVCorrelationSketch(List<String> keys, double[] values) {
+  public CorrelationSketch(List<String> keys, double[] values) {
     this(KMV.create(keys, values));
   }
 
-  public KMVCorrelationSketch(List<String> keys, double[] values, int k) {
+  public CorrelationSketch(List<String> keys, double[] values, int k) {
     this(KMV.create(keys, values, k));
   }
 
-  public static KMVCorrelationSketch create(IKMV kmv) {
-    return new KMVCorrelationSketch(kmv);
+  public static CorrelationSketch create(IKMV kmv) {
+    return new CorrelationSketch(kmv);
   }
 
-  public static KMVCorrelationSketch create(IKMV kmv, Correlation estimator) {
-    return new KMVCorrelationSketch(kmv, -1, estimator);
+  public static CorrelationSketch create(IKMV kmv, Correlation estimator) {
+    return new CorrelationSketch(kmv, -1, estimator);
   }
 
   public void setCardinality(int cardinality) {
@@ -54,27 +54,27 @@ public class KMVCorrelationSketch {
     return kmv.distinctValues();
   }
 
-  public double unionSize(KMVCorrelationSketch other) {
+  public double unionSize(CorrelationSketch other) {
     return this.kmv.unionSize(other.kmv);
   }
 
-  public double jaccard(KMVCorrelationSketch other) {
+  public double jaccard(CorrelationSketch other) {
     return kmv.jaccard(other.kmv);
   }
 
-  public double containment(KMVCorrelationSketch other) {
+  public double containment(CorrelationSketch other) {
     return this.intersectionSize(other) / this.cardinality();
   }
 
-  public double intersectionSize(KMVCorrelationSketch other) {
+  public double intersectionSize(CorrelationSketch other) {
     return kmv.intersectionSize(other.kmv);
   }
 
-  public Estimate correlationTo(KMVCorrelationSketch other) {
+  public Estimate correlationTo(CorrelationSketch other) {
     return correlationTo(other, this.estimator);
   }
 
-  public Estimate correlationTo(KMVCorrelationSketch other, Correlation estimator) {
+  public Estimate correlationTo(CorrelationSketch other, Correlation estimator) {
     return toImmutable().correlationTo(other.toImmutable(), estimator);
   }
 
@@ -99,7 +99,7 @@ public class KMVCorrelationSketch {
       this.correlation = correlation;
     }
 
-    public ImmutableCorrelationSketch(KMVCorrelationSketch cs) {
+    public ImmutableCorrelationSketch(CorrelationSketch cs) {
       this.correlation = cs.estimator;
       TreeSet<ValueHash> thisKMinValues = cs.getKMinValues();
       this.keys = new int[thisKMinValues.size()];

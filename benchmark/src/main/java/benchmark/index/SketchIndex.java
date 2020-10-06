@@ -33,9 +33,9 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 import sketches.correlation.Correlation.Estimate;
+import sketches.correlation.CorrelationSketch;
+import sketches.correlation.CorrelationSketch.ImmutableCorrelationSketch;
 import sketches.correlation.CorrelationType;
-import sketches.correlation.KMVCorrelationSketch;
-import sketches.correlation.KMVCorrelationSketch.ImmutableCorrelationSketch;
 import sketches.correlation.PearsonCorrelation;
 import sketches.correlation.SketchType;
 import sketches.kmv.GKMV;
@@ -105,7 +105,7 @@ public class SketchIndex {
 
   public void index(String id, ColumnPair columnPair) throws IOException {
 
-    KMVCorrelationSketch sketch = createCorrelationSketch(columnPair);
+    CorrelationSketch sketch = createCorrelationSketch(columnPair);
 
     Document doc = new Document();
 
@@ -132,7 +132,7 @@ public class SketchIndex {
 
   public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
 
-    KMVCorrelationSketch query = createCorrelationSketch(columnPair);
+    CorrelationSketch query = createCorrelationSketch(columnPair);
     query.setCardinality(columnPair.keyValues.size());
 
     IndexSearcher searcher = searcherManager.acquire();
@@ -223,16 +223,16 @@ public class SketchIndex {
     return doubles;
   }
 
-  private KMVCorrelationSketch createCorrelationSketch(ColumnPair columnPair) {
-    KMVCorrelationSketch sketch;
+  private CorrelationSketch createCorrelationSketch(ColumnPair columnPair) {
+    CorrelationSketch sketch;
     if (sketchType == SketchType.KMV) {
       int k = (int) threshold;
       KMV kmv = KMV.create(columnPair.keyValues, columnPair.columnValues, k);
-      sketch = new KMVCorrelationSketch(kmv);
+      sketch = new CorrelationSketch(kmv);
     } else {
       double t = threshold;
       GKMV gkmv = GKMV.create(columnPair.keyValues, columnPair.columnValues, t);
-      sketch = new KMVCorrelationSketch(gkmv);
+      sketch = new CorrelationSketch(gkmv);
     }
     return sketch;
   }
