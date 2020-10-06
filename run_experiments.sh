@@ -15,8 +15,8 @@ JAR=${JAR:-"benchmark/build/libs/benchmark-0.1-SNAPSHOT-all.jar"}
 JVM_ARGS=${JVM_ARGS:-""}
 PERFORMANCE=${PERFORMANCE:-"false"}
 
-BENCHMARK_EXE="java $JVM_ARGS -cp $JAR benchmark.ComputePairwiseCorrelationJoinsThreads"
-CREATE_STORE_EXE="java $JVM_ARGS -cp $JAR benchmark.CreateColumnStore"
+BENCHMARK_EXE="java $JVM_ARGS -cp $JAR corrsketches.benchmark.ComputePairwiseJoinCorrelations"
+CREATE_STORE_EXE="java $JVM_ARGS -cp $JAR corrsketches.benchmark.CreateColumnStore"
 
 set -x
 
