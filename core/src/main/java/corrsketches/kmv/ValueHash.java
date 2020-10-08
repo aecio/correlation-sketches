@@ -4,37 +4,37 @@ import java.util.Comparator;
 
 public class ValueHash {
 
-  public static final Comparator<ValueHash> COMPARATOR_ASC = new HashValueComparatorAscending();
+  public static final Comparator<ValueHash> COMPARATOR_ASC = new UnitHashComparatorAscending();
 
-  public int hashValue;
-  public double grmHash;
+  public int keyHash;
+  public double unitHash;
   public double value;
 
-  public ValueHash(int hashValue, double grmHash, double value) {
-    this.hashValue = hashValue;
-    this.grmHash = grmHash;
+  public ValueHash(int keyHash, double unitHash, double value) {
+    this.keyHash = keyHash;
+    this.unitHash = unitHash;
     this.value = value;
   }
 
   @Override
   public boolean equals(Object o) {
-    return hashValue == ((ValueHash) o).hashValue;
+    return keyHash == ((ValueHash) o).keyHash;
   }
 
   @Override
   public int hashCode() {
-    return hashValue;
+    return keyHash;
   }
 
   @Override
   public String toString() {
-    return "ValueHash{hashValue=" + hashValue + ", grmHash=" + grmHash + ", value=" + value + '}';
+    return "ValueHash{keyHash=" + keyHash + ", unitHash=" + unitHash + ", value=" + value + '}';
   }
 
-  private static class HashValueComparatorAscending implements Comparator<ValueHash> {
+  private static class UnitHashComparatorAscending implements Comparator<ValueHash> {
     @Override
     public int compare(ValueHash a, ValueHash b) {
-      return Double.compare(a.grmHash, b.grmHash);
+      return Double.compare(a.unitHash, b.unitHash);
     }
   }
 }

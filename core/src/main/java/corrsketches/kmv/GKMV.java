@@ -50,11 +50,11 @@ public class GKMV implements IKMV<GKMV> {
 
   /** Updates the KMV synopsis with the given hashed key */
   public void update(int hash, double value) {
-    double h = Hashes.grm(hash);
-    if (h <= maxT) {
-      kMinValues.add(new ValueHash(hash, h, value));
-      if (h > kthValue) {
-        kthValue = h;
+    double hu = Hashes.grm(hash);
+    if (hu <= maxT) {
+      kMinValues.add(new ValueHash(hash, hu, value));
+      if (hu > kthValue) {
+        kthValue = hu;
       }
     }
   }

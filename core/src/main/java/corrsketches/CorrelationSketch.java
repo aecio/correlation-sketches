@@ -108,7 +108,7 @@ public class CorrelationSketch {
       this.values = new double[thisKMinValues.size()];
       int i = 0;
       for (ValueHash vh : thisKMinValues) {
-        keys[i] = vh.hashValue;
+        keys[i] = vh.keyHash;
         values[i] = vh.value;
         i++;
       }

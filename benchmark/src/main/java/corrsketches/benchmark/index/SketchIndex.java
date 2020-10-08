@@ -140,7 +140,7 @@ public class SketchIndex {
       Builder bq = new BooleanQuery.Builder();
       TreeSet<ValueHash> kMinValues = query.getKMinValues();
       for (ValueHash vh : kMinValues) {
-        final Term term = new Term(HASHES_FIELD_NAME, intToBytesRef(vh.hashValue));
+        final Term term = new Term(HASHES_FIELD_NAME, intToBytesRef(vh.keyHash));
         bq.add(new TermQuery(term), Occur.SHOULD);
       }
       // bq.setMinimumNumberShouldMatch(1);

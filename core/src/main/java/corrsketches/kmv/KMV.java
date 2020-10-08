@@ -61,16 +61,16 @@ public class KMV implements IKMV<KMV> {
 
   /** Updates the KMV synopsis with the given hashed key */
   public void update(int hash, double value) {
-    double h = Hashes.grm(hash);
+    double hu = Hashes.grm(hash);
     if (kMinValues.size() < maxK) {
-      kMinValues.add(new ValueHash(hash, h, value));
-      if (h > kthValue) {
-        kthValue = h;
+      kMinValues.add(new ValueHash(hash, hu, value));
+      if (hu > kthValue) {
+        kthValue = hu;
       }
-    } else if (h < kthValue) {
-      kMinValues.add(new ValueHash(hash, h, value));
+    } else if (hu < kthValue) {
+      kMinValues.add(new ValueHash(hash, hu, value));
       kMinValues.remove(kMinValues.last());
-      kthValue = kMinValues.last().grmHash;
+      kthValue = kMinValues.last().unitHash;
     }
   }
 
@@ -119,7 +119,7 @@ public class KMV implements IKMV<KMV> {
     int maxUnionSize = x.size() + y.size();
     DoubleArrayList values = new DoubleArrayList(maxUnionSize);
     for (ValueHash v : union) {
-      values.add(v.grmHash);
+      values.add(v.unitHash);
     }
     values.sort(DoubleComparators.NATURAL_COMPARATOR);
 
