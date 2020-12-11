@@ -1,5 +1,7 @@
 package corrsketches.benchmark;
 
+import corrsketches.aggregations.AggregateFunction;
+import corrsketches.benchmark.PerfResult.ComputingTime;
 import org.apache.commons.text.StringEscapeUtils;
 
 public class MetricsResult implements Cloneable {
@@ -81,6 +83,8 @@ public class MetricsResult implements Cloneable {
   // others
   public String parameters;
   public String columnId;
+  public ComputingTime time;
+  public AggregateFunction aggregate;
 
   public static String csvHeader() {
     return String.format(
@@ -161,6 +165,7 @@ public class MetricsResult implements Cloneable {
             + "nu_y,"
             // others
             + "parameters,"
+            + "aggregate,"
             + "column");
   }
 
@@ -182,7 +187,7 @@ public class MetricsResult implements Cloneable {
             + "%f,%f,%f,%f," // Variable extents
             + "%f,%f,%f,%f," // Variable sample means and variances
             + "%f,%f,%f," // Sum of squares of variables' samples
-            + "%s,%s",
+            + "%s,%s,%s",
         // jaccard
         jcx_est,
         jcy_est,
@@ -259,6 +264,7 @@ public class MetricsResult implements Cloneable {
         nu_y,
         // others
         StringEscapeUtils.escapeCsv(parameters),
+        aggregate.toString(),
         StringEscapeUtils.escapeCsv(columnId));
   }
 
@@ -269,13 +275,5 @@ public class MetricsResult implements Cloneable {
       throw new IllegalStateException(
           this.getClass() + " must implement the Cloneable interface.", e);
     }
-  }
-
-  static class Correlations {
-
-    public double spearman;
-    public double rin;
-    double pearsons;
-    double qn;
   }
 }

@@ -1,19 +1,27 @@
 package corrsketches.kmv;
 
+import corrsketches.aggregations.AggregateFunction;
+import corrsketches.aggregations.AggregateFunction.Aggregator;
 import java.util.Comparator;
 
 public class ValueHash {
 
   public static final Comparator<ValueHash> COMPARATOR_ASC = new UnitHashComparatorAscending();
 
+  public final Aggregator aggregator;
   public int keyHash;
   public double unitHash;
   public double value;
 
-  public ValueHash(int keyHash, double unitHash, double value) {
+  public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function) {
     this.keyHash = keyHash;
     this.unitHash = unitHash;
-    this.value = value;
+    this.aggregator = function.get();
+    this.value = aggregator.first(value);
+  }
+
+  public void update(double value) {
+    this.value = this.aggregator.update(this.value, value);
   }
 
   @Override

@@ -6,6 +6,7 @@ import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import corrsketches.SketchType;
+import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.utils.CliTool;
 import hashtabledb.BytesBytesHashtable;
@@ -16,6 +17,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
@@ -30,7 +32,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
   public static final String JOB_NAME = "ComputePairwiseJoinCorrelations";
 
-  public static final Kryos<ColumnPair> KRYO = new Kryos(ColumnPair.class);
+  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
   @Required
   @Option(name = "--input-path", description = "Folder containing key-value column store")
@@ -65,14 +67,21 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       description = "Number of CPU core to use. Default is to use all cores available.")
   int cpuCores = -1;
 
+  @Option(name = "--aggregations", description = "Run performance experiments")
+  String aggregateFunctions = "FIRST";
+
   public static void main(String[] args) {
     CliTool.run(args, new ComputePairwiseJoinCorrelations());
   }
 
   @Override
   public void execute() throws Exception {
-    System.out.println("sketchParams: " + this.sketchParams);
     List<SketchParams> sketchParamsList = SketchParams.parse(this.sketchParams);
+    System.out.println("> SketchParams: " + this.sketchParams);
+
+    List<AggregateFunction> aggregations = parseAggregations(this.aggregateFunctions);
+    System.out.println("> Using aggregate functions: " + aggregations);
+
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
     BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
 
@@ -117,7 +126,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
                   .parallel()
                   .map(
                       computePerformanceStatistics(
-                          cache, columnStore, processed, total, sketchParamsList))
+                          cache, columnStore, processed, total, sketchParamsList, aggregations))
                   .forEach(writeCSV(resultsFile));
       forkJoinPool.submit(task).get();
     } else {
@@ -125,7 +134,9 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
           () ->
               combinations.stream()
                   .parallel()
-                  .map(computeStatistics(cache, columnStore, processed, total, sketchParamsList))
+                  .map(
+                      computeStatistics(
+                          cache, columnStore, processed, total, sketchParamsList, aggregations))
                   .forEach(writeCSV(resultsFile));
     }
     forkJoinPool.submit(task).get();
@@ -135,17 +146,38 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }
 
+  private List<AggregateFunction> parseAggregations(String functions) {
+    if (functions == null || functions.isEmpty()) {
+      System.out.println("No aggregate functions configured. Using default: FIRST");
+      return Collections.singletonList(AggregateFunction.FIRST);
+    }
+    if (functions.equals("all")) {
+      return AggregateFunction.all();
+    }
+    final List<AggregateFunction> aggregateFunctions = new ArrayList<>();
+    for (String functionName : functions.split(",")) {
+      try {
+        aggregateFunctions.add(AggregateFunction.valueOf(functionName));
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+            "Unrecognized aggregate functions name: " + functionName, e);
+      }
+    }
+    return aggregateFunctions;
+  }
+
   private Function<ColumnCombination, String> computeStatistics(
       Cache<String, ColumnPair> cache,
       BytesBytesHashtable hashtable,
       AtomicInteger processed,
       double total,
-      List<SketchParams> params) {
+      List<SketchParams> params,
+      List<AggregateFunction> functions) {
     return (ColumnCombination columnPair) -> {
       ColumnPair x = getColumnPair(cache, hashtable, columnPair.x);
       ColumnPair y = getColumnPair(cache, hashtable, columnPair.y);
 
-      List<MetricsResult> results = BenchmarkUtils.computeStatistics(x, y, params);
+      List<MetricsResult> results = BenchmarkUtils.computeStatistics(x, y, params, functions);
 
       int current = processed.incrementAndGet();
       if (current % 1000 == 0) {
@@ -176,12 +208,13 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       BytesBytesHashtable hashtable,
       AtomicInteger processed,
       double total,
-      List<SketchParams> params) {
+      List<SketchParams> params,
+      List<AggregateFunction> aggregations) {
     return (ColumnCombination columnPair) -> {
       ColumnPair x = getColumnPair(cache, hashtable, columnPair.x);
       ColumnPair y = getColumnPair(cache, hashtable, columnPair.y);
 
-      List<PerfResult> results = BenchmarkUtils.computePerformanceStatistics(x, y, params);
+      List<PerfResult> results = BenchmarkUtils.measurePerformance(x, y, params, aggregations);
 
       int current = processed.incrementAndGet();
       if (current % 1000 == 0) {
@@ -246,8 +279,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     public static List<SketchParams> parse(String params) {
       String[] values = params.split(",");
       List<SketchParams> result = new ArrayList<>();
-      for (int i = 0; i < values.length; i++) {
-        result.add(parseValue(values[i].trim()));
+      for (String value : values) {
+        result.add(parseValue(value.trim()));
       }
       if (result.isEmpty()) {
         throw new IllegalArgumentException(
@@ -260,7 +293,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       String[] values = params.split(":");
       if (values.length == 2) {
         return new SketchParams(
-            SketchType.valueOf(values[0].trim()), Double.valueOf(values[1].trim()));
+            SketchType.valueOf(values[0].trim()), Double.parseDouble(values[1].trim()));
       } else {
         throw new IllegalArgumentException(String.format("[%s] is not a valid parameter", params));
       }

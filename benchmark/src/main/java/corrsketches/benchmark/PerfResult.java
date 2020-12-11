@@ -1,5 +1,6 @@
 package corrsketches.benchmark;
 
+import corrsketches.aggregations.AggregateFunction;
 import org.apache.commons.text.StringEscapeUtils;
 
 public class PerfResult implements Cloneable {
@@ -24,6 +25,7 @@ public class PerfResult implements Cloneable {
   public long rrin_time;
   public long rpm1_time;
   public long rpm1s_time;
+  public AggregateFunction aggregate;
 
   public static String csvHeader() {
     return String.format(
@@ -54,6 +56,7 @@ public class PerfResult implements Cloneable {
             + "rpm1s_time,"
             // others
             + "parameters,"
+            + "aggregate,"
             + "column");
   }
 
@@ -65,7 +68,7 @@ public class PerfResult implements Cloneable {
             + "%d,%d,%d,%d," // sketch times
             + "%d," // sketch join size
             + "%d,%d,%d,%d,%d,%d," // sketch correlation times
-            + "%s,%s",
+            + "%s,%s,%s",
         // full correlation times
         time.join,
         time.spearmans,
@@ -92,6 +95,7 @@ public class PerfResult implements Cloneable {
         rpm1s_time,
         // others
         StringEscapeUtils.escapeCsv(parameters),
+        aggregate.toString(),
         StringEscapeUtils.escapeCsv(columnId));
   }
 

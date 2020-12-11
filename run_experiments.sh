@@ -14,6 +14,7 @@ DATASETS_PATH=${DATASETS_PATH:-"./datasets"}
 JAR=${JAR:-"benchmark/build/libs/benchmark-0.1-SNAPSHOT-all.jar"}
 JVM_ARGS=${JVM_ARGS:-""}
 PERFORMANCE=${PERFORMANCE:-"false"}
+AGGREGATIONS=${AGGREGATIONS:-"FIRST"}
 
 BENCHMARK_EXE="java $JVM_ARGS -cp $JAR corrsketches.benchmark.ComputePairwiseJoinCorrelations"
 CREATE_STORE_EXE="java $JVM_ARGS -cp $JAR corrsketches.benchmark.CreateColumnStore"
@@ -46,7 +47,7 @@ run_benchmark () {
     PERF_ARG="--performance"
   fi
 
-  local CMD="$BENCHMARK_EXE --input-path $STORE_PATH --output-path $RESULTS_PATH --sketch-params $SKETCH_PARAMS $PERF_ARG"
+  local CMD="$BENCHMARK_EXE --input-path $STORE_PATH --output-path $RESULTS_PATH --sketch-params $SKETCH_PARAMS --aggregations $AGGREGATIONS $PERF_ARG"
   echo "Running command: $CMD"
   $CMD
 

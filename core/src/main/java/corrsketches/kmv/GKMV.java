@@ -1,6 +1,8 @@
 package corrsketches.kmv;
 
+import corrsketches.aggregations.AggregateFunction;
 import corrsketches.util.Hashes;
+import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -8,68 +10,60 @@ import java.util.TreeSet;
  * Implements the GKMV synopsis from the paper "GB-KMV: An Augmented KMV Sketch for Approximate
  * Containment Similarity Search" by Yang et. at, ICDE, 2019.
  */
-public class GKMV implements IKMV<GKMV> {
+public class GKMV extends IKMV<GKMV> {
 
   public static final double DEFAULT_THRESHOLD = 0.1;
-
   private final double maxT;
-  private final TreeSet<ValueHash> kMinValues;
-  private double kthValue = Double.MIN_VALUE;
 
+  // TODO: Replace all constructors by a builder class
+  @Deprecated
   public GKMV(double t) {
+    this(t, AggregateFunction.FIRST);
+  }
+
+  public GKMV(double t, AggregateFunction function) {
+    super(function);
     this.maxT = t;
-    this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
   }
 
   public static GKMV create(List<String> keys, double[] values) {
     return create(keys, values, DEFAULT_THRESHOLD);
   }
 
+  @Deprecated
   public static GKMV create(List<String> keys, double[] values, double threshold) {
-    GKMV kmv = new GKMV(threshold);
-    kmv.updateAll(keys, values);
-    return kmv;
+    return create(keys, values, threshold, AggregateFunction.FIRST);
   }
 
-  /** Creates a KMV synopsis of size k from an array of hashed keys. */
-  public static GKMV fromHashedKeys(int[] hashes, double[] values, double k) {
-    GKMV kmv = new GKMV(k);
-    for (int i = 0; i < hashes.length; i++) {
-      kmv.update(hashes[i], values[i]);
-    }
-    return kmv;
+  public static GKMV create(
+      List<String> keys, double[] values, double threshold, AggregateFunction aggregateFunction) {
+    GKMV gkmv = new GKMV(threshold, aggregateFunction);
+    gkmv.updateAll(keys, values);
+    return gkmv;
   }
 
-  public static IKMV fromStringHashedKeys(String[] hashes, double[] values, double threshold) {
-    GKMV kmv = new GKMV(threshold);
-    for (int i = 0; i < hashes.length; i++) {
-      kmv.update(Integer.parseInt(hashes[i]), values[i]);
-    }
-    return kmv;
+  /** Creates a GKMV synopsis with threshold t from an array of hashed keys. */
+  public static GKMV fromHashedKeys(int[] hashes, double[] values, double t) {
+    GKMV gkmv = new GKMV(t);
+    gkmv.updateAll(hashes, values);
+    return gkmv;
   }
 
-  /** Updates the KMV synopsis with the given hashed key */
+  /** Updates the GKMV synopsis with the given hashed key */
+  @Override
   public void update(int hash, double value) {
     double hu = Hashes.grm(hash);
     if (hu <= maxT) {
-      kMinValues.add(new ValueHash(hash, hu, value));
+      final ValueHash minValue = createOrUpdateValueHash(hash, value, hu);
+      kMinValues.add(minValue);
       if (hu > kthValue) {
         kthValue = hu;
       }
     }
   }
 
-  /** The improved (unbiased) distinct value estimator (UB) from Beyer et. al., SIGMOD 2007. */
-  public double distinctValues() {
-    return (kMinValues.size() - 1.0) / kthValue;
-  }
-
-  /** Basic distinct value estimator (BE) from Beyer et. al., SIGMOD 2007. */
-  public double distinctValuesBE() {
-    return kMinValues.size() / kthValue;
-  }
-
-  /** Estimates the size of union of the given KMV synopsis */
+  /** Estimates the size of union of the given GKMV synopsis */
+  @Override
   public double unionSize(GKMV other) {
     int k = unionSize(this.kMinValues, other.kMinValues);
     double kthValue = kthValueOfUnion(other);
@@ -77,14 +71,15 @@ public class GKMV implements IKMV<GKMV> {
   }
 
   /** Estimates the Jaccard similarity using the p = K_e / k estimator from Beyer et. al. (2007) */
+  @Override
   public double jaccard(GKMV other) {
-    int intersection = intersectionSize(this.kMinValues, other.kMinValues);
     int k = unionSize(this.kMinValues, other.kMinValues);
-    double js = intersection / (double) k;
-    return js;
+    int intersection = intersectionSize(this.kMinValues, other.kMinValues);
+    return intersection / (double) k;
   }
 
   /** Estimates intersection between the sets represented by this synopsis and the other. */
+  @Override
   public double intersectionSize(GKMV other) {
     int k = unionSize(this.kMinValues, other.kMinValues);
     // p is an unbiased estimate of the jaccard similarity
@@ -102,12 +97,22 @@ public class GKMV implements IKMV<GKMV> {
     return Math.max(this.kthValue, other.kthValue);
   }
 
-  public TreeSet<ValueHash> getKMinValues() {
-    return this.kMinValues;
+  private int unionSize(TreeSet<ValueHash> x, TreeSet<ValueHash> y) {
+    // TODO: Use implementation from Sets.unionSize
+    HashSet<ValueHash> union = new HashSet<>(x);
+    union.addAll(y);
+    int k = union.size();
+    if (k < 1) {
+      throw new IllegalStateException(
+          String.format(
+              "Can not compute estimates on empty synopsis. x.size=[%d] y.size=[%d]",
+              x.size(), y.size()));
+    }
+    return k;
   }
 
   @Override
   public String toString() {
-    return "KMV{" + "maxK=" + maxT + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
+    return "GKMV{" + "maxT=" + maxT + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
   }
 }

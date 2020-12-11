@@ -1,8 +1,11 @@
 package corrsketches;
 
+import com.google.common.base.Preconditions;
+import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation;
 import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.correlation.PearsonCorrelation;
+import corrsketches.kmv.GKMV;
 import corrsketches.kmv.IKMV;
 import corrsketches.kmv.KMV;
 import corrsketches.kmv.ValueHash;
@@ -15,34 +18,67 @@ import java.util.TreeSet;
 
 public class CorrelationSketch {
 
+  public static final Correlation DEFAULT_ESTIMATOR = PearsonCorrelation::estimate;
+  public static final int UNKNOWN_CARDINALITY = -1;
+
   private final Correlation estimator;
   private final IKMV kmv;
   private int cardinality;
 
   public CorrelationSketch(IKMV kmv) {
-    this(kmv, -1, PearsonCorrelation::estimate);
+    this(builder().sketch(kmv));
   }
 
-  public CorrelationSketch(IKMV kmv, int cardinality, Correlation estimator) {
-    this.kmv = kmv;
-    this.cardinality = cardinality;
-    this.estimator = estimator;
-  }
-
+  @Deprecated
   public CorrelationSketch(List<String> keys, double[] values) {
-    this(KMV.create(keys, values));
+    this(builder().data(keys, values));
   }
 
+  @Deprecated
   public CorrelationSketch(List<String> keys, double[] values, int k) {
-    this(KMV.create(keys, values, k));
+    this(builder().data(keys, values).sketchType(SketchType.KMV, k));
   }
 
-  public static CorrelationSketch create(IKMV kmv) {
-    return new CorrelationSketch(kmv);
+  private CorrelationSketch(Builder builder) {
+    this.cardinality = builder.cardinality;
+    this.estimator = builder.estimator;
+    if (builder.sketch != null) {
+      // pre-built sketch provided: just use it
+      this.kmv = builder.sketch;
+    } else {
+      if (builder.keyValues == null && builder.columnValues == null) {
+        // no data provided: build an empty sketch
+        if (builder.sketchType == SketchType.KMV) {
+          this.kmv = new KMV((int) builder.budget, builder.aggregateFunction);
+        } else {
+          this.kmv = new GKMV(builder.budget, builder.aggregateFunction);
+        }
+      } else {
+        // data provided: initialize sketches from data
+        Preconditions.checkArgument(
+            builder.keyValues != null && builder.columnValues != null,
+            "When data is provided, both key values and column values must be present.");
+        if (builder.sketchType == SketchType.KMV) {
+          this.kmv =
+              KMV.create(
+                  builder.keyValues,
+                  builder.columnValues,
+                  (int) builder.budget,
+                  builder.aggregateFunction);
+        } else {
+          this.kmv =
+              GKMV.create(
+                  builder.keyValues,
+                  builder.columnValues,
+                  builder.budget,
+                  builder.aggregateFunction);
+        }
+      }
+    }
   }
 
-  public static CorrelationSketch create(IKMV kmv, Correlation estimator) {
-    return new CorrelationSketch(kmv, -1, estimator);
+  public static Builder builder() {
+    return new Builder();
   }
 
   public void setCardinality(int cardinality) {
@@ -179,6 +215,62 @@ public class CorrelationSketch {
             + Arrays.toString(y)
             + '}';
       }
+    }
+  }
+
+  public static class Builder {
+
+    protected int cardinality = UNKNOWN_CARDINALITY;
+    protected Correlation estimator = DEFAULT_ESTIMATOR;
+    protected AggregateFunction aggregateFunction = AggregateFunction.FIRST;
+
+    protected SketchType sketchType = SketchType.KMV;
+    protected double budget = KMV.DEFAULT_K;
+
+    protected List<String> keyValues = null;
+    protected double[] columnValues = null;
+
+    protected IKMV sketch;
+
+    public Builder aggregateFunction(AggregateFunction aggregateFunction) {
+      this.aggregateFunction = aggregateFunction;
+      return this;
+    }
+
+    public Builder data(List<String> keyValues, double[] columnValues) {
+      Preconditions.checkNotNull(keyValues, "key values cannot be null");
+      Preconditions.checkNotNull(columnValues, "numeric column values cannot be null");
+      Preconditions.checkArgument(
+          keyValues.size() == columnValues.length,
+          "key values and column values must have same size");
+      this.keyValues = keyValues;
+      this.columnValues = columnValues;
+      return this;
+    }
+
+    public Builder sketchType(SketchType sketchType, double budget) {
+      this.sketchType = sketchType;
+      this.budget = budget;
+      return this;
+    }
+
+    public Builder sketch(IKMV sketch) {
+      this.sketch = sketch;
+      return this;
+    }
+
+    public Builder cardinality(int cardinality) {
+      this.cardinality = cardinality;
+      return this;
+    }
+
+    public Builder estimator(Correlation estimator) {
+      this.estimator = estimator;
+      return this;
+    }
+
+    public CorrelationSketch build() {
+      return new CorrelationSketch(this);
     }
   }
 }

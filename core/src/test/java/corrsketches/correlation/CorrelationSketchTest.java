@@ -3,9 +3,11 @@ package corrsketches.correlation;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import corrsketches.CorrelationSketch;
+import corrsketches.CorrelationSketch.Builder;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
 import corrsketches.MinhashCorrelationSketch;
+import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.kmv.KMV;
 import corrsketches.util.RandomArrays;
@@ -19,14 +21,12 @@ public class CorrelationSketchTest {
 
   @Test
   public void test() {
-    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
     double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
     CorrelationSketch qsk = new CorrelationSketch(pk, q);
 
-    double delta = 0.1;
-
-    List<String> c4fk = Arrays.asList(new String[] {"a", "b", "c", "z", "x"});
+    List<String> c4fk = Arrays.asList("a", "b", "c", "z", "x");
     double[] c4 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
     //        List<String> c4fk = Arrays.asList(new String[]{"a", "b", "c", "d"});
     //        double[] c4 = new double[]{1.0, 2.0, 3.0, 4.0};
@@ -56,10 +56,10 @@ public class CorrelationSketchTest {
 
   @Test
   public void shouldEstimateCorrelationUsingKMVSketch() {
-    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
     double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> fk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    List<String> fk = Arrays.asList("a", "b", "c", "d", "e");
     double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
     double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
     double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
@@ -77,11 +77,42 @@ public class CorrelationSketchTest {
   }
 
   @Test
+  public void shouldEstimateCorrelationBetweenColumnAggregations() {
+    List<String> kx = Arrays.asList("a", "a", "b", "b", "c", "d");
+    // sum: a=1 b=2 c=3 d=4, mean: a=0.5 b=1 c=3 d=4, count: a=2, c=2, c=1, d=1
+    double[] x = new double[] {-20., 21.0, 1.0, 1.0, 3.0, 4.0};
+
+    List<String> ky = Arrays.asList("a", "b", "c", "d");
+    double[] ysum = new double[] {1.0, 2.0, 3.0, 4.0};
+    double[] ymean = new double[] {0.5, 1.0, 3.0, 4.0};
+    double[] ycount = new double[] {2.0, 2.0, 1.0, 1.0};
+
+    final Builder builder = CorrelationSketch.builder().aggregateFunction(AggregateFunction.FIRST);
+
+    CorrelationSketch csySum = builder.data(ky, ysum).build();
+    CorrelationSketch csyMean = builder.data(ky, ymean).build();
+    CorrelationSketch csyCount = builder.data(ky, ycount).build();
+
+    CorrelationSketch csxSum = builder.data(kx, x).aggregateFunction(AggregateFunction.SUM).build();
+
+    CorrelationSketch csxMean =
+        builder.data(kx, x).aggregateFunction(AggregateFunction.MEAN).build();
+
+    CorrelationSketch csxCount =
+        builder.data(kx, x).aggregateFunction(AggregateFunction.COUNT).build();
+
+    double delta = 0.0001;
+    assertEquals(1.000, csxSum.correlationTo(csySum).coefficient, delta);
+    assertEquals(1.000, csxMean.correlationTo(csyMean).coefficient, delta);
+    assertEquals(1.000, csxCount.correlationTo(csyCount).coefficient, delta);
+  }
+
+  @Test
   public void shouldCreateImmutableCorrelationSketch() {
-    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
     double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> fk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    List<String> fk = Arrays.asList("a", "b", "c", "d", "e");
     double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
     double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
     double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
@@ -112,10 +143,10 @@ public class CorrelationSketchTest {
 
   @Test
   public void shouldCreateImmutableSketch() {
-    List<String> xkeys = Arrays.asList(new String[] {"a", "b", "c", "d", "f"});
+    List<String> xkeys = Arrays.asList("a", "b", "c", "d", "f");
     double[] xvalues = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> ykeys = Arrays.asList(new String[] {"!", "a", "b", "c", "d", "e"});
+    List<String> ykeys = Arrays.asList("!", "a", "b", "c", "d", "e");
     double[] yvalues = new double[] {0.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
     CorrelationSketch xs = new CorrelationSketch(xkeys, xvalues, 5);
@@ -137,10 +168,10 @@ public class CorrelationSketchTest {
   }
 
   @Test
-  public void shouldComputeCorrelationUsingImmutableSketchOnRamdomVectors() {
+  public void shouldComputeCorrelationUsingImmutableSketchOnRandomVectors() {
     Random r = new Random();
 
-    int runs = 5000;
+    int runs = 100;
     long[] runningTimes = new long[runs];
     long[] runningTimesImmutable = new long[runs];
 
@@ -223,10 +254,10 @@ public class CorrelationSketchTest {
 
   @Test
   public void shouldEstimateCorrelation() {
-    List<String> pk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
     double[] q1 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> fk = Arrays.asList(new String[] {"a", "b", "c", "d", "e"});
+    List<String> fk = Arrays.asList("a", "b", "c", "d", "e");
     double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
     double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
     double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};

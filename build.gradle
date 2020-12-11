@@ -6,3 +6,7 @@ plugins {
 repositories {
     mavenCentral()
 }
+
+googleJavaFormat {
+    toolVersion = '1.9'
+}

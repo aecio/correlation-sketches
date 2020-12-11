@@ -1,5 +1,6 @@
 package corrsketches.kmv;
 
+import corrsketches.aggregations.AggregateFunction;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
@@ -10,20 +11,23 @@ import java.util.TreeSet;
  * Implements the KMV synopsis from the paper "On Synopsis for distinct-value estimation under
  * multiset operations" by Beyer et. at, SIGMOD, 2017.
  */
-public class KMV implements IKMV<KMV> {
+public class KMV extends IKMV<KMV> {
 
   public static final int DEFAULT_K = 256;
-
   private final int maxK;
-  private final TreeSet<ValueHash> kMinValues;
-  private double kthValue = Double.MIN_VALUE;
 
+  // TODO: Replace all constructors by a builder class
+  @Deprecated
   public KMV(int k) {
+    this(k, AggregateFunction.FIRST);
+  }
+
+  public KMV(int k, AggregateFunction function) {
+    super(k, function);
     if (k < 1) {
       throw new IllegalArgumentException("Minimum k size is 1, but larger is recommended.");
     }
     this.maxK = k;
-    this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
   }
 
   public static KMV create(List<String> keys, double[] values) {
@@ -31,22 +35,23 @@ public class KMV implements IKMV<KMV> {
   }
 
   public static KMV create(List<String> keys, double[] values, int k) {
-    if (keys.size() != values.length) {
-      throw new IllegalArgumentException(
-          String.format(
-              "keys and values must have same size. keys.size=[%d] values.size=[%d]",
-              keys.size(), values.length));
-    }
-    KMV kmv = new KMV(k);
-    kmv.updateAll(keys, values);
-    return kmv;
+    return create(keys, values, k, AggregateFunction.FIRST);
   }
 
-  public static KMV fromStringHashedKeys(String[] hashes, double[] values) {
-    KMV kmv = new KMV(hashes.length);
-    for (int i = 0; i < hashes.length; i++) {
-      kmv.update(Integer.parseInt(hashes[i]), values[i]);
+  public static KMV create(List<String> keys, double[] values, AggregateFunction function) {
+    return create(keys, values, DEFAULT_K, function);
+  }
+
+  public static KMV create(List<String> keys, double[] values, int k, AggregateFunction function) {
+    if (keys.size() != values.length) {
+      final String msg =
+          String.format(
+              "keys and values must have same size. keys.size=[%d] values.size=[%d]",
+              keys.size(), values.length);
+      throw new IllegalArgumentException(msg);
     }
+    KMV kmv = new KMV(k, function);
+    kmv.updateAll(keys, values);
     return kmv;
   }
 
@@ -60,31 +65,27 @@ public class KMV implements IKMV<KMV> {
   }
 
   /** Updates the KMV synopsis with the given hashed key */
+  @Override
   public void update(int hash, double value) {
-    double hu = Hashes.grm(hash);
+    final double hu = Hashes.grm(hash);
     if (kMinValues.size() < maxK) {
-      kMinValues.add(new ValueHash(hash, hu, value));
+      ValueHash vh = createOrUpdateValueHash(hash, value, hu);
+      kMinValues.add(vh);
       if (hu > kthValue) {
         kthValue = hu;
       }
     } else if (hu < kthValue) {
-      kMinValues.add(new ValueHash(hash, hu, value));
-      kMinValues.remove(kMinValues.last());
+      ValueHash vh = createOrUpdateValueHash(hash, value, hu);
+      kMinValues.add(vh);
+      ValueHash toBeRemoved = kMinValues.last();
+      kMinValues.remove(toBeRemoved);
+      valueHashMap.remove(toBeRemoved.keyHash);
       kthValue = kMinValues.last().unitHash;
     }
   }
 
-  /** The improved (unbiased) distinct value estimator (UB) from Beyer et. al., SIGMOD 2007. */
-  public double distinctValues() {
-    return (kMinValues.size() - 1.0) / kthValue;
-  }
-
-  /** Basic distinct value estimator (BE) from Beyer et. al., SIGMOD 2007. */
-  public double distinctValuesBE() {
-    return kMinValues.size() / kthValue;
-  }
-
   /** Estimates the size of union of the given KMV synopsis */
+  @Override
   public double unionSize(KMV other) {
     int k = computeK(this, other);
     double kthValue = kthValueOfUnion(this.kMinValues, other.kMinValues);
@@ -92,14 +93,15 @@ public class KMV implements IKMV<KMV> {
   }
 
   /** Estimates the Jaccard similarity using the p = K_e / k estimator from Beyer et. al. (2007) */
+  @Override
   public double jaccard(KMV other) {
     int k = computeK(this, other);
     int intersection = intersectionSize(this.kMinValues, other.kMinValues);
-    double js = intersection / (double) k;
-    return js;
+    return intersection / (double) k;
   }
 
   /** Estimates intersection between the sets represented by this synopsis and the other. */
+  @Override
   public double intersectionSize(KMV other) {
     int k = computeK(this, other);
     // p is an unbiased estimate of the jaccard similarity
@@ -138,10 +140,6 @@ public class KMV implements IKMV<KMV> {
               xSize, ySize));
     }
     return k;
-  }
-
-  public TreeSet<ValueHash> getKMinValues() {
-    return this.kMinValues;
   }
 
   @Override

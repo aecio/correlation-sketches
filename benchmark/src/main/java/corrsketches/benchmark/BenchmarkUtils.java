@@ -1,12 +1,11 @@
 package corrsketches.benchmark;
 
-import com.google.common.collect.ArrayListMultimap;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
-import corrsketches.SketchType;
+import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
-import corrsketches.benchmark.MetricsResult.Correlations;
+import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
 import corrsketches.benchmark.PerfResult.ComputingTime;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.BootstrapedPearson;
@@ -16,16 +15,12 @@ import corrsketches.correlation.PearsonCorrelation;
 import corrsketches.correlation.QnCorrelation;
 import corrsketches.correlation.RinCorrelation;
 import corrsketches.correlation.SpearmanCorrelation;
-import corrsketches.kmv.GKMV;
-import corrsketches.kmv.IKMV;
-import corrsketches.kmv.KMV;
 import corrsketches.statistics.Kurtosis;
 import corrsketches.statistics.Stats;
 import corrsketches.statistics.Stats.Extent;
 import corrsketches.statistics.Variance;
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -33,37 +28,44 @@ public class BenchmarkUtils {
 
   public static final int minimumIntersection = 3; // minimum sample size for correlation is 2
 
-  public static List<PerfResult> computePerformanceStatistics(
-      ColumnPair x, ColumnPair y, List<SketchParams> sketchParams) {
-    PerfResult result = new PerfResult();
+  public static List<PerfResult> measurePerformance(
+      ColumnPair x,
+      ColumnPair y,
+      List<SketchParams> sketchParams,
+      List<AggregateFunction> functions) {
 
-    computeJoinPerformance(x, y, result);
+    List<PerfResult> fullJoinResults = measurePerformanceOnFullJoin(x, y, functions);
 
     List<PerfResult> results = new ArrayList<>();
-    if (result.interxy_actual >= minimumIntersection) {
+    for (PerfResult r : fullJoinResults) {
       for (SketchParams params : sketchParams) {
-        results.add(computeSketchPerformance(result.clone(), x, y, params));
+        results.add(measureSketchPerformance(r.clone(), x, y, params, r.aggregate));
       }
     }
 
     return results;
   }
 
-  public static PerfResult computeSketchPerformance(
-      PerfResult result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
+  public static PerfResult measureSketchPerformance(
+      PerfResult result,
+      ColumnPair x,
+      ColumnPair y,
+      SketchParams sketchParams,
+      AggregateFunction function) {
+
     // create correlation sketches for the data
     long time0 = System.nanoTime();
-    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, function);
     result.build_x_time = System.nanoTime() - time0;
 
     time0 = System.nanoTime();
-    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
+    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, function);
     result.build_y_time = System.nanoTime() - time0;
 
     result.build_time = result.build_x_time + result.build_y_time;
 
-    ImmutableCorrelationSketch iSketchX = createCorrelationSketch(x, sketchParams).toImmutable();
-    ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
+    ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
+    ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
 
     time0 = System.nanoTime();
     Paired paired = iSketchX.intersection(iSketchY);
@@ -106,61 +108,85 @@ public class BenchmarkUtils {
     return result;
   }
 
-  static void computeJoinPerformance(ColumnPair x, ColumnPair y, PerfResult result) {
+  static List<PerfResult> measurePerformanceOnFullJoin(
+      ColumnPair x, ColumnPair y, List<AggregateFunction> functions) {
+
+    PerfResult result = new PerfResult();
+
     HashSet<String> xKeys = new HashSet<>(x.keyValues);
     HashSet<String> yKeys = new HashSet<>(y.keyValues);
     result.cardx_actual = xKeys.size();
     result.cardy_actual = yKeys.size();
-
     result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
 
     // No need compute any statistics when there is not intersection
     if (result.interxy_actual < minimumIntersection) {
-      return;
+      return Collections.emptyList();
     }
 
     // correlation ground-truth
-    result.time = timedComputePearsonAfterJoin(x, y);
+    List<MetricsResult> groundTruthResults =
+        computeCorrelationsAfterJoin(x, y, functions, new MetricsResult());
+
+    List<PerfResult> perfResults = new ArrayList<>();
+    for (MetricsResult r : groundTruthResults) {
+      PerfResult p = result.clone();
+      p.time = r.time;
+      p.aggregate = r.aggregate;
+      perfResults.add(p);
+    }
+
+    return perfResults;
   }
 
   public static List<MetricsResult> computeStatistics(
-      ColumnPair x, ColumnPair y, List<SketchParams> sketchParams) {
+      ColumnPair x,
+      ColumnPair y,
+      List<SketchParams> sketchParams,
+      List<AggregateFunction> functions) {
 
-    MetricsResult result = new MetricsResult();
-
-    // compute ground-truth statistics
-    computeStatisticsGroundTruth(x, y, result);
+    List<MetricsResult> groundTruthResults = computeFullJoinStatistics(x, y, functions);
 
     List<MetricsResult> results = new ArrayList<>();
-    if (result.interxy_actual >= minimumIntersection) {
+    for (MetricsResult result : groundTruthResults) {
       for (SketchParams params : sketchParams) {
-        results.add(computeSketchStatistics(result.clone(), x, y, params));
+        results.add(computeSketchStatistics(result.clone(), x, y, params, result.aggregate));
       }
     }
 
     return results;
   }
 
-  private static void computeStatisticsGroundTruth(
-      ColumnPair x, ColumnPair y, MetricsResult result) {
+  private static List<MetricsResult> computeFullJoinStatistics(
+      ColumnPair x, ColumnPair y, List<AggregateFunction> functions) {
+
+    MetricsResult result = new MetricsResult();
+
     HashSet<String> xKeys = new HashSet<>(x.keyValues);
     HashSet<String> yKeys = new HashSet<>(y.keyValues);
     result.cardx_actual = xKeys.size();
     result.cardy_actual = yKeys.size();
-
     result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
 
     // No need compute any statistics when there is not intersection
     if (result.interxy_actual < minimumIntersection) {
-      return;
+      return Collections.emptyList();
     }
 
     result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
-
     result.jcx_actual = result.interxy_actual / (double) result.cardx_actual;
     result.jcy_actual = result.interxy_actual / (double) result.cardy_actual;
-
     result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
+
+    // statistics derived from the original numeric data columns
+    computeNumericColumnStatistics(x, y, result);
+
+    // correlation ground-truth after join-aggregations
+    return computeCorrelationsAfterJoin(x, y, functions, result);
+  }
+
+  private static void computeNumericColumnStatistics(
+      ColumnPair x, ColumnPair y, MetricsResult result) {
 
     result.kurtx_g2_actual = Kurtosis.g2(x.columnValues);
     result.kurty_g2_actual = Kurtosis.g2(y.columnValues);
@@ -172,34 +198,30 @@ public class BenchmarkUtils {
     final Extent extentY = Stats.extent(y.columnValues);
     result.y_min = extentY.min;
     result.y_max = extentY.max;
-
-    // correlation ground-truth
-    Correlations corrs = computePearsonAfterJoin(x, y);
-    result.corr_rp_actual = corrs.pearsons;
-    result.corr_rqn_actual = corrs.qn;
-    result.corr_rin_actual = corrs.rin;
-    result.corr_rs_actual = corrs.spearman;
   }
 
-  public static CorrelationSketch createCorrelationSketch(ColumnPair x, SketchParams sketchParams) {
-    IKMV kmv;
-    if (sketchParams.type == SketchType.KMV) {
-      kmv = KMV.create(x.keyValues, x.columnValues, (int) sketchParams.budget);
-    } else {
-      kmv = GKMV.create(x.keyValues, x.columnValues, sketchParams.budget);
-    }
-    return CorrelationSketch.create(kmv);
+  public static CorrelationSketch createCorrelationSketch(
+      ColumnPair cp, SketchParams sketchParams, AggregateFunction function) {
+    return CorrelationSketch.builder()
+        .aggregateFunction(function)
+        .sketchType(sketchParams.type, sketchParams.budget)
+        .data(cp.keyValues, cp.columnValues)
+        .build();
   }
 
   public static MetricsResult computeSketchStatistics(
-      MetricsResult result, ColumnPair x, ColumnPair y, SketchParams sketchParams) {
+      MetricsResult result,
+      ColumnPair x,
+      ColumnPair y,
+      SketchParams sketchParams,
+      AggregateFunction function) {
 
     // create correlation sketches for the data
-    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams);
-    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, function);
+    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, function);
 
-    ImmutableCorrelationSketch iSketchX = createCorrelationSketch(x, sketchParams).toImmutable();
-    ImmutableCorrelationSketch iSketchY = createCorrelationSketch(y, sketchParams).toImmutable();
+    ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
+    ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
     Paired paired = iSketchX.intersection(iSketchY);
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
@@ -305,132 +327,51 @@ public class BenchmarkUtils {
     result.unionxy_est = sketchX.unionSize(sketchY);
   }
 
-  public static Correlations computePearsonAfterJoin(ColumnPair query, ColumnPair column) {
+  public static List<MetricsResult> computeCorrelationsAfterJoin(
+      ColumnPair columnA,
+      ColumnPair columnB,
+      List<AggregateFunction> functions,
+      MetricsResult result) {
 
-    ColumnPair columnA = query;
-    ColumnPair columnB = column;
-
-    // create index for primary key in column B
-    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
-    for (int i = 0; i < columnB.keyValues.size(); i++) {
-      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
-    }
-
-    // loop over column B creating to new vectors index for primary key in column B
-    DoubleList joinValuesA = new DoubleArrayList();
-    DoubleList joinValuesB = new DoubleArrayList();
-    for (int i = 0; i < columnA.keyValues.size(); i++) {
-      String keyA = columnA.keyValues.get(i);
-      double valueA = columnA.columnValues[i];
-      List<Double> rowsB = columnMapB.get(keyA);
-      if (rowsB != null && !rowsB.isEmpty()) {
-        // TODO: We should properly handle cases where 1:N relationships happen.
-        // We could could consider the correlation of valueA with an any aggregation function of the
-        // list of values from B, e.g. mean, max, sum, count, etc.
-        // Currently we are considering only the first seen value, and ignoring everything else,
-        // similarly to the correlation sketch implementation.
-        joinValuesA.add(valueA);
-        joinValuesB.add(rowsB.get(0).doubleValue());
-      }
-    }
-
-    // correlation is defined only for vectors of length at least two
-    Correlations correlations = new Correlations();
-    if (joinValuesA.size() < 2) {
-      correlations.pearsons = Double.NaN;
-      correlations.qn = Double.NaN;
-      correlations.spearman = Double.NaN;
-      correlations.rin = Double.NaN;
-    } else {
-      double[] joinedA = joinValuesA.toDoubleArray();
-      double[] joinedB = joinValuesB.toDoubleArray();
-      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
-      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
-      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
-      try {
-        correlations.qn = QnCorrelation.correlation(joinedA, joinedB);
-      } catch (Exception e) {
-        correlations.qn = Double.NaN;
-        System.out.printf(
-            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
-                + "Array length after join is %d.\n",
-            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
-        System.out.printf("Error stack trace: %s\n", e.toString());
-      }
-    }
-
-    return correlations;
-  }
-
-  public static ComputingTime timedComputePearsonAfterJoin(ColumnPair query, ColumnPair column) {
-    ComputingTime time = new ComputingTime();
-
-    ColumnPair columnA = query;
-    ColumnPair columnB = column;
     long time0 = System.nanoTime();
-
-    // create index for primary key in column B
-    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
-    for (int i = 0; i < columnB.keyValues.size(); i++) {
-      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
-    }
-
-    // loop over column B creating to new vectors index for primary key in column B
-    DoubleList joinValuesA = new DoubleArrayList();
-    DoubleList joinValuesB = new DoubleArrayList();
-    for (int i = 0; i < columnA.keyValues.size(); i++) {
-      String keyA = columnA.keyValues.get(i);
-      double valueA = columnA.columnValues[i];
-      List<Double> rowsB = columnMapB.get(keyA);
-      if (rowsB != null && !rowsB.isEmpty()) {
-        // TODO: We should properly handle cases where 1:N relationships happen.
-        // We could could consider the correlation of valueA with an any aggregation function of the
-        // list of values from B, e.g. mean, max, sum, count, etc.
-        // Currently we are considering only the first seen value, and ignoring everything else,
-        // similarly to the correlation sketch implementation.
-        joinValuesA.add(valueA);
-        joinValuesB.add(rowsB.get(0).doubleValue());
-      }
-    }
-    time.join = System.nanoTime() - time0;
+    NumericJoinAggregation join = JoinAggregation.numericJoinAggregate(columnA, columnB, functions);
+    final long joinTime = System.nanoTime() - time0;
 
     // correlation is defined only for vectors of length at least two
-    Correlations correlations = new Correlations();
-    if (joinValuesA.size() < 2) {
-      correlations.pearsons = Double.NaN;
-      correlations.qn = Double.NaN;
-      correlations.spearman = Double.NaN;
-      correlations.rin = Double.NaN;
-    } else {
-      double[] joinedA = joinValuesA.toDoubleArray();
-      double[] joinedB = joinValuesB.toDoubleArray();
-
-      time0 = System.nanoTime();
-      correlations.spearman = SpearmanCorrelation.coefficient(joinedA, joinedB);
-      time.spearmans = System.nanoTime() - time0;
-
-      time0 = System.nanoTime();
-      correlations.pearsons = PearsonCorrelation.coefficient(joinedA, joinedB);
-      time.pearsons = System.nanoTime() - time0;
-
-      time0 = System.nanoTime();
-      correlations.rin = RinCorrelation.coefficient(joinedA, joinedB);
-      time.rin = System.nanoTime() - time0;
-
-      try {
-        time0 = System.nanoTime();
-        correlations.qn = QnCorrelation.correlation(joinedA, joinedB);
-        time.qn = System.nanoTime() - time0;
-      } catch (Exception e) {
-        correlations.qn = Double.NaN;
-        System.out.printf(
-            "Computation of Qn correlation failed for query id=%s [%s]] and column id=%s [%s]. "
-                + "Array length after join is %d.\n",
-            query.id(), query.toString(), column.id(), column.toString(), joinedA.length);
-        System.out.printf("Error stack trace: %s\n", e.toString());
-      }
+    if (join.valuesA.size() < minimumIntersection) {
+      return Collections.emptyList();
     }
 
-    return time;
+    List<MetricsResult> results = new ArrayList<>(functions.size());
+
+    double[] joinedA = join.valuesA.toDoubleArray();
+    for (int i = 0; i < join.valuesB.length; i++) {
+
+      double[] joinedB = join.valuesB[i].toDoubleArray();
+
+      MetricsResult r = result.clone();
+      r.aggregate = functions.get(i);
+      r.time = new ComputingTime();
+      r.time.join = joinTime;
+
+      time0 = System.nanoTime();
+      r.corr_rs_actual = SpearmanCorrelation.coefficient(joinedA, joinedB);
+      r.time.spearmans = System.nanoTime() - time0;
+
+      time0 = System.nanoTime();
+      r.corr_rp_actual = PearsonCorrelation.coefficient(joinedA, joinedB);
+      r.time.pearsons = System.nanoTime() - time0;
+
+      time0 = System.nanoTime();
+      r.corr_rin_actual = RinCorrelation.coefficient(joinedA, joinedB);
+      r.time.rin = System.nanoTime() - time0;
+
+      time0 = System.nanoTime();
+      r.corr_rqn_actual = QnCorrelation.correlation(joinedA, joinedB);
+      r.time.qn = System.nanoTime() - time0;
+
+      results.add(r);
+    }
+    return results;
   }
 }
