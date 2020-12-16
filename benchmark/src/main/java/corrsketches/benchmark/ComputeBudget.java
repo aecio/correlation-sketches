@@ -16,7 +16,7 @@ public class ComputeBudget extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "ComputeBudget";
 
-  public static final Kryos<ColumnPair> KRYO = new Kryos(ColumnPair.class);
+  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
   @Required
   @Option(name = "--input-path", description = "Folder containing the column store")

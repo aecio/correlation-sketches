@@ -7,7 +7,7 @@ import com.github.rvesse.airline.model.MetadataLoader;
 import com.github.rvesse.airline.parser.errors.ParseException;
 import java.io.IOException;
 
-public abstract class CliTool extends HelpOption implements Runnable {
+public abstract class CliTool extends HelpOption<CliTool> implements Runnable {
 
   public void run() {
     try {

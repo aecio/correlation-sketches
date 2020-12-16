@@ -8,9 +8,9 @@ public enum AggregateFunction {
   LAST((previous, current) -> current),
   MAX(Math::max),
   MIN(Math::min),
-  SUM(((previous, current) -> previous + current)),
-  MEAN(() -> new Mean()),
-  COUNT(() -> new Count());
+  SUM(Double::sum),
+  MEAN(Mean::new),
+  COUNT(Count::new);
 
   private final AggregatorProvider provider;
 
@@ -61,8 +61,7 @@ public enum AggregateFunction {
     @Override
     public double update(double previous, double current) {
       n++;
-      final double avg = previous + ((current - previous) / n);
-      return avg;
+      return previous + ((current - previous) / n);
     }
   }
 

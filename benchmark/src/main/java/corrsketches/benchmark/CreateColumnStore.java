@@ -29,7 +29,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "CreateColumnStore";
 
-  public static final Kryos<ColumnPair> KRYO = new Kryos(ColumnPair.class);
+  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
   public static final String COLUMNS_KEY = "columns";
   public static final String DBTYPE_KEY = "dbtype";
 
@@ -46,7 +46,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
   @Option(
       name = "--db-backend",
-      description = "The type key-value store databaset: LEVELDB or ROCKSDB")
+      description = "The type key-value store database: LEVELDB or ROCKSDB")
   DBType dbType = DBType.ROCKSDB;
 
   public static void main(String[] args) {

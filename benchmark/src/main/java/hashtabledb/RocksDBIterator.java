@@ -11,7 +11,7 @@ public class RocksDBIterator implements CloseableIterator<KV<byte[], byte[]>> {
   private boolean isOpen;
   private byte[] value;
   private byte[] key;
-  private RocksDB db;
+  private final RocksDB db;
 
   public RocksDBIterator(RocksDB db) {
     this.db = db;

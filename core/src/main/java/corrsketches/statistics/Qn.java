@@ -102,14 +102,10 @@ public class Qn {
       }
 
       if (knew <= sumP) {
-        for (int i = 0; i < n; i++) {
-          right[i] = P[i];
-        }
+        System.arraycopy(P, 0, right, 0, n);
         nR = sumP;
       } else if (knew > sumQ) {
-        for (int i = 0; i < n; i++) {
-          left[i] = Q[i];
-        }
+        System.arraycopy(Q, 0, left, 0, n);
         nL = sumQ;
       } else {
         Qn = trial;
@@ -166,12 +162,11 @@ public class Qn {
       dn = 1.0 / (dn / (double) n + 1.0);
     }
 
-    double correctedQn = Qn * dn * GAUSSIAN_CONSISTENCY_FACTOR;
-    return correctedQn;
+    return Qn * dn * GAUSSIAN_CONSISTENCY_FACTOR;
   }
 
   public QnEstimate estimateScaleWithError(double[] x) {
-    double qn = this.estimateScale(x);
+    double qn = estimateScale(x);
     double error = qn / Math.sqrt(2.0 * (x.length - 1) * 0.8227);
     return new QnEstimate(qn, error);
   }

@@ -10,8 +10,8 @@ import java.util.Random;
 import java.util.Set;
 
 public class ColumnCombination {
-  public String x;
-  public String y;
+  public final String x;
+  public final String y;
 
   public ColumnCombination(String x, String y) {
     this.x = x;
@@ -62,9 +62,9 @@ public class ColumnCombination {
    */
   static class Sampler<T> {
 
-    private Random random;
-    private int numSamples;
-    private List<T> reservoir;
+    private final Random random;
+    private final int numSamples;
+    private final List<T> reservoir;
     int numItemsSeen = 0;
 
     public Sampler(int numSamples) {

@@ -11,11 +11,11 @@ import java.util.List;
 
 public class MinhashCorrelationSketch {
 
-  private static MinwiseHasher minHasher = new MinwiseHasher(64);
-  private static Hashes hashFunction = new Hashes();
+  private static final MinwiseHasher minHasher = new MinwiseHasher(64);
+  private static final Hashes hashFunction = new Hashes();
 
-  private int[] minhashes;
-  private double[] values;
+  private final int[] minhashes;
+  private final double[] values;
 
   public MinhashCorrelationSketch(List<String> keys, double[] values, int numberOfHashes) {
     this(new MinwiseHasher(numberOfHashes).signature(hashFunction.murmur3_32(keys)), values);

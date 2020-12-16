@@ -2,8 +2,8 @@ package hashtabledb;
 
 public class KV<K, V> {
 
-  private K key;
-  private V value;
+  private final K key;
+  private final V value;
 
   public KV(K key, V value) {
     this.key = key;

@@ -110,8 +110,8 @@ public class SketchIndex {
 
     // add keys to document
     final int[] keys = immutable.getKeys();
-    for (int i = 0; i < keys.length; i++) {
-      doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(keys[i]), Field.Store.YES));
+    for (int key : keys) {
+      doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(key), Field.Store.YES));
     }
 
     // add values to documents
@@ -203,8 +203,8 @@ public class SketchIndex {
   protected static byte[] toByteArray(double[] value) {
     byte[] bytes = new byte[8 * value.length];
     ByteBuffer bb = ByteBuffer.wrap(bytes);
-    for (int i = 0; i < value.length; i++) {
-      bb.putDouble(value[i]);
+    for (double v : value) {
+      bb.putDouble(v);
     }
     return bytes;
   }

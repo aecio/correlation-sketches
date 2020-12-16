@@ -1,11 +1,11 @@
 package hashtabledb;
 
 import java.io.Closeable;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 public abstract class AbstractDbHashtable implements Closeable {
 
-  protected HashtableBackend db;
+  protected final HashtableBackend db;
 
   public AbstractDbHashtable(DBType backend, String path) {
     if (backend == DBType.ROCKSDB) {
@@ -45,19 +45,11 @@ public abstract class AbstractDbHashtable implements Closeable {
   }
 
   static byte[] stringToBytes(String value) {
-    try {
-      return value.getBytes("UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new IllegalStateException("UTF-8 encoding not supported", e);
-    }
+    return value.getBytes(StandardCharsets.UTF_8);
   }
 
   static String bytesToString(byte[] bytes) {
-    try {
-      return new String(bytes, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new IllegalStateException("UTF-8 encoding not supported", e);
-    }
+    return new String(bytes, StandardCharsets.UTF_8);
   }
 
   protected CloseableIterator<KV<byte[], byte[]>> createIterator() {

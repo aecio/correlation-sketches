@@ -13,14 +13,9 @@ import java.io.ByteArrayOutputStream;
  */
 public class Kryos<T> {
 
-  private static final ThreadLocal<Kryo> KRYOS =
-      new ThreadLocal<Kryo>() {
-        protected Kryo initialValue() {
-          return new Kryo();
-        }
-      };
+  private static final ThreadLocal<Kryo> KRYOS = ThreadLocal.withInitial(Kryo::new);
 
-  private Class<T> contentClass;
+  private final Class<T> contentClass;
 
   public Kryos(Class<T> contentClass) {
     this.contentClass = contentClass;

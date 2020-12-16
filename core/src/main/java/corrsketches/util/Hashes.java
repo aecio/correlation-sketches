@@ -18,7 +18,7 @@ public class Hashes {
       0.6180339887498949025; // the inverse golden ratio
 
   //    private static double GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;
-  private static double GOLDEN_RATIO = INVERSE_GOLDEN_RATIO + 1;
+  private static final double GOLDEN_RATIO = INVERSE_GOLDEN_RATIO + 1;
 
   /**
    * Computes the 32-bits murmur3 hash functions of all given values.

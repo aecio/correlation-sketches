@@ -5,7 +5,7 @@ import smile.sort.SortUtils;
 public class QuickSort {
 
   private static final int M = 7;
-  private static int NSTACK = 64;
+  private static final int NSTACK = 64;
 
   /**
    * Besides sorting the array arr, the array brr will be also rearranged as the same order of arr.

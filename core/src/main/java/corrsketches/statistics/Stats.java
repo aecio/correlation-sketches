@@ -13,8 +13,8 @@ public class Stats {
    */
   public static double mean(long[] x) {
     long sum = 0;
-    for (int i = 0; i < x.length; i++) {
-      sum += x[i];
+    for (long l : x) {
+      sum += l;
     }
     return sum / (double) x.length;
   }
@@ -44,8 +44,7 @@ public class Stats {
   public static Extent extent(final double[] xarr) {
     double max = Double.NEGATIVE_INFINITY;
     double min = Double.POSITIVE_INFINITY;
-    for (int i = 0; i < xarr.length; i++) {
-      final double x = xarr[i];
+    for (final double x : xarr) {
       if (x < min) {
         min = x;
       }

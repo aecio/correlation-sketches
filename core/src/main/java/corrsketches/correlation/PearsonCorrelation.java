@@ -100,10 +100,9 @@ public class PearsonCorrelation {
   }
 
   private static double tScore(double coefficient, int sampleSize) {
-    double r = Math.abs(coefficient); // TODO: is this correct?
-    int n = sampleSize;
-    double t = r * Math.sqrt((n - 2) / (1 - r * r));
-    return t;
+    final double r = Math.abs(coefficient); // TODO: is this correct?
+    final int n = sampleSize;
+    return r * Math.sqrt((n - 2) / (1 - r * r));
   }
 
   @SuppressWarnings("unused")
@@ -150,8 +149,7 @@ public class PearsonCorrelation {
    * @return z, the Fisher's z-transformation
    */
   private static double rtoz(double r) {
-    double z = 0.5 * Math.log((1 + r) / (1 - r));
-    return z;
+    return 0.5 * Math.log((1 + r) / (1 - r));
   }
 
   /**

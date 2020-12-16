@@ -3,6 +3,7 @@ package corrsketches.benchmark;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,14 +23,11 @@ public class Tables {
 
   public static List<String> findAllCSVs(String basePath) throws IOException {
 
-    List<String> allFiles =
-        Files.walk(Paths.get(basePath))
-            .filter(p -> p.toString().endsWith(".csv"))
-            .filter(Files::isRegularFile)
-            .map(p -> p.toString())
-            .collect(Collectors.toList());
-
-    return allFiles;
+    return Files.walk(Paths.get(basePath))
+        .filter(p -> p.toString().endsWith(".csv"))
+        .filter(Files::isRegularFile)
+        .map(Path::toString)
+        .collect(Collectors.toList());
   }
 
   public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
@@ -138,15 +136,13 @@ public class Tables {
   }
 
   private static Table readTable(Builder csvReadOptionsBuilder) throws IOException {
-    Table table =
-        Table.read()
-            .csv(
-                csvReadOptionsBuilder
-                    .sample(true)
-                    .sampleSize(5_000_000)
-                    .maxCharsPerColumn(10_000)
-                    .missingValueIndicator("-"));
-    return table;
+    return Table.read()
+        .csv(
+            csvReadOptionsBuilder
+                .sample(true)
+                .sampleSize(5_000_000)
+                .maxCharsPerColumn(10_000)
+                .missingValueIndicator("-"));
   }
 
   public static List<Set<String>> readAllKeyColumns(String dataset) throws IOException {
@@ -155,9 +151,8 @@ public class Tables {
     List<Set<String>> allColumns = new ArrayList<>();
     for (CategoricalColumn<String> column : categoricalColumns) {
       Set<String> keySet = new HashSet<>();
-      Iterator<String> it = column.iterator();
-      while (it.hasNext()) {
-        keySet.add(it.next());
+      for (String s : column) {
+        keySet.add(s);
       }
       allColumns.add(keySet);
     }
@@ -173,8 +168,8 @@ public class Tables {
 
   static class ColumnEntry {
 
-    CategoricalColumn<?> key;
-    NumericColumn<?> column;
+    final CategoricalColumn<?> key;
+    final NumericColumn<?> column;
 
     ColumnEntry(CategoricalColumn<?> key, NumericColumn<?> column) {
       this.key = key;

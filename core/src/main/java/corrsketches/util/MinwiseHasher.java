@@ -13,7 +13,7 @@ public class MinwiseHasher {
   public int[] coeffA;
   public int[] coeffB;
   public int numOfHashes;
-  private int seed;
+  private final int seed;
 
   /**
    * Creates a family of universal hash functions. Uses a fixed seed number (chosen randomly) to
@@ -62,7 +62,7 @@ public class MinwiseHasher {
 
   private int[] pickRandCoefficients(int k) {
     int[] rands = new int[k];
-    HashSet<Integer> seen = new HashSet<Integer>(k);
+    HashSet<Integer> seen = new HashSet<>(k);
     Random random = new Random(seed);
     int i = 0;
     while (k > 0) {

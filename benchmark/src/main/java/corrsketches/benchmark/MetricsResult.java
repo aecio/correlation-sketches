@@ -87,86 +87,85 @@ public class MetricsResult implements Cloneable {
   public AggregateFunction aggregate;
 
   public static String csvHeader() {
-    return String.format(
-        ""
-            // jaccard
-            + "jcx_est,"
-            + "jcy_est,"
-            + "jcx_actual,"
-            + "jcy_actual,"
-            + "jsxy_est,"
-            + "jsxy_actual,"
-            // cardinalities
-            + "cardx_est,"
-            + "cardx_actual,"
-            + "cardy_est,"
-            + "cardy_actual,"
-            // set statistics
-            + "interxy_est,"
-            + "interxy_actual,"
-            + "unionxy_est,"
-            + "unionxy_actual,"
-            // Correlation sample size
-            + "corr_est_sample_size,"
-            // Pearson's correlations
-            + "corr_rp_est,"
-            + "corr_rp_actual,"
-            + "corr_rp_delta,"
-            // Pearson's Fisher CI
-            //              + "corr_rp_est_pvalue2t,"
-            //              + "corr_rp_est_fisher_ub,"
-            //              + "corr_rp_est_fisher_lb,"
-            // Qn correlations
-            + "corr_rqn_est,"
-            + "corr_rqn_actual,"
-            + "corr_rqn_delta,"
-            // Spearman correlations
-            + "corr_rs_est,"
-            + "corr_rs_actual,"
-            + "corr_rs_delta,"
-            // RIN correlations
-            + "corr_rin_est,"
-            + "corr_rin_actual,"
-            + "corr_rin_delta,"
-            // PM1 bootstrap
-            + "corr_pm1_mean,"
-            + "corr_pm1_mean_delta,"
-            + "corr_pm1_median,"
-            + "corr_pm1_median_delta,"
-            + "corr_pm1_lb,"
-            + "corr_pm1_ub,"
-            // Kurtosis
-            + "kurtx_g2_actual,"
-            + "kurtx_g2,"
-            + "kurtx_G2,"
-            + "kurtx_k5,"
-            + "kurty_g2_actual,"
-            + "kurty_g2,"
-            + "kurty_G2,"
-            + "kurty_k5,"
-            // Variable sample extents
-            + "y_min_sample,"
-            + "y_max_sample,"
-            + "x_min_sample,"
-            + "x_max_sample,"
-            // Variable extents
-            + "x_min,"
-            + "x_max,"
-            + "y_min,"
-            + "y_max,"
-            // Variable sample means and variances
-            + "x_sample_mean,"
-            + "y_sample_mean,"
-            + "x_sample_var,"
-            + "y_sample_var,"
-            // Sum of squares of variables' samples
-            + "nu_xy,"
-            + "nu_x,"
-            + "nu_y,"
-            // others
-            + "parameters,"
-            + "aggregate,"
-            + "column");
+    return ""
+        // jaccard
+        + "jcx_est,"
+        + "jcy_est,"
+        + "jcx_actual,"
+        + "jcy_actual,"
+        + "jsxy_est,"
+        + "jsxy_actual,"
+        // cardinalities
+        + "cardx_est,"
+        + "cardx_actual,"
+        + "cardy_est,"
+        + "cardy_actual,"
+        // set statistics
+        + "interxy_est,"
+        + "interxy_actual,"
+        + "unionxy_est,"
+        + "unionxy_actual,"
+        // Correlation sample size
+        + "corr_est_sample_size,"
+        // Pearson's correlations
+        + "corr_rp_est,"
+        + "corr_rp_actual,"
+        + "corr_rp_delta,"
+        // Pearson's Fisher CI
+        //              + "corr_rp_est_pvalue2t,"
+        //              + "corr_rp_est_fisher_ub,"
+        //              + "corr_rp_est_fisher_lb,"
+        // Qn correlations
+        + "corr_rqn_est,"
+        + "corr_rqn_actual,"
+        + "corr_rqn_delta,"
+        // Spearman correlations
+        + "corr_rs_est,"
+        + "corr_rs_actual,"
+        + "corr_rs_delta,"
+        // RIN correlations
+        + "corr_rin_est,"
+        + "corr_rin_actual,"
+        + "corr_rin_delta,"
+        // PM1 bootstrap
+        + "corr_pm1_mean,"
+        + "corr_pm1_mean_delta,"
+        + "corr_pm1_median,"
+        + "corr_pm1_median_delta,"
+        + "corr_pm1_lb,"
+        + "corr_pm1_ub,"
+        // Kurtosis
+        + "kurtx_g2_actual,"
+        + "kurtx_g2,"
+        + "kurtx_G2,"
+        + "kurtx_k5,"
+        + "kurty_g2_actual,"
+        + "kurty_g2,"
+        + "kurty_G2,"
+        + "kurty_k5,"
+        // Variable sample extents
+        + "y_min_sample,"
+        + "y_max_sample,"
+        + "x_min_sample,"
+        + "x_max_sample,"
+        // Variable extents
+        + "x_min,"
+        + "x_max,"
+        + "y_min,"
+        + "y_max,"
+        // Variable sample means and variances
+        + "x_sample_mean,"
+        + "y_sample_mean,"
+        + "x_sample_var,"
+        + "y_sample_var,"
+        // Sum of squares of variables' samples
+        + "nu_xy,"
+        + "nu_x,"
+        + "nu_y,"
+        // others
+        + "parameters,"
+        + "aggregate,"
+        + "column";
   }
 
   public String csvLine() {

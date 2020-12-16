@@ -9,8 +9,8 @@ public class ValueHash {
   public static final Comparator<ValueHash> COMPARATOR_ASC = new UnitHashComparatorAscending();
 
   public final Aggregator aggregator;
-  public int keyHash;
-  public double unitHash;
+  public final int keyHash;
+  public final double unitHash;
   public double value;
 
   public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function) {

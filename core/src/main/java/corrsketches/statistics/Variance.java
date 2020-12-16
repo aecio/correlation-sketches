@@ -45,9 +45,9 @@ public class Variance {
 
   public static class CI {
 
-    public double var;
-    public double lb;
-    public double ub;
+    public final double var;
+    public final double lb;
+    public final double ub;
 
     public CI(double var, double lb, double ub) {
       this.var = var;

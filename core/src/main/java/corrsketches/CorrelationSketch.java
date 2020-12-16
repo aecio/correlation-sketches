@@ -32,18 +32,14 @@ public class CorrelationSketch {
       this.minValueSketch = builder.sketch;
     } else {
       // build sketch with given parameters
-      AbstractMinValueSketch.Builder sketchBuilder;
+      AbstractMinValueSketch.Builder<?> sketchBuilder;
       if (builder.sketchType == SketchType.KMV) {
         sketchBuilder = new KMV.Builder().maxSize((int) builder.budget);
       } else {
         sketchBuilder = new GKMV.Builder().threshold(builder.budget);
       }
       sketchBuilder.aggregate(builder.aggregateFunction);
-      if (builder.keyValues == null && builder.columnValues == null) {
-        this.minValueSketch = sketchBuilder.build();
-      } else {
-        this.minValueSketch = sketchBuilder.buildFromKeys(builder.keyValues, builder.columnValues);
-      }
+      this.minValueSketch = sketchBuilder.build();
     }
   }
 
@@ -101,9 +97,9 @@ public class CorrelationSketch {
 
   public static class ImmutableCorrelationSketch {
 
-    Correlation correlation;
-    int[] keys; // sorted in ascending order
-    double[] values; // values associated with the keys
+    final Correlation correlation;
+    final int[] keys; // sorted in ascending order
+    final double[] values; // values associated with the keys
 
     public ImmutableCorrelationSketch(int[] keys, double[] values, Correlation correlation) {
       this.keys = keys;
@@ -197,13 +193,8 @@ public class CorrelationSketch {
     protected int cardinality = UNKNOWN_CARDINALITY;
     protected Correlation estimator = DEFAULT_ESTIMATOR;
     protected AggregateFunction aggregateFunction = AggregateFunction.FIRST;
-
     protected SketchType sketchType = SketchType.KMV;
     protected double budget = KMV.DEFAULT_K;
-
-    protected List<String> keyValues = null;
-    protected double[] columnValues = null;
-
     protected AbstractMinValueSketch sketch;
 
     public Builder aggregateFunction(AggregateFunction aggregateFunction) {

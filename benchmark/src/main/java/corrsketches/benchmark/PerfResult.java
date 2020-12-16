@@ -28,36 +28,35 @@ public class PerfResult implements Cloneable {
   public AggregateFunction aggregate;
 
   public static String csvHeader() {
-    return String.format(
-        ""
-            // full correlation times
-            + "join_time,"
-            + "spearmans_time,"
-            + "pearsons_time,"
-            + "rin_time,"
-            + "qn_time,"
-            // cardinalities
-            + "cardx_actual,"
-            + "cardy_actual,"
-            + "interxy_actual,"
-            // sketch times
-            + "build_x_time,"
-            + "build_y_time,"
-            + "build_time,"
-            + "sketch_join_time,"
-            // sketch join size
-            + "sketch_join_size,"
-            // sketch correlation times
-            + "rp_time,"
-            + "rqn_time,"
-            + "rs_time,"
-            + "rrin_time,"
-            + "rpm1_time,"
-            + "rpm1s_time,"
-            // others
-            + "parameters,"
-            + "aggregate,"
-            + "column");
+    return ""
+        // full correlation times
+        + "join_time,"
+        + "spearmans_time,"
+        + "pearsons_time,"
+        + "rin_time,"
+        + "qn_time,"
+        // cardinalities
+        + "cardx_actual,"
+        + "cardy_actual,"
+        + "interxy_actual,"
+        // sketch times
+        + "build_x_time,"
+        + "build_y_time,"
+        + "build_time,"
+        + "sketch_join_time,"
+        // sketch join size
+        + "sketch_join_size,"
+        // sketch correlation times
+        + "rp_time,"
+        + "rqn_time,"
+        + "rs_time,"
+        + "rrin_time,"
+        + "rpm1_time,"
+        + "rpm1s_time,"
+        // others
+        + "parameters,"
+        + "aggregate,"
+        + "column";
   }
 
   public String csvLine() {

@@ -5,7 +5,6 @@ import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
 import corrsketches.benchmark.utils.CliTool;
 import corrsketches.util.Hashes;
-import hashtabledb.Kryos;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.io.Serializable;
@@ -13,19 +12,17 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-@Command(name = CheckHashColitions.JOB_NAME, description = "")
-public class CheckHashColitions extends CliTool implements Serializable {
+@Command(name = CheckHashCollisions.JOB_NAME, description = "")
+public class CheckHashCollisions extends CliTool implements Serializable {
 
-  public static final String JOB_NAME = "CheckHashColitions";
-
-  public static final Kryos<ColumnPair> KRYO = new Kryos(ColumnPair.class);
+  public static final String JOB_NAME = "CheckHashCollisions";
 
   @Required
   @Option(name = "--input-path", description = "Folder containing CSV files")
   private String inputPath;
 
   public static void main(String[] args) {
-    CliTool.run(args, new CheckHashColitions());
+    CliTool.run(args, new CheckHashCollisions());
   }
 
   @Override

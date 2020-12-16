@@ -30,7 +30,7 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "IndexCorrelationBenchmark";
 
-  public static final Kryos<ColumnPair> KRYO = new Kryos(ColumnPair.class);
+  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
   @Required
   @Option(name = "--input-path", description = "Folder containing key-value column store")

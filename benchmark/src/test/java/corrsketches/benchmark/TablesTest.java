@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import corrsketches.aggregations.AggregateFunction;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,7 +61,10 @@ public class TablesTest {
 
   private double getPearsonCorrelation(ColumnPair columnA, ColumnPair columnB) {
     return BenchmarkUtils.computeCorrelationsAfterJoin(
-            columnA, columnB, Arrays.asList(AggregateFunction.MEAN), new MetricsResult())
+            columnA,
+            columnB,
+            Collections.singletonList(AggregateFunction.MEAN),
+            new MetricsResult())
         .get(0)
         .corr_rp_actual;
   }
