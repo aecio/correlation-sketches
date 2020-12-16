@@ -30,6 +30,7 @@ dependencies {
     implementation group: 'tech.tablesaw', name: 'tablesaw-core', version: '0.37.3'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.8'
     implementation group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
+    implementation group: 'org.slf4j', name: 'slf4j-nop', version: '1.7.30'
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.5.1")
