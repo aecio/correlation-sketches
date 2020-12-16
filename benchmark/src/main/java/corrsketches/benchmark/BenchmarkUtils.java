@@ -205,8 +205,7 @@ public class BenchmarkUtils {
     return CorrelationSketch.builder()
         .aggregateFunction(function)
         .sketchType(sketchParams.type, sketchParams.budget)
-        .data(cp.keyValues, cp.columnValues)
-        .build();
+        .build(cp.keyValues, cp.columnValues);
   }
 
   public static MetricsResult computeSketchStatistics(

@@ -3,6 +3,7 @@ package corrsketches.kmv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import corrsketches.kmv.GKMV.Builder;
 import org.junit.jupiter.api.Test;
 
 public class GKMVTest {
@@ -10,8 +11,7 @@ public class GKMVTest {
   @Test
   public void shouldEstimateNumberOfDistinctValues() {
 
-    double k = 0.5;
-    GKMV kmv = new GKMV(k);
+    GKMV kmv = GKMV.builder().threshold(0.5).build();
     double maxError = 0.15;
 
     for (int i = 1; i <= 1000; i++) {
@@ -37,12 +37,12 @@ public class GKMVTest {
     int[] setA2 = new int[] {1, 2, 3, 4, 5};
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
-    double k = 0.5;
+    final Builder builder = GKMV.builder().threshold(0.5);
     // when
-    GKMV kmvA1 = GKMV.fromHashedKeys(setA1, values, k);
-    GKMV kmvA2 = GKMV.fromHashedKeys(setA2, values, k);
-    GKMV kmvB1 = GKMV.fromHashedKeys(setB1, values, k);
-    GKMV kmvC1 = GKMV.fromHashedKeys(setC1, values, k);
+    GKMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
+    GKMV kmvA2 = builder.buildFromHashedKeys(setA2, values);
+    GKMV kmvB1 = builder.buildFromHashedKeys(setB1, values);
+    GKMV kmvC1 = builder.buildFromHashedKeys(setC1, values);
     // then
     double delta = 1.;
     assertEquals(5., kmvA1.intersectionSize(kmvA2), delta);
@@ -58,12 +58,12 @@ public class GKMVTest {
     int[] setA2 = new int[] {1, 2, 3, 4, 5};
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
-    double k = 0.8;
+    final Builder builder = GKMV.builder().threshold(0.8);
     // when
-    GKMV kmvA1 = GKMV.fromHashedKeys(setA1, values, k);
-    GKMV kmvA2 = GKMV.fromHashedKeys(setA2, values, k);
-    GKMV kmvB1 = GKMV.fromHashedKeys(setB1, values, k);
-    GKMV kmvC1 = GKMV.fromHashedKeys(setC1, values, k);
+    GKMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
+    GKMV kmvA2 = builder.buildFromHashedKeys(setA2, values);
+    GKMV kmvB1 = builder.buildFromHashedKeys(setB1, values);
+    GKMV kmvC1 = builder.buildFromHashedKeys(setC1, values);
     // then
     double delta = 1.0;
     assertEquals(5., kmvA1.unionSize(kmvA2), delta);
@@ -79,12 +79,12 @@ public class GKMVTest {
     int[] setA2 = new int[] {1, 2, 3, 4, 5};
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
-    double k = 0.5;
+    final Builder builder = GKMV.builder().threshold(0.5);
     // when
-    GKMV kmvA1 = GKMV.fromHashedKeys(setA1, values, k);
-    GKMV kmvA2 = GKMV.fromHashedKeys(setA2, values, k);
-    GKMV kmvB1 = GKMV.fromHashedKeys(setB1, values, k);
-    GKMV kmvC1 = GKMV.fromHashedKeys(setC1, values, k);
+    GKMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
+    GKMV kmvA2 = builder.buildFromHashedKeys(setA2, values);
+    GKMV kmvB1 = builder.buildFromHashedKeys(setB1, values);
+    GKMV kmvC1 = builder.buildFromHashedKeys(setC1, values);
     // then
     double delta = 0.1;
     assertEquals(1.000, kmvA1.jaccard(kmvA2), delta); // jaccard = 5/5  = 1.000
@@ -100,12 +100,12 @@ public class GKMVTest {
     int[] setA2 = new int[] {1, 2, 3, 4, 5};
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
-    double k = 0.5;
+    final Builder builder = GKMV.builder().threshold(0.5);
     // when
-    GKMV kmvA1 = GKMV.fromHashedKeys(setA1, values, k);
-    GKMV kmvA2 = GKMV.fromHashedKeys(setA2, values, k);
-    GKMV kmvB1 = GKMV.fromHashedKeys(setB1, values, k);
-    GKMV kmvC1 = GKMV.fromHashedKeys(setC1, values, k);
+    GKMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
+    GKMV kmvA2 = builder.buildFromHashedKeys(setA2, values);
+    GKMV kmvB1 = builder.buildFromHashedKeys(setB1, values);
+    GKMV kmvC1 = builder.buildFromHashedKeys(setC1, values);
     // then
     double delta = 0.155;
     assertEquals(1.000, kmvA1.containment(kmvA2), delta);

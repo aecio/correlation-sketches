@@ -7,18 +7,24 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 
-public abstract class IKMV<T> {
+public abstract class AbstractMinValueSketch<T> {
 
   protected final TreeSet<ValueHash> kMinValues;
   protected final Int2ObjectOpenHashMap<ValueHash> valueHashMap;
   protected final AggregateFunction function;
   protected double kthValue = Double.MIN_VALUE;
 
-  public IKMV(AggregateFunction function) {
-    this(-1, function);
+  public AbstractMinValueSketch(Builder<?> builder) {
+    this.function = builder.aggregateFunction;
+    this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
+    if (builder.expectedSize() < 1) {
+      this.valueHashMap = new Int2ObjectOpenHashMap<>();
+    } else {
+      this.valueHashMap = new Int2ObjectOpenHashMap<>(builder.expectedSize() + 1);
+    }
   }
 
-  public IKMV(int expectedSize, AggregateFunction function) {
+  public AbstractMinValueSketch(int expectedSize, AggregateFunction function) {
     this.function = function;
     this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
     if (expectedSize < 1) {
@@ -114,5 +120,41 @@ public abstract class IKMV<T> {
     HashSet<ValueHash> intersection = new HashSet<>(x);
     intersection.retainAll(y);
     return intersection.size();
+  }
+
+  public abstract static class Builder<T extends AbstractMinValueSketch<T>> {
+
+    protected AggregateFunction aggregateFunction = AggregateFunction.FIRST;
+
+    protected int expectedSize() {
+      return -1;
+    }
+
+    public Builder<T> aggregate(AggregateFunction aggregateFunction) {
+      this.aggregateFunction = aggregateFunction;
+      return this;
+    }
+
+    /** Creates an empty min-values sketch. */
+    public abstract T build();
+
+    /**
+     * Creates a min-values sketch using the given key values and their associated numeric values.
+     */
+    public T buildFromKeys(List<String> keys, double[] values) {
+      final T sketch = build();
+      sketch.updateAll(keys, values);
+      return sketch;
+    }
+
+    /**
+     * Creates a min-values sketch from the given array of pre-computed hashed keys and their
+     * associated values.
+     */
+    public T buildFromHashedKeys(int[] hashedKeys, double[] values) {
+      final T sketch = build();
+      sketch.updateAll(hashedKeys, values);
+      return sketch;
+    }
   }
 }

@@ -1,12 +1,11 @@
 package corrsketches;
 
-import com.google.common.base.Preconditions;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation;
 import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.correlation.PearsonCorrelation;
+import corrsketches.kmv.AbstractMinValueSketch;
 import corrsketches.kmv.GKMV;
-import corrsketches.kmv.IKMV;
 import corrsketches.kmv.KMV;
 import corrsketches.kmv.ValueHash;
 import corrsketches.util.QuickSort;
@@ -22,63 +21,39 @@ public class CorrelationSketch {
   public static final int UNKNOWN_CARDINALITY = -1;
 
   private final Correlation estimator;
-  private final IKMV kmv;
+  private final AbstractMinValueSketch minValueSketch;
   private int cardinality;
-
-  public CorrelationSketch(IKMV kmv) {
-    this(builder().sketch(kmv));
-  }
-
-  @Deprecated
-  public CorrelationSketch(List<String> keys, double[] values) {
-    this(builder().data(keys, values));
-  }
-
-  @Deprecated
-  public CorrelationSketch(List<String> keys, double[] values, int k) {
-    this(builder().data(keys, values).sketchType(SketchType.KMV, k));
-  }
 
   private CorrelationSketch(Builder builder) {
     this.cardinality = builder.cardinality;
     this.estimator = builder.estimator;
     if (builder.sketch != null) {
       // pre-built sketch provided: just use it
-      this.kmv = builder.sketch;
+      this.minValueSketch = builder.sketch;
     } else {
-      if (builder.keyValues == null && builder.columnValues == null) {
-        // no data provided: build an empty sketch
-        if (builder.sketchType == SketchType.KMV) {
-          this.kmv = new KMV((int) builder.budget, builder.aggregateFunction);
-        } else {
-          this.kmv = new GKMV(builder.budget, builder.aggregateFunction);
-        }
+      // build sketch with given parameters
+      AbstractMinValueSketch.Builder sketchBuilder;
+      if (builder.sketchType == SketchType.KMV) {
+        sketchBuilder = new KMV.Builder().maxSize((int) builder.budget);
       } else {
-        // data provided: initialize sketches from data
-        Preconditions.checkArgument(
-            builder.keyValues != null && builder.columnValues != null,
-            "When data is provided, both key values and column values must be present.");
-        if (builder.sketchType == SketchType.KMV) {
-          this.kmv =
-              KMV.create(
-                  builder.keyValues,
-                  builder.columnValues,
-                  (int) builder.budget,
-                  builder.aggregateFunction);
-        } else {
-          this.kmv =
-              GKMV.create(
-                  builder.keyValues,
-                  builder.columnValues,
-                  builder.budget,
-                  builder.aggregateFunction);
-        }
+        sketchBuilder = new GKMV.Builder().threshold(builder.budget);
+      }
+      sketchBuilder.aggregate(builder.aggregateFunction);
+      if (builder.keyValues == null && builder.columnValues == null) {
+        this.minValueSketch = sketchBuilder.build();
+      } else {
+        this.minValueSketch = sketchBuilder.buildFromKeys(builder.keyValues, builder.columnValues);
       }
     }
   }
 
   public static Builder builder() {
     return new Builder();
+  }
+
+  private CorrelationSketch updateAll(List<String> keys, double[] values) {
+    minValueSketch.updateAll(keys, values);
+    return this;
   }
 
   public void setCardinality(int cardinality) {
@@ -89,15 +64,15 @@ public class CorrelationSketch {
     if (this.cardinality != -1) {
       return this.cardinality;
     }
-    return kmv.distinctValues();
+    return minValueSketch.distinctValues();
   }
 
   public double unionSize(CorrelationSketch other) {
-    return this.kmv.unionSize(other.kmv);
+    return this.minValueSketch.unionSize(other.minValueSketch);
   }
 
   public double jaccard(CorrelationSketch other) {
-    return kmv.jaccard(other.kmv);
+    return minValueSketch.jaccard(other.minValueSketch);
   }
 
   public double containment(CorrelationSketch other) {
@@ -105,7 +80,7 @@ public class CorrelationSketch {
   }
 
   public double intersectionSize(CorrelationSketch other) {
-    return kmv.intersectionSize(other.kmv);
+    return minValueSketch.intersectionSize(other.minValueSketch);
   }
 
   public Estimate correlationTo(CorrelationSketch other) {
@@ -117,7 +92,7 @@ public class CorrelationSketch {
   }
 
   public TreeSet<ValueHash> getKMinValues() {
-    return this.kmv.getKMinValues();
+    return this.minValueSketch.getKMinValues();
   }
 
   public ImmutableCorrelationSketch toImmutable() {
@@ -127,7 +102,6 @@ public class CorrelationSketch {
   public static class ImmutableCorrelationSketch {
 
     Correlation correlation;
-
     int[] keys; // sorted in ascending order
     double[] values; // values associated with the keys
 
@@ -230,21 +204,10 @@ public class CorrelationSketch {
     protected List<String> keyValues = null;
     protected double[] columnValues = null;
 
-    protected IKMV sketch;
+    protected AbstractMinValueSketch sketch;
 
     public Builder aggregateFunction(AggregateFunction aggregateFunction) {
       this.aggregateFunction = aggregateFunction;
-      return this;
-    }
-
-    public Builder data(List<String> keyValues, double[] columnValues) {
-      Preconditions.checkNotNull(keyValues, "key values cannot be null");
-      Preconditions.checkNotNull(columnValues, "numeric column values cannot be null");
-      Preconditions.checkArgument(
-          keyValues.size() == columnValues.length,
-          "key values and column values must have same size");
-      this.keyValues = keyValues;
-      this.columnValues = columnValues;
       return this;
     }
 
@@ -254,7 +217,7 @@ public class CorrelationSketch {
       return this;
     }
 
-    public Builder sketch(IKMV sketch) {
+    public Builder sketch(AbstractMinValueSketch sketch) {
       this.sketch = sketch;
       return this;
     }
@@ -271,6 +234,14 @@ public class CorrelationSketch {
 
     public CorrelationSketch build() {
       return new CorrelationSketch(this);
+    }
+
+    public CorrelationSketch build(String[] keys, double[] values) {
+      return build(Arrays.asList(keys), values);
+    }
+
+    public CorrelationSketch build(List<String> keys, double[] values) {
+      return new CorrelationSketch(this).updateAll(keys, values);
     }
   }
 }

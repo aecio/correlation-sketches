@@ -4,14 +4,13 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
-import java.util.List;
 import java.util.TreeSet;
 
 /**
  * Implements the KMV synopsis from the paper "On Synopsis for distinct-value estimation under
  * multiset operations" by Beyer et. at, SIGMOD, 2017.
  */
-public class KMV extends IKMV<KMV> {
+public class KMV extends AbstractMinValueSketch<KMV> {
 
   public static final int DEFAULT_K = 256;
   private final int maxK;
@@ -22,6 +21,7 @@ public class KMV extends IKMV<KMV> {
     this(k, AggregateFunction.FIRST);
   }
 
+  @Deprecated
   public KMV(int k, AggregateFunction function) {
     super(k, function);
     if (k < 1) {
@@ -30,38 +30,13 @@ public class KMV extends IKMV<KMV> {
     this.maxK = k;
   }
 
-  public static KMV create(List<String> keys, double[] values) {
-    return create(keys, values, DEFAULT_K);
+  public KMV(Builder builder) {
+    super(builder);
+    this.maxK = builder.maxSize;
   }
 
-  public static KMV create(List<String> keys, double[] values, int k) {
-    return create(keys, values, k, AggregateFunction.FIRST);
-  }
-
-  public static KMV create(List<String> keys, double[] values, AggregateFunction function) {
-    return create(keys, values, DEFAULT_K, function);
-  }
-
-  public static KMV create(List<String> keys, double[] values, int k, AggregateFunction function) {
-    if (keys.size() != values.length) {
-      final String msg =
-          String.format(
-              "keys and values must have same size. keys.size=[%d] values.size=[%d]",
-              keys.size(), values.length);
-      throw new IllegalArgumentException(msg);
-    }
-    KMV kmv = new KMV(k, function);
-    kmv.updateAll(keys, values);
-    return kmv;
-  }
-
-  /** Creates a KMV synopsis of size k from an array of hashed keys. */
-  public static KMV fromHashedKeys(int[] hashes, double[] values, int k) {
-    KMV kmv = new KMV(k);
-    for (int i = 0; i < hashes.length; i++) {
-      kmv.update(hashes[i], values[i]);
-    }
-    return kmv;
+  public static KMV.Builder builder() {
+    return new KMV.Builder();
   }
 
   /** Updates the KMV synopsis with the given hashed key */
@@ -145,5 +120,28 @@ public class KMV extends IKMV<KMV> {
   @Override
   public String toString() {
     return "KMV{" + "maxK=" + maxK + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
+  }
+
+  public static class Builder extends AbstractMinValueSketch.Builder<KMV> {
+
+    private int maxSize = DEFAULT_K;
+
+    public Builder maxSize(int maxSize) {
+      if (maxSize < 1) {
+        throw new IllegalArgumentException("Minimum k size is 1, but larger is recommended.");
+      }
+      this.maxSize = maxSize;
+      return this;
+    }
+
+    @Override
+    public int expectedSize() {
+      return maxSize;
+    }
+
+    @Override
+    public KMV build() {
+      return new KMV(this);
+    }
   }
 }

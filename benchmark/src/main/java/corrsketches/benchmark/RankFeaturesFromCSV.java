@@ -1,6 +1,8 @@
 package corrsketches.benchmark;
 
 import corrsketches.CorrelationSketch;
+import corrsketches.CorrelationSketch.Builder;
+import corrsketches.SketchType;
 import corrsketches.correlation.PearsonCorrelation;
 import java.io.IOException;
 import java.util.List;
@@ -46,7 +48,9 @@ public class RankFeaturesFromCSV {
       //            MinwiseHasher minHasher = new MinwiseHasher(nhf);
       //            MinhashCorrelationSketch targetSketch = new MinhashCorrelationSketch(keyValues,
       // targetValues, minHasher);
-      CorrelationSketch targetSketch = new CorrelationSketch(keyValues, targetValues, nhf);
+
+      final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, nhf);
+      CorrelationSketch targetSketch = builder.build(keyValues, targetValues);
 
       double[] sketchCorrelations = new double[targetValues.length];
       double[] pearsonCorrelations = new double[targetValues.length];
@@ -56,7 +60,7 @@ public class RankFeaturesFromCSV {
         double[] columnValues = column.asDoubleArray();
         //                MinhashCorrelationSketch columnSketch = new
         // MinhashCorrelationSketch(keyValues, columnValues, minHasher);
-        CorrelationSketch columnSketch = new CorrelationSketch(keyValues, columnValues, nhf);
+        CorrelationSketch columnSketch = builder.build(keyValues, columnValues);
         sketchCorrelations[i] = targetSketch.correlationTo(columnSketch).coefficient;
         pearsonCorrelations[i] = PearsonCorrelation.coefficient(targetValues, columnValues);
 

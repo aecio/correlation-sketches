@@ -7,8 +7,6 @@ import corrsketches.benchmark.ColumnPair;
 import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.correlation.CorrelationType;
 import corrsketches.correlation.PearsonCorrelation;
-import corrsketches.kmv.GKMV;
-import corrsketches.kmv.KMV;
 import corrsketches.kmv.ValueHash;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -50,9 +48,7 @@ public class SketchIndex {
 
   private final IndexWriter writer;
   private final SearcherManager searcherManager;
-  private final SketchType sketchType;
-
-  private final double threshold;
+  private final CorrelationSketch.Builder builder;
 
   public SketchIndex() {
     this(SketchType.KMV, 256);
@@ -68,9 +64,7 @@ public class SketchIndex {
   }
 
   public SketchIndex(Directory dir, SketchType sketchType, double threshold) {
-    this.sketchType = sketchType;
-    this.threshold = threshold;
-
+    this.builder = CorrelationSketch.builder().sketchType(sketchType, threshold);
     final Analyzer analyzer = new StandardAnalyzer();
     final IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
     iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
@@ -105,7 +99,7 @@ public class SketchIndex {
 
   public void index(String id, ColumnPair columnPair) throws IOException {
 
-    CorrelationSketch sketch = createCorrelationSketch(columnPair);
+    CorrelationSketch sketch = builder.build(columnPair.keyValues, columnPair.columnValues);
 
     Document doc = new Document();
 
@@ -132,7 +126,7 @@ public class SketchIndex {
 
   public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
 
-    CorrelationSketch query = createCorrelationSketch(columnPair);
+    CorrelationSketch query = builder.build(columnPair.keyValues, columnPair.columnValues);
     query.setCardinality(columnPair.keyValues.size());
 
     IndexSearcher searcher = searcherManager.acquire();
@@ -175,20 +169,22 @@ public class SketchIndex {
     return new Hit(id, query, hitSketch, score);
   }
 
-  private ImmutableCorrelationSketch deserializeCorrelationSketch(
+  private static ImmutableCorrelationSketch deserializeCorrelationSketch(
       BytesRef[] hashesBytes, BytesRef[] valuesRef) {
+    int[] hashes = bytesRefToIntArray(hashesBytes);
+    double[] values = toDoubleArray(valuesRef[0].bytes);
+    return new ImmutableCorrelationSketch(hashes, values, PearsonCorrelation::estimate);
+  }
 
+  private static int[] bytesRefToIntArray(BytesRef[] hashesBytes) {
     int[] hashes = new int[hashesBytes.length];
     for (int i = 0; i < hashes.length; i++) {
       hashes[i] = bytesRefToInt(hashesBytes[i]);
     }
-
-    double[] values = toDoubleArray(valuesRef[0].bytes);
-
-    return new ImmutableCorrelationSketch(hashes, values, PearsonCorrelation::estimate);
+    return hashes;
   }
 
-  private BytesRef intToBytesRef(int value) {
+  private static BytesRef intToBytesRef(int value) {
     byte[] bytes =
         new byte[] {
           (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value)
@@ -196,7 +192,7 @@ public class SketchIndex {
     return new BytesRef(bytes);
   }
 
-  private int bytesRefToInt(BytesRef bytesRef) {
+  private static int bytesRefToInt(BytesRef bytesRef) {
     final byte[] bytes = bytesRef.bytes;
     return ((bytes[0] & 0xFF) << 24)
         | ((bytes[1] & 0xFF) << 16)
@@ -221,20 +217,6 @@ public class SketchIndex {
       doubles[i] = bb.getDouble();
     }
     return doubles;
-  }
-
-  private CorrelationSketch createCorrelationSketch(ColumnPair columnPair) {
-    CorrelationSketch sketch;
-    if (sketchType == SketchType.KMV) {
-      int k = (int) threshold;
-      KMV kmv = KMV.create(columnPair.keyValues, columnPair.columnValues, k);
-      sketch = new CorrelationSketch(kmv);
-    } else {
-      double t = threshold;
-      GKMV gkmv = GKMV.create(columnPair.keyValues, columnPair.columnValues, t);
-      sketch = new CorrelationSketch(gkmv);
-    }
-    return sketch;
   }
 
   public static class Hit {

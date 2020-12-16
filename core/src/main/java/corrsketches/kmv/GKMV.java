@@ -1,52 +1,25 @@
 package corrsketches.kmv;
 
-import corrsketches.aggregations.AggregateFunction;
 import corrsketches.util.Hashes;
 import java.util.HashSet;
-import java.util.List;
 import java.util.TreeSet;
 
 /**
  * Implements the GKMV synopsis from the paper "GB-KMV: An Augmented KMV Sketch for Approximate
  * Containment Similarity Search" by Yang et. at, ICDE, 2019.
  */
-public class GKMV extends IKMV<GKMV> {
+public class GKMV extends AbstractMinValueSketch<GKMV> {
 
   public static final double DEFAULT_THRESHOLD = 0.1;
   private final double maxT;
 
-  // TODO: Replace all constructors by a builder class
-  @Deprecated
-  public GKMV(double t) {
-    this(t, AggregateFunction.FIRST);
+  public GKMV(Builder builder) {
+    super(builder);
+    this.maxT = builder.threshold;
   }
 
-  public GKMV(double t, AggregateFunction function) {
-    super(function);
-    this.maxT = t;
-  }
-
-  public static GKMV create(List<String> keys, double[] values) {
-    return create(keys, values, DEFAULT_THRESHOLD);
-  }
-
-  @Deprecated
-  public static GKMV create(List<String> keys, double[] values, double threshold) {
-    return create(keys, values, threshold, AggregateFunction.FIRST);
-  }
-
-  public static GKMV create(
-      List<String> keys, double[] values, double threshold, AggregateFunction aggregateFunction) {
-    GKMV gkmv = new GKMV(threshold, aggregateFunction);
-    gkmv.updateAll(keys, values);
-    return gkmv;
-  }
-
-  /** Creates a GKMV synopsis with threshold t from an array of hashed keys. */
-  public static GKMV fromHashedKeys(int[] hashes, double[] values, double t) {
-    GKMV gkmv = new GKMV(t);
-    gkmv.updateAll(hashes, values);
-    return gkmv;
+  public static Builder builder() {
+    return new GKMV.Builder();
   }
 
   /** Updates the GKMV synopsis with the given hashed key */
@@ -97,7 +70,7 @@ public class GKMV extends IKMV<GKMV> {
     return Math.max(this.kthValue, other.kthValue);
   }
 
-  private int unionSize(TreeSet<ValueHash> x, TreeSet<ValueHash> y) {
+  private static int unionSize(TreeSet<ValueHash> x, TreeSet<ValueHash> y) {
     // TODO: Use implementation from Sets.unionSize
     HashSet<ValueHash> union = new HashSet<>(x);
     union.addAll(y);
@@ -114,5 +87,24 @@ public class GKMV extends IKMV<GKMV> {
   @Override
   public String toString() {
     return "GKMV{" + "maxT=" + maxT + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
+  }
+
+  public static class Builder extends AbstractMinValueSketch.Builder<GKMV> {
+
+    private double threshold = DEFAULT_THRESHOLD;
+
+    public Builder threshold(double t) {
+      if (t < 0. || t > 1.) {
+        throw new IllegalArgumentException(
+            String.format("GKMV threshold (t=%f) must be between 0 and 1.", t));
+      }
+      this.threshold = t;
+      return this;
+    }
+
+    @Override
+    public GKMV build() {
+      return new GKMV(this);
+    }
   }
 }
