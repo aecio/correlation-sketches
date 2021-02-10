@@ -333,23 +333,23 @@ public class BenchmarkUtils {
       MetricsResult result) {
 
     long time0 = System.nanoTime();
-    NumericJoinAggregation join = JoinAggregation.numericJoinAggregate(columnA, columnB, functions);
+    List<NumericJoinAggregation> joins =
+        JoinAggregation.numericJoinAggregate(columnA, columnB, functions);
     final long joinTime = System.nanoTime() - time0;
-
-    // correlation is defined only for vectors of length at least two
-    if (join.valuesA.size() < minimumIntersection) {
-      return Collections.emptyList();
-    }
 
     List<MetricsResult> results = new ArrayList<>(functions.size());
 
-    double[] joinedA = join.valuesA.toDoubleArray();
-    for (int i = 0; i < join.valuesB.length; i++) {
+    for (NumericJoinAggregation join : joins) {
+      double[] joinedA = join.valuesA;
+      double[] joinedB = join.valuesB;
 
-      double[] joinedB = join.valuesB[i].toDoubleArray();
+      // correlation is defined only for vectors of length at least two
+      if (joinedA.length < minimumIntersection) {
+        continue;
+      }
 
       MetricsResult r = result.clone();
-      r.aggregate = functions.get(i);
+      r.aggregate = join.aggregate;
       r.time = new ComputingTime();
       r.time.join = joinTime;
 
@@ -371,6 +371,7 @@ public class BenchmarkUtils {
 
       results.add(r);
     }
+
     return results;
   }
 }

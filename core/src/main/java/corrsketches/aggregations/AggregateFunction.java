@@ -1,5 +1,6 @@
 package corrsketches.aggregations;
 
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,9 +32,17 @@ public enum AggregateFunction {
   }
 
   public double aggregate(double[] x) {
-    Aggregator fn = provider.get();
+    return aggregate(x, x.length);
+  }
+
+  public double aggregate(DoubleArrayList value) {
+    return aggregate(value.elements(), value.size());
+  }
+
+  public double aggregate(double[] x, int length) {
+    final Aggregator fn = provider.get();
     double aggregate = fn.first(x[0]);
-    for (int i = 1; i < x.length; i++) {
+    for (int i = 1; i < length; i++) {
       aggregate = fn.update(aggregate, x[i]);
     }
     return aggregate;

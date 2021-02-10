@@ -1,72 +1,115 @@
 package corrsketches.benchmark;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.primitives.Doubles;
 import corrsketches.aggregations.AggregateFunction;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class JoinAggregation {
 
-  public static NumericJoinAggregation numericJoinAggregate(
+  public static List<ColumnPair> aggregateColumnPair(
+      ColumnPair cp, List<AggregateFunction> functions) {
+
+    final Map<String, DoubleArrayList> index = createKeyIndex(cp);
+
+    int i;
+    double[][] aggregatedValues = new double[functions.size()][];
+    for (i = 0; i < functions.size(); i++) {
+      aggregatedValues[i] = new double[index.size()];
+    }
+
+    i = 0;
+    String[] aggregatedKeys = new String[index.size()];
+    for (Entry<String, DoubleArrayList> entry : index.entrySet()) {
+      aggregatedKeys[i] = entry.getKey();
+      for (int f = 0, functionsSize = functions.size(); f < functionsSize; f++) {
+        final AggregateFunction fn = functions.get(f);
+        aggregatedValues[f][i] = fn.aggregate(entry.getValue());
+      }
+      i++;
+    }
+    List<ColumnPair> results = new ArrayList<>();
+    for (i = 0; i < functions.size(); i++) {
+      results.add(
+          new ColumnPair(
+              cp.datasetId,
+              cp.keyName,
+              Arrays.asList(aggregatedKeys),
+              cp.columnName,
+              aggregatedValues[i]));
+    }
+    return results;
+  }
+
+  public static List<NumericJoinAggregation> numericJoinAggregate(
       ColumnPair columnA, ColumnPair columnB, List<AggregateFunction> functions) {
 
+    // TODO: Aggregate left-side of the table?
+    // FIXME: aggregate using given functions
+
     // create index for primary key in column B
-    ArrayListMultimap<String, Double> columnMapB = ArrayListMultimap.create();
-    for (int i = 0; i < columnB.keyValues.size(); i++) {
-      columnMapB.put(columnB.keyValues.get(i), columnB.columnValues[i]);
-    }
+    Map<String, DoubleArrayList> indexB = createKeyIndex(columnB);
 
-    // numeric values for column A
-    DoubleList joinValuesA = new DoubleArrayList(columnA.keyValues.size());
+    List<ColumnPair> aggregationsColumnA = aggregateColumnPair(columnA, functions);
 
-    // numeric values for each aggregation of column B
-    DoubleList[] joinValuesB = new DoubleArrayList[functions.size()];
-    for (int i = 0; i < joinValuesB.length; i++) {
-      joinValuesB[i] = new DoubleArrayList(columnA.keyValues.size());
-    }
+    List<NumericJoinAggregation> results = new ArrayList<>(functions.size());
 
-    // compute aggregation vectors of joined values for each join key
-    for (int i = 0; i < columnA.keyValues.size(); i++) {
-      String keyA = columnA.keyValues.get(i);
-      double valueA = columnA.columnValues[i];
+    for (int fnIdx = 0; fnIdx < functions.size(); fnIdx++) {
+      final AggregateFunction fn = functions.get(fnIdx);
 
-      List<Double> rowsB = columnMapB.get(keyA);
+      ColumnPair aggregatedColumnA = aggregationsColumnA.get(fnIdx);
 
-      if (rowsB == null || rowsB.isEmpty()) {
-        // 1:0 mapping: we can't use null for correlation, so ignore row value.
-        continue;
-      } else if (rowsB.size() == 1) {
-        // 1:1 mapping: there is nothing to aggregate, use the single value as is.
-        joinValuesA.add(valueA);
-        final double unboxedValue = rowsB.get(0);
-        for (int fnIdx = 0; fnIdx < functions.size(); fnIdx++) {
-          final AggregateFunction fn = functions.get(fnIdx);
-          joinValuesB[fnIdx].add(fn.get().first(unboxedValue));
-        }
-      } else {
-        // 1:n mapping, we aggregate joined values to a single value.
-        joinValuesA.add(valueA);
-        final double[] unboxedValues = Doubles.toArray(rowsB);
-        for (int fnIdx = 0; fnIdx < functions.size(); fnIdx++) {
-          final AggregateFunction fn = functions.get(fnIdx);
-          final double aggregate = fn.aggregate(unboxedValues);
-          joinValuesB[fnIdx].add(aggregate);
+      // numeric values for column A
+      DoubleList joinValuesA = new DoubleArrayList(aggregatedColumnA.keyValues.size());
+
+      // numeric values for each aggregation of column B
+      DoubleList joinValuesB = new DoubleArrayList();
+
+      // compute aggregation vectors of joined values for each join key
+      for (int i = 0; i < aggregatedColumnA.keyValues.size(); i++) {
+        String keyA = aggregatedColumnA.keyValues.get(i);
+        final double valueA = aggregatedColumnA.columnValues[i];
+        final DoubleArrayList rowsB = indexB.get(keyA);
+        if (rowsB != null && !rowsB.isEmpty()) {
+          // 1:n mapping, we aggregate joined values to a single value.
+          joinValuesA.add(valueA);
+          joinValuesB.add(fn.aggregate(rowsB));
         }
       }
+      results.add(
+          new NumericJoinAggregation(joinValuesA.toDoubleArray(), joinValuesB.toDoubleArray(), fn));
     }
 
-    return new NumericJoinAggregation(joinValuesA, joinValuesB);
+    return results;
+  }
+
+  private static Map<String, DoubleArrayList> createKeyIndex(ColumnPair column) {
+    Map<String, DoubleArrayList> index = new HashMap<>();
+    for (int i = 0; i < column.keyValues.size(); i++) {
+      DoubleArrayList doubles = index.get(column.keyValues.get(i));
+      if (doubles == null) {
+        doubles = new DoubleArrayList();
+        index.put(column.keyValues.get(i), doubles);
+      }
+      doubles.add(column.columnValues[i]);
+    }
+    return index;
   }
 
   static class NumericJoinAggregation {
-    public final DoubleList valuesA;
-    public final DoubleList[] valuesB;
+    public final double[] valuesA;
+    public final double[] valuesB;
+    public AggregateFunction aggregate;
 
-    public NumericJoinAggregation(DoubleList valuesA, DoubleList[] valuesB) {
+    public NumericJoinAggregation(double[] valuesA, double[] valuesB, AggregateFunction aggregate) {
       this.valuesA = valuesA;
       this.valuesB = valuesB;
+      this.aggregate = aggregate;
     }
   }
 }
