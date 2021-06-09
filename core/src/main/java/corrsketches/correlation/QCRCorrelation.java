@@ -3,9 +3,7 @@ package corrsketches.correlation;
 import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.statistics.Stats;
 
-/**
- * Implements Quadrant Count Ratio (QCR) correlation.
- */
+/** Implements Quadrant Count Ratio (QCR) correlation. */
 public class QCRCorrelation {
 
   public static Estimate estimate(double[] x, double[] y) {

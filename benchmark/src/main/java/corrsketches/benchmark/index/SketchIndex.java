@@ -42,13 +42,13 @@ import org.apache.lucene.util.BytesRef;
 
 public class SketchIndex {
 
-  private static final String HASHES_FIELD_NAME = "h";
-  private static final String VALUES_FIELD_NAME = "v";
-  private static final String ID_FIELD_NAME = "i";
+  protected static final String HASHES_FIELD_NAME = "h";
+  protected static final String VALUES_FIELD_NAME = "v";
+  protected static final String ID_FIELD_NAME = "i";
 
-  private final IndexWriter writer;
-  private final SearcherManager searcherManager;
-  private final CorrelationSketch.Builder builder;
+  protected final IndexWriter writer;
+  protected final SearcherManager searcherManager;
+  protected final CorrelationSketch.Builder builder;
 
   public SketchIndex() {
     this(SketchType.KMV, 256);
@@ -157,7 +157,7 @@ public class SketchIndex {
     }
   }
 
-  private Hit createSearchHit(ImmutableCorrelationSketch query, Document doc, float score) {
+  protected Hit createSearchHit(ImmutableCorrelationSketch query, Document doc, float score) {
 
     // retrieve data from index fields
     String id = doc.getValues(ID_FIELD_NAME)[0];
@@ -184,7 +184,7 @@ public class SketchIndex {
     return hashes;
   }
 
-  private static BytesRef intToBytesRef(int value) {
+  protected static BytesRef intToBytesRef(int value) {
     byte[] bytes =
         new byte[] {
           (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) (value)
@@ -251,6 +251,10 @@ public class SketchIndex {
 
     public double robustCorrelation() {
       return query.correlationTo(hit, CorrelationType.get(CorrelationType.ROBUST_QN)).coefficient;
+    }
+
+    public double qcrCorrelation() {
+      return query.correlationTo(hit, CorrelationType.get(CorrelationType.QCR)).coefficient;
     }
   }
 }

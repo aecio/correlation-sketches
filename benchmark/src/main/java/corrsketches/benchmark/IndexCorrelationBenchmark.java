@@ -2,6 +2,7 @@ package corrsketches.benchmark;
 
 import corrsketches.SketchType;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
+import corrsketches.benchmark.index.QCRSketchIndex;
 import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.index.SketchIndex.Hit;
 import corrsketches.benchmark.utils.CliTool;
@@ -31,6 +32,11 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
 
   public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
+  public enum IndexType {
+    QCR,
+    STD
+  }
+
   @Option(
       names = "--input-path",
       required = true,
@@ -46,8 +52,11 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
   @Option(names = "--sketch-type", description = "The type sketch to be used")
   SketchType sketchType = SketchType.KMV;
 
+  @Option(names = "--index-type", description = "The type index to be used")
+  IndexType indexType = IndexType.STD;
+
   @Option(names = "--num-queries", description = "The numbers of queries to be run")
-  int numQueries = 100;
+  int numQueries = 1000;
 
   @Option(names = "--num-hashes", required = true, description = "Number of hashes per sketch")
   private double numHashes = KMV.DEFAULT_K;
@@ -90,7 +99,7 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     System.out.println("Selecting a random sample of columns as queries...");
 
     // Build index
-    SketchIndex index = new SketchIndex(outputPath, sketchType, numHashes);
+    SketchIndex index = openSketchIndex(outputPath, sketchType, numHashes);
 
     System.out.println("Indexing all columns...");
 
@@ -123,7 +132,7 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
       throws IOException {
 
     // re-opens index
-    SketchIndex index = new SketchIndex(outputPath, sketchType, numHashes);
+    SketchIndex index = openSketchIndex(outputPath, sketchType, numHashes);
 
     FileWriter csv = new FileWriter(Paths.get(outputPath, "query-times.csv").toFile());
     csv.write("qid, k, time, qcard\n");
@@ -149,6 +158,18 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     index.close();
     csv.close();
     System.out.println("Done.");
+  }
+
+  private SketchIndex openSketchIndex(String outputPath, SketchType sketchType, double numHashes)
+      throws IOException {
+    SketchIndex index;
+    if (indexType == IndexType.STD) {
+      index = new SketchIndex(outputPath, sketchType, numHashes);
+    } else {
+      index = new QCRSketchIndex(outputPath, sketchType, numHashes);
+    }
+    System.out.printf("Opened index of type (%s) at: %s\n", indexType, outputPath);
+    return index;
   }
 
   private QueryStats selectQueriesRandomly(ColumnStoreMetadata storeMetadata, int sampleSize) {
