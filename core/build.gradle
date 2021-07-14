@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
 }
 
-group 'vida-nyu'
+group 'corrsketches'
 version '0.1-SNAPSHOT'
 
 sourceCompatibility = 1.8

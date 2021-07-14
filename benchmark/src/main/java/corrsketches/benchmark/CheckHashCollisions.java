@@ -1,8 +1,5 @@
 package corrsketches.benchmark;
 
-import com.github.rvesse.airline.annotations.Command;
-import com.github.rvesse.airline.annotations.Option;
-import com.github.rvesse.airline.annotations.restrictions.Required;
 import corrsketches.benchmark.utils.CliTool;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry;
@@ -11,14 +8,15 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 @Command(name = CheckHashCollisions.JOB_NAME, description = "")
 public class CheckHashCollisions extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "CheckHashCollisions";
 
-  @Required
-  @Option(name = "--input-path", description = "Folder containing CSV files")
+  @Option(names = "--input-path", required = true, description = "Folder containing CSV files")
   private String inputPath;
 
   public static void main(String[] args) {

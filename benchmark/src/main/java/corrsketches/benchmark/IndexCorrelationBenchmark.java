@@ -1,8 +1,5 @@
 package corrsketches.benchmark;
 
-import com.github.rvesse.airline.annotations.Command;
-import com.github.rvesse.airline.annotations.Option;
-import com.github.rvesse.airline.annotations.restrictions.Required;
 import corrsketches.SketchType;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.index.SketchIndex;
@@ -22,6 +19,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 @Command(
     name = IndexCorrelationBenchmark.JOB_NAME,
@@ -32,28 +31,28 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
 
   public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
-  @Required
-  @Option(name = "--input-path", description = "Folder containing key-value column store")
+  @Option(
+      names = "--input-path",
+      required = true,
+      description = "Folder containing key-value column store")
   String inputPath;
 
-  @Required
-  @Option(name = "--output-path", description = "Output path for results file")
+  @Option(names = "--output-path", required = true, description = "Output path for results file")
   String outputPath;
 
-  //  @Option(name = "--estimator", description = "The correlation estimator to be used")
+  //  @Option(names = "--estimator", description = "The correlation estimator to be used")
   //  CorrelationType estimator = CorrelationType.PEARSONS;
 
-  @Option(name = "--sketch-type", description = "The type sketch to be used")
+  @Option(names = "--sketch-type", description = "The type sketch to be used")
   SketchType sketchType = SketchType.KMV;
 
-  @Option(name = "--num-queries", description = "The numbers of queries to be run")
+  @Option(names = "--num-queries", description = "The numbers of queries to be run")
   int numQueries = 100;
 
-  @Required
-  @Option(name = "--num-hashes", description = "Number of hashes per sketch")
+  @Option(names = "--num-hashes", required = true, description = "Number of hashes per sketch")
   private double numHashes = KMV.DEFAULT_K;
 
-  @Option(name = "--no-index", description = "Skip indexing")
+  @Option(names = "--no-index", description = "Skip indexing")
   private boolean noIndex = false;
 
   public static void main(String[] args) {

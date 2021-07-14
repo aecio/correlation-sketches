@@ -3,7 +3,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
 }
 
-group 'vida-nyu'
+group 'corrsketches'
 version '0.1-SNAPSHOT'
 
 sourceCompatibility = 1.8
@@ -24,14 +24,19 @@ test {
 dependencies {
     implementation project(':core')
     implementation group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.21'
-    implementation group: 'com.github.rvesse', name: 'airline', version: '2.7.2'
     implementation group: 'org.rocksdb', name: 'rocksdbjni', version: '6.2.2'
     implementation group: 'org.iq80.leveldb', name: 'leveldb', version: '0.12'
     implementation group: 'tech.tablesaw', name: 'tablesaw-core', version: '0.37.3'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.8'
     implementation group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
     implementation group: 'org.slf4j', name: 'slf4j-nop', version: '1.7.30'
+    implementation group: 'info.picocli', name: 'picocli', version: '4.6.1'
+    annotationProcessor group: 'info.picocli', name: 'picocli-codegen', version: '4.6.1'
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.5.1")
+}
+
+compileJava {
+    options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
 }

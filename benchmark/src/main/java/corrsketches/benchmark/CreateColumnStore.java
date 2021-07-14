@@ -1,8 +1,5 @@
 package corrsketches.benchmark;
 
-import com.github.rvesse.airline.annotations.Command;
-import com.github.rvesse.airline.annotations.Option;
-import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.common.base.Preconditions;
 import corrsketches.SketchType;
 import corrsketches.benchmark.index.SketchIndex;
@@ -21,6 +18,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 @Command(
     name = CreateColumnStore.JOB_NAME,
@@ -33,19 +32,20 @@ public class CreateColumnStore extends CliTool implements Serializable {
   public static final String COLUMNS_KEY = "columns";
   public static final String DBTYPE_KEY = "dbtype";
 
-  @Required
-  @Option(name = "--input-path", description = "Folder containing CSV files")
+  @Option(names = "--input-path", required = true, description = "Folder containing CSV files")
   String inputPath;
 
-  @Required
-  @Option(name = "--output-path", description = "Output path for key-value store with columns")
+  @Option(
+      names = "--output-path",
+      required = true,
+      description = "Output path for key-value store with columns")
   String outputPath;
 
-  @Option(name = "--min-rows", description = "Minimum number of rows to consider table")
+  @Option(names = "--min-rows", description = "Minimum number of rows to consider table")
   int minRows = 1;
 
   @Option(
-      name = "--db-backend",
+      names = "--db-backend",
       description = "The type key-value store database: LEVELDB or ROCKSDB")
   DBType dbType = DBType.ROCKSDB;
 

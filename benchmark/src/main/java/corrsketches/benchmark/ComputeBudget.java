@@ -1,8 +1,5 @@
 package corrsketches.benchmark;
 
-import com.github.rvesse.airline.annotations.Command;
-import com.github.rvesse.airline.annotations.Option;
-import com.github.rvesse.airline.annotations.restrictions.Required;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.utils.CliTool;
 import hashtabledb.BytesBytesHashtable;
@@ -10,6 +7,8 @@ import hashtabledb.Kryos;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 @Command(name = ComputeBudget.JOB_NAME, description = "")
 public class ComputeBudget extends CliTool implements Serializable {
@@ -18,8 +17,10 @@ public class ComputeBudget extends CliTool implements Serializable {
 
   public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
-  @Required
-  @Option(name = "--input-path", description = "Folder containing the column store")
+  @Option(
+      names = "--input-path",
+      required = true,
+      description = "Folder containing the column store")
   private String inputPath;
 
   public static void main(String[] args) {

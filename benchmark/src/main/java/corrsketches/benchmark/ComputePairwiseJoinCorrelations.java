@@ -1,8 +1,5 @@
 package corrsketches.benchmark;
 
-import com.github.rvesse.airline.annotations.Command;
-import com.github.rvesse.airline.annotations.Option;
-import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import corrsketches.SketchType;
@@ -24,6 +21,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 @Command(
     name = ComputePairwiseJoinCorrelations.JOB_NAME,
@@ -34,40 +33,41 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
   public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
-  @Required
-  @Option(name = "--input-path", description = "Folder containing key-value column store")
+  @Option(
+      names = "--input-path",
+      required = true,
+      description = "Folder containing key-value column store")
   String inputPath;
 
-  @Required
-  @Option(name = "--output-path", description = "Output path for results file")
+  @Option(names = "--output-path", required = true, description = "Output path for results file")
   String outputPath;
 
-  @Required
   @Option(
-      name = "--sketch-params",
+      names = "--sketch-params",
+      required = true,
       description =
           "A comma-separated list of sketch parameters in the format SKETCH_TYPE:BUDGET_VALUE,SKETCH_TYPE:BUDGET_VALUE,...")
   String sketchParams = null;
 
   @Option(
-      name = "--intra-dataset-combinations",
+      names = "--intra-dataset-combinations",
       description = "Whether to consider only intra-dataset column combinations")
   Boolean intraDatasetCombinations = false;
 
-  @Option(name = "--performance", description = "Run performance experiments")
+  @Option(names = "--performance", description = "Run performance experiments")
   Boolean performance = false;
 
   @Option(
-      name = "--max-combinations",
+      names = "--max-combinations",
       description = "The maximum number of columns to consider for creating combinations.")
   private int maxSamples = 5000;
 
   @Option(
-      name = "--cpu-cores",
+      names = "--cpu-cores",
       description = "Number of CPU core to use. Default is to use all cores available.")
   int cpuCores = -1;
 
-  @Option(name = "--aggregations", description = "Run performance experiments")
+  @Option(names = "--aggregations", description = "Run performance experiments")
   String aggregateFunctions = "FIRST";
 
   public static void main(String[] args) {
