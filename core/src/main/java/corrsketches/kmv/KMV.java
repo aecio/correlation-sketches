@@ -15,12 +15,6 @@ public class KMV extends AbstractMinValueSketch<KMV> {
   public static final int DEFAULT_K = 256;
   private final int maxK;
 
-  // TODO: Replace all constructors by a builder class
-  @Deprecated
-  public KMV(int k) {
-    this(k, AggregateFunction.FIRST);
-  }
-
   @Deprecated
   public KMV(int k, AggregateFunction function) {
     super(k, function);

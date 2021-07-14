@@ -128,7 +128,6 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
                       computePerformanceStatistics(
                           cache, columnStore, processed, total, sketchParamsList, aggregations))
                   .forEach(writeCSV(resultsFile));
-      forkJoinPool.submit(task).get();
     } else {
       task =
           () ->
