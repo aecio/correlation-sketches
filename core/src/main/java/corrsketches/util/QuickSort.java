@@ -1,7 +1,5 @@
 package corrsketches.util;
 
-import smile.sort.SortUtils;
-
 public class QuickSort {
 
   private static final int M = 7;
@@ -15,9 +13,9 @@ public class QuickSort {
   }
 
   /**
-   * This is an efficient implementation Quick Sort algorithm without recursive. Besides sorting the
-   * first n elements of array arr, the first n elements of array brr will be also rearranged as the
-   * same order of arr.
+   * This is an in-place iterative implementation of Quick Sort algorithm without recursion. Besides
+   * sorting the first n elements of array arr, the first n elements of array brr will be also
+   * rearranged as the same order of arr.
    */
   public static void sort(int[] arr, double[] brr, int n) {
     int jstack = -1;
@@ -49,19 +47,19 @@ public class QuickSort {
         l = istack[jstack--];
       } else {
         k = (l + ir) >> 1;
-        SortUtils.swap(arr, k, l + 1);
-        SortUtils.swap(brr, k, l + 1);
+        swap(arr, k, l + 1);
+        swap(brr, k, l + 1);
         if (arr[l] > arr[ir]) {
-          SortUtils.swap(arr, l, ir);
-          SortUtils.swap(brr, l, ir);
+          swap(arr, l, ir);
+          swap(brr, l, ir);
         }
         if (arr[l + 1] > arr[ir]) {
-          SortUtils.swap(arr, l + 1, ir);
-          SortUtils.swap(brr, l + 1, ir);
+          swap(arr, l + 1, ir);
+          swap(brr, l + 1, ir);
         }
         if (arr[l] > arr[l + 1]) {
-          SortUtils.swap(arr, l, l + 1);
-          SortUtils.swap(brr, l, l + 1);
+          swap(arr, l, l + 1);
+          swap(brr, l, l + 1);
         }
         i = l + 1;
         j = ir;
@@ -77,8 +75,8 @@ public class QuickSort {
           if (j < i) {
             break;
           }
-          SortUtils.swap(arr, i, j);
-          SortUtils.swap(brr, i, j);
+          swap(arr, i, j);
+          swap(brr, i, j);
         }
         arr[l + 1] = arr[j];
         arr[j] = a;
@@ -101,5 +99,18 @@ public class QuickSort {
         }
       }
     }
+  }
+
+  public static void swap(int x[], int i, int j) {
+    int tmp = x[i];
+    x[i] = x[j];
+    x[j] = tmp;
+  }
+
+  public static void swap(double x[], int i, int j) {
+    double tmp;
+    tmp = x[i];
+    x[i] = x[j];
+    x[j] = tmp;
   }
 }

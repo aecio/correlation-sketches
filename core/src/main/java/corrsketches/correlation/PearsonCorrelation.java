@@ -1,10 +1,10 @@
 package corrsketches.correlation;
 
 import corrsketches.correlation.Correlation.Estimate;
-import smile.math.Math;
 import smile.stat.distribution.GaussianDistribution;
 import smile.stat.distribution.TDistribution;
 
+/** Implements Pearson's product-moment correlation coefficient. */
 public class PearsonCorrelation {
 
   public static final double TINY = 1.0e-25;

@@ -1,5 +1,6 @@
 package corrsketches.correlation;
 
+/** An interface for all correlation estimators implemented in this library. */
 public interface Correlation {
 
   class Estimate {

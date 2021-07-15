@@ -1,6 +1,5 @@
 package corrsketches.statistics;
 
-import smile.math.Math;
 import smile.stat.distribution.GaussianDistribution;
 
 public class Variance {

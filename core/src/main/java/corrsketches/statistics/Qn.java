@@ -5,10 +5,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
 import it.unimi.dsi.fastutil.doubles.DoubleHeapPriorityQueue;
 import java.util.Arrays;
-import smile.math.Math;
 
 /**
- * Implements the scale estimator proposed in Peter J. Rousseeuw & Christophe Croux (1993)
+ * Implements the scale estimator proposed in Peter J. Rousseeuw and Christophe Croux (1993)
  * Alternatives to the Median Absolute Deviation, Journal of the American Statistical Association,
  * 88:424, 1273-1283, DOI: 10.1080/01621459.1993.10476408.
  */

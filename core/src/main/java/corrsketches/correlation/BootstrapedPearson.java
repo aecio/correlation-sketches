@@ -4,8 +4,8 @@ import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.statistics.Stats;
 import java.util.Arrays;
 import java.util.Random;
-import smile.math.Math;
 
+/** Implements the PM1 bootstrapping for estimating the Pearson's correlation coefficient. */
 public class BootstrapedPearson {
 
   //  public static CorrelationEstimate coefficient(double[] x, double[] y) {

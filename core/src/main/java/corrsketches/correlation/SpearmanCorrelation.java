@@ -3,6 +3,7 @@ package corrsketches.correlation;
 import corrsketches.correlation.Correlation.Estimate;
 import smile.sort.QuickSort;
 
+/** Implements Spearman's correlation coefficient. */
 public class SpearmanCorrelation {
 
   public static double coefficient(double[] x, double[] y) {

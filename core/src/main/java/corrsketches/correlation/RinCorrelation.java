@@ -4,7 +4,7 @@ import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.statistics.Stats;
 import smile.sort.QuickSort;
 
-/** Implements the Rank-Based Inverse Normal (RIN) Transformation correlation coefficient */
+/** Implements the Rank-Based Inverse Normal (RIN) Transformation correlation coefficient. */
 public class RinCorrelation {
 
   /**

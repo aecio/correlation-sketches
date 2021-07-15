@@ -15,6 +15,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
 
+/**
+ * Implements the Correlation Sketches algorithm described in "Santos, A., Bessa, A., Chirigati, F.,
+ * Musco, C. and Freire, J., 2021, June. Correlation sketches for approximate join-correlation
+ * queries. In Proceedings of the 2021 International Conference on Management of Data (pp.
+ * 1531-1544)."
+ */
 public class CorrelationSketch {
 
   public static final Correlation DEFAULT_ESTIMATOR = PearsonCorrelation::estimate;

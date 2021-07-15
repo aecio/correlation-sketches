@@ -3,8 +3,13 @@ package corrsketches.correlation;
 import com.google.common.base.Preconditions;
 import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.statistics.Qn;
-import smile.math.Math;
 
+/**
+ * Implements the robust correlation based on principal component variances described in
+ * "Shevlyakov, G.L. and Oja, H., 2016. Robust correlation: Theory and applications (Vol. 3). John
+ * Wiley &amp; Sons". This implementation uses the robust Qn scale estimator proposed in Peter J.
+ * Rousseeuw and Christophe Croux (1993).
+ */
 public class QnCorrelation {
 
   private static final double SQRT_OF_TWO = Math.sqrt(2);
