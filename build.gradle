@@ -10,3 +10,7 @@ repositories {
 googleJavaFormat {
     toolVersion = '1.9'
 }
+
+googleJavaFormat {
+    exclude '.gradle/*'
+}

@@ -1,0 +1,20 @@
+image: gradle:jdk11
+
+before_script:
+  #  - echo "$CI_BUILD_NAME, $CI_BUILD_REF_NAME $CI_BUILD_STAGE" # debug
+  - echo `pwd`
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+  - echo "$GRADLE_USER_HOME"
+
+cache:
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+
+test:
+  stage: test
+  script:
+    - ./gradlew check --info --stacktrace
+
+after_script:
+  - echo "End CI"
