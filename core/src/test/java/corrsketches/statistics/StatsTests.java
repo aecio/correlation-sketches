@@ -1,5 +1,6 @@
 package corrsketches.statistics;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import corrsketches.correlation.PearsonCorrelation;
@@ -40,6 +41,21 @@ public class StatsTests {
     double[] x = new double[] {1, 2};
     double dotn = Stats.dotn(x, x);
     assertEquals((1 * 1 + 2 * 2) / 2.0, dotn);
+  }
+
+  @Test
+  public void testMedian() {
+    double[] x = new double[] {1, 4, 3, 2, 5};
+    double[] original = Arrays.copyOf(x, x.length);
+
+    assertEquals(3, Stats.median(x));
+    assertEquals(3, Stats.median(x, 5));
+    assertEquals((2 + 3) / 2d, Stats.median(x, 4));
+    assertEquals(3, Stats.median(x, 3));
+    assertThat(x).isEqualTo(original);
+
+    assertEquals(3, Stats.median(x, 3, true));
+    assertThat(x).isNotEqualTo(original); // should have changed order of elements
   }
 
   @Test

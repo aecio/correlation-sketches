@@ -1,5 +1,6 @@
 package corrsketches.statistics;
 
+import java.util.Arrays;
 import smile.stat.distribution.GaussianDistribution;
 
 public class Stats {
@@ -36,6 +37,37 @@ public class Stats {
     return sum / n;
   }
 
+  public static double median(double[] x) {
+    return median(x, x.length, false);
+  }
+
+  public static double median(double x[], int n) {
+    return median(x, n, false);
+  }
+
+  public static double median(double x[], int n, boolean inplace) {
+    if (n == 1) {
+      return x[0];
+    }
+    if (n == 2) {
+      return (x[0] + x[1]) / 2;
+    }
+
+    if (!inplace) {
+      x = Arrays.copyOf(x, n);
+    }
+    Arrays.sort(x, 0, n);
+
+    double median;
+    if (n % 2 == 0) {
+      median = (x[n / 2 - 1] + x[n / 2]) / 2.0;
+    } else {
+      median = x[n / 2];
+    }
+
+    return median;
+  }
+
   /**
    * Computes minimum and maximum values of an array.
    *
@@ -61,6 +93,21 @@ public class Stats {
       xu[i] = (x[i] - min) / (max - min);
     }
     return xu;
+  }
+
+  public static double std(double[] x) {
+    return Math.sqrt(Variance.var(x));
+  }
+
+  public static double[] standardize(double[] x) {
+    final double stdx = std(x);
+    final double meanx = mean(x);
+    final int n = x.length;
+    double[] result = new double[n];
+    for (int i = 0; i < n; i++) {
+      result[i] = (x[i] - meanx) / stdx;
+    }
+    return result;
   }
 
   public static class Extent {
