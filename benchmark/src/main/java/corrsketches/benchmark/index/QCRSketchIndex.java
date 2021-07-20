@@ -33,7 +33,7 @@ public class QCRSketchIndex extends SketchIndex {
     super(indexPath, sketchType, threshold);
   }
 
-  public QCRSketchIndex() {
+  public QCRSketchIndex() throws IOException {
     super();
   }
 
@@ -68,49 +68,36 @@ public class QCRSketchIndex extends SketchIndex {
     doc.add(new StoredField(VALUES_FIELD_NAME, valuesBytes));
 
     writer.updateDocument(new Term(ID_FIELD_NAME, id), doc);
-    writer.flush();
-    searcherManager.maybeRefresh();
+    //    refresh();
   }
 
   private static int[] computeCorrelationIndexKeys(int[] keys, double[] values) {
     double meanx = Stats.mean(values);
     double stdx = Stats.std(values);
-    int[] indexKeys = new int[keys.length];
 
-    int[] signs = new int[keys.length];
+    //    System.out.println("mean: " + meanx);
+
+    int[] indexKeys = new int[keys.length];
     for (int i = 0; i < keys.length; i++) {
       final double q = (values[i] - meanx) / stdx;
-      // final double q = (values[i] - meanx);
+      int sign = 0;
       if (q > 0.0) {
-        signs[i] = 1;
+        sign = 1;
       } else if (q < 0.0) {
-        signs[i] = -1;
-      } else {
-        signs[i] = 0;
+        sign = -1;
       }
+      indexKeys[i] = Hashes.MURMUR3.newHasher().putInt(keys[i]).putInt(sign).hash().asInt();
+
+      // DEBUG
+      //      String signStr = "=";
+      //      if (sign > 0) {
+      //        signStr = "+";
+      //      } else if (sign < 0) {
+      //        signStr = "-";
+      //      }
+      //      System.out.printf("%d\t[%s]\t%s\n", keys[i], signStr, indexKeys[i]);
     }
-    // System.out.println("mean: " + meanx);
-    for (int i = 0; i < keys.length; i++) {
-      String sign = "=";
-      if (signs[i] > 0) {
-        sign = "+";
-      } else if (signs[i] < 0) {
-        sign = "-";
-      }
-      // System.out.printf("%s ", sign);
-      indexKeys[i] = Hashes.murmur3_32(keys[i] + sign);
-    }
-    // System.out.
-    //
-    // f("\n");
-    // for (int i = 0; i < keys.length; i++) {
-    //   System.out.printf("%s ", keys[i]);
-    // }
-    // System.out.printf("\n");
-    // for (int i = 0; i < indexKeys.length; i++) {
-    //   System.out.printf("%s ", indexKeys[i]);
-    // }
-    // System.out.printf("\n");
+    //    System.out.printf("\n");
     return indexKeys;
   }
 
@@ -119,56 +106,42 @@ public class QCRSketchIndex extends SketchIndex {
     CorrelationSketch query = builder.build(columnPair.keyValues, columnPair.columnValues);
     query.setCardinality(columnPair.keyValues.size());
 
+    final ImmutableCorrelationSketch sketch = query.toImmutable();
+
+    int[] keys = sketch.getKeys();
+    // System.out.println("q");
+    final double[] values = sketch.getValues();
+    int[] posIndexKeys = computeCorrelationIndexKeys(keys, values);
+
+    final double[] flippedValues = new double[values.length];
+    for (int i = 0; i < values.length; i++) {
+      flippedValues[i] = -1 * values[i];
+    }
+    int[] negIndexKeys = computeCorrelationIndexKeys(keys, flippedValues);
+
+    Builder bq1 = new BooleanQuery.Builder();
+    Builder bq2 = new BooleanQuery.Builder();
+    for (int i = 0; i < posIndexKeys.length; i++) {
+      final int key1 = posIndexKeys[i];
+      final Term term1 = new Term(QCR_HASHES_FIELD_NAME, intToBytesRef(key1));
+      bq1.add(new TermQuery(term1), Occur.SHOULD);
+
+      final int key2 = negIndexKeys[i];
+      final Term term2 = new Term(QCR_HASHES_FIELD_NAME, intToBytesRef(key2));
+      bq2.add(new TermQuery(term2), Occur.SHOULD);
+    }
+
+    DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(bq1.build(), bq2.build()), 0f);
+
     IndexSearcher searcher = searcherManager.acquire();
     try {
-
-      final ImmutableCorrelationSketch sketch = query.toImmutable();
-
-      int[] keys = sketch.getKeys();
-      // System.out.println("q");
-      final double[] values = sketch.getValues();
-      int[] posIndexKeys = computeCorrelationIndexKeys(keys, values);
-
-      final double[] flippedValues = new double[values.length];
-      for (int i = 0; i < values.length; i++) {
-        flippedValues[i] = -1 * values[i];
-      }
-      int[] negIndexKeys = computeCorrelationIndexKeys(keys, flippedValues);
-
-      Builder bq1 = new BooleanQuery.Builder();
-      Builder bq2 = new BooleanQuery.Builder();
-      // for (int key : posIndexKeys) {
-      //   final Term term = new Term(CORRHASHES_FIELD_NAME, intToBytesRef(key));
-      //   bq.add(new TermQuery(term), Occur.SHOULD);
-      // }
-      for (int i = 0; i < posIndexKeys.length; i++) {
-        final int key1 = posIndexKeys[i];
-        final Term term1 = new Term(QCR_HASHES_FIELD_NAME, intToBytesRef(key1));
-        bq1.add(new TermQuery(term1), Occur.SHOULD);
-
-        final int key2 = negIndexKeys[i];
-        final Term term2 = new Term(QCR_HASHES_FIELD_NAME, intToBytesRef(key2));
-        bq2.add(new TermQuery(term2), Occur.SHOULD);
-      }
-
-      // TreeSet<ValueHash> kMinValues = query.getKMinValues();
-      // for (ValueHash vh : kMinValues) {
-      //   final Term term = new Term(HASHES_FIELD_NAME, intToBytesRef(vh.keyHash));
-      //   bq.add(new TermQuery(term), Occur.SHOULD);
-      // }
-      // bq.setMinimumNumberShouldMatch(1);
-      DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(bq1.build(), bq2.build()), 0f);
       TopDocs hits = searcher.search(q, k);
-
       List<Hit> results = new ArrayList<>();
       for (int i = 0; i < hits.scoreDocs.length; i++) {
         final ScoreDoc scoreDoc = hits.scoreDocs[i];
-        final Hit hit = createSearchHit(sketch, searcher.doc(scoreDoc.doc), scoreDoc.score);
+        final Hit hit = createSearchHit(sketch, searcher, scoreDoc, false);
         results.add(hit);
       }
-
-      // results.sort((a, b) -> Double.compare(b.correlationAbsolute(), a.correlationAbsolute()));
-
       return results;
     } finally {
       searcherManager.release(searcher);

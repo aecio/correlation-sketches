@@ -3,7 +3,6 @@ package corrsketches.benchmark.index;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import corrsketches.benchmark.ColumnPair;
-import corrsketches.benchmark.index.SketchIndex.Hit;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +29,7 @@ public class SketchIndexTest {
     index.index("c0", c0);
     index.index("c1", c1);
     index.index("c2", c2);
+    index.refresh();
 
     List<Hit> hits = index.search(q, 5);
 
@@ -44,10 +44,10 @@ public class SketchIndexTest {
       System.out.println("    robust-correlation: " + hit.robustCorrelation());
     }
 
-    assertEquals(hits.size(), 3);
-    assertEquals(hits.get(0).id, "c0");
-    assertEquals(hits.get(1).id, "c1");
-    assertEquals(hits.get(2).id, "c2");
+    assertEquals(3, hits.size());
+    assertEquals("c0", hits.get(0).id);
+    assertEquals("c1", hits.get(1).id);
+    assertEquals("c2", hits.get(2).id);
   }
 
   @Test
@@ -92,6 +92,7 @@ public class SketchIndexTest {
     index.index("c3", c3);
     index.index("c4", c4);
     index.index("c5", c5);
+    index.refresh();
 
     List<Hit> hits = index.search(q, 6);
 
