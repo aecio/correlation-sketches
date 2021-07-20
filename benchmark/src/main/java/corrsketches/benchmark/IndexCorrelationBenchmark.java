@@ -5,14 +5,15 @@ import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.index.QCRSketchIndex;
 import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.index.SketchIndex.Hit;
-import corrsketches.benchmark.utils.CliTool;
 import corrsketches.kmv.KMV;
 import hashtabledb.BytesBytesHashtable;
 import hashtabledb.KV;
 import hashtabledb.Kryos;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -20,13 +21,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Command(
     name = IndexCorrelationBenchmark.JOB_NAME,
     description = "Creates a Lucene index of tables")
-public class IndexCorrelationBenchmark extends CliTool implements Serializable {
+public class IndexCorrelationBenchmark {
 
   public static final String JOB_NAME = "IndexCorrelationBenchmark";
 
@@ -46,9 +48,6 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
   @Option(names = "--output-path", required = true, description = "Output path for results file")
   String outputPath;
 
-  //  @Option(names = "--estimator", description = "The correlation estimator to be used")
-  //  CorrelationType estimator = CorrelationType.PEARSONS;
-
   @Option(names = "--sketch-type", description = "The type sketch to be used")
   SketchType sketchType = SketchType.KMV;
 
@@ -61,26 +60,28 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
   @Option(names = "--num-hashes", required = true, description = "Number of hashes per sketch")
   private double numHashes = KMV.DEFAULT_K;
 
-  @Option(names = "--no-index", description = "Skip indexing")
-  private boolean noIndex = false;
-
   public static void main(String[] args) {
-    CliTool.run(args, new IndexCorrelationBenchmark());
+    System.exit(new CommandLine(new IndexCorrelationBenchmark()).execute(args));
   }
 
-  @Override
-  public void execute() throws IOException {
+  @Command(name = "buildIndex")
+  public void buildIndex() throws IOException {
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
     BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
 
     QueryStats querySample = selectQueriesRandomly(storeMetadata, numQueries);
+    buildIndex(columnStore, outputPath, sketchType, numHashes, querySample);
+    writeQuerySample(querySample, outputPath);
+    columnStore.close();
+    System.out.println("Done.");
+  }
 
-    // builds and closes index
-    if (!noIndex) {
-      buildIndex(columnStore, outputPath, sketchType, numHashes, querySample);
-    }
+  @Command(name = "runQueries")
+  public void queryBenchmark() throws IOException {
+    ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
+    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
 
-    // Execute queries against the index
+    QueryStats querySample = readQuerySample(outputPath);
     runQueries(columnStore, querySample);
 
     columnStore.close();
@@ -99,7 +100,7 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     System.out.println("Selecting a random sample of columns as queries...");
 
     // Build index
-    SketchIndex index = openSketchIndex(outputPath, sketchType, numHashes);
+    SketchIndex index = openSketchIndex(outputPath, indexType, sketchType, numHashes);
 
     System.out.println("Indexing all columns...");
 
@@ -128,11 +129,12 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     index.close();
   }
 
+  /** Execute queries against the index */
   private void runQueries(BytesBytesHashtable columnStore, QueryStats querySample)
       throws IOException {
 
-    // re-opens index
-    SketchIndex index = openSketchIndex(outputPath, sketchType, numHashes);
+    // opens the index
+    SketchIndex index = openSketchIndex(outputPath, indexType, sketchType, numHashes);
 
     FileWriter csv = new FileWriter(Paths.get(outputPath, "query-times.csv").toFile());
     csv.write("qid, k, time, qcard\n");
@@ -160,19 +162,59 @@ public class IndexCorrelationBenchmark extends CliTool implements Serializable {
     System.out.println("Done.");
   }
 
-  private SketchIndex openSketchIndex(String outputPath, SketchType sketchType, double numHashes)
+  private static void writeQuerySample(QueryStats querySample, String outputPath)
       throws IOException {
-    SketchIndex index;
-    if (indexType == IndexType.STD) {
-      index = new SketchIndex(outputPath, sketchType, numHashes);
-    } else {
-      index = new QCRSketchIndex(outputPath, sketchType, numHashes);
+    FileWriter file = new FileWriter(Paths.get(outputPath, "query-sample.txt").toFile());
+    file.write(querySample.totalColumns + "\n");
+    for (String qid : querySample.queries) {
+      file.write(qid);
+      file.write('\n');
     }
-    System.out.printf("Opened index of type (%s) at: %s\n", indexType, outputPath);
-    return index;
+    file.close();
   }
 
-  private QueryStats selectQueriesRandomly(ColumnStoreMetadata storeMetadata, int sampleSize) {
+  private static QueryStats readQuerySample(String outputPath) throws IOException {
+    File file = Paths.get(outputPath, "query-sample.txt").toFile();
+    BufferedReader fileReader = new BufferedReader(new FileReader(file));
+    QueryStats querySample = new QueryStats();
+    querySample.totalColumns = Integer.parseInt(fileReader.readLine());
+    querySample.queries = new HashSet<>();
+    String qid;
+    while ((qid = fileReader.readLine()) != null) {
+      querySample.queries.add(qid);
+    }
+    return querySample;
+  }
+
+  private static SketchIndex openSketchIndex(
+      String outputPath, IndexType indexType, SketchType sketchType, double numHashes)
+      throws IOException {
+    String indexPath = indexPath(outputPath, indexType, sketchType, numHashes);
+    try {
+      switch (indexType) {
+        case STD:
+          return new SketchIndex(indexPath, sketchType, numHashes);
+        case QCR:
+          return new QCRSketchIndex(indexPath, sketchType, numHashes);
+        default:
+          throw new IllegalArgumentException("Undefined index type: " + indexType);
+      }
+    } finally {
+      System.out.printf("Opened index of type (%s) at: %s\n", indexType, outputPath);
+    }
+  }
+
+  private static String indexPath(
+      String outputPath, IndexType indexType, SketchType sketchType, double numHashes) {
+    String sketchParams =
+        String.format(
+            "%s-%s=%.3f",
+            indexType.toString().toLowerCase(), sketchType.toString().toLowerCase(), numHashes);
+    return Paths.get(outputPath, sketchParams).toString();
+  }
+
+  private static QueryStats selectQueriesRandomly(
+      ColumnStoreMetadata storeMetadata, int sampleSize) {
     List<String> queries = new ArrayList<>();
     Random random = new Random(0);
     int seen = 0;
