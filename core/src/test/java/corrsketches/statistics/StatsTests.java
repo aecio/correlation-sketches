@@ -62,10 +62,10 @@ public class StatsTests {
   public void testArrayUnitRange() {
 
     double[] x = new double[] {1, 2, 3};
-    double[] xUnitRange = Stats.unitRange(x, 1, 3);
+    double[] xUnitRange = Stats.unitize(x, 1, 3);
 
     double[] y = new double[] {1.5, 2, 2.2};
-    double[] yUnitRange = Stats.unitRange(y, 1.5, 2.2);
+    double[] yUnitRange = Stats.unitize(y, 1.5, 2.2);
 
     System.out.println(Arrays.toString(yUnitRange));
 

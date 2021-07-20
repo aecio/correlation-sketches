@@ -304,8 +304,8 @@ public class BenchmarkUtils {
     result.y_min_sample = extentY.min;
     result.y_max_sample = extentY.max;
 
-    double[] unitRangeX = Stats.unitRange(paired.x, result.x_min, result.x_max);
-    double[] unitRangeY = Stats.unitRange(paired.y, result.y_min, result.y_max);
+    double[] unitRangeX = Stats.unitize(paired.x, result.x_min, result.x_max);
+    double[] unitRangeY = Stats.unitize(paired.y, result.y_min, result.y_max);
     result.x_sample_mean = Stats.mean(unitRangeX);
     result.y_sample_mean = Stats.mean(unitRangeY);
     result.x_sample_var = Variance.var(unitRangeX);

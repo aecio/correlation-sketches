@@ -87,12 +87,17 @@ public class Stats {
     return new Extent(min, max);
   }
 
-  public static double[] unitRange(double[] x, double min, double max) {
+  public static double[] unitize(double[] x, double min, double max) {
     double[] xu = new double[x.length];
     for (int i = 0; i < x.length; i++) {
       xu[i] = (x[i] - min) / (max - min);
     }
     return xu;
+  }
+
+  public static double[] unitize(double[] x) {
+    Extent ext = extent(x);
+    return unitize(x, ext.min, ext.max);
   }
 
   public static double std(double[] x) {
