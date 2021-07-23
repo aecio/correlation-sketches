@@ -41,8 +41,12 @@ public class SketchIndex extends AbstractLuceneIndex {
   }
 
   public SketchIndex(String indexPath, SketchType sketchType, double threshold) throws IOException {
+    this(indexPath, CorrelationSketch.builder().sketchType(sketchType, threshold));
+  }
+
+  public SketchIndex(String indexPath, CorrelationSketch.Builder builder) throws IOException {
     super(indexPath);
-    this.builder = CorrelationSketch.builder().sketchType(sketchType, threshold);
+    this.builder = builder;
   }
 
   public void index(String id, ColumnPair columnPair) throws IOException {

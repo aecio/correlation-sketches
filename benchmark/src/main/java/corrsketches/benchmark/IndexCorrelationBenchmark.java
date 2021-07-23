@@ -2,19 +2,24 @@ package corrsketches.benchmark;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import corrsketches.CorrelationSketch;
+import corrsketches.CorrelationSketch.Builder;
 import corrsketches.SketchType;
+import corrsketches.SketchType.GKMVOptions;
+import corrsketches.SketchType.KMVOptions;
+import corrsketches.SketchType.SketchOptions;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
+import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
 import corrsketches.benchmark.index.Hit;
 import corrsketches.benchmark.index.QCRSketchIndex;
 import corrsketches.benchmark.index.SketchIndex;
+import corrsketches.benchmark.utils.EvalMetrics;
+import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.PearsonCorrelation;
-import corrsketches.kmv.KMV;
 import hashtabledb.BytesBytesHashtable;
 import hashtabledb.KV;
 import hashtabledb.Kryos;
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -23,14 +28,17 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -48,7 +56,6 @@ public class IndexCorrelationBenchmark {
   public enum IndexType {
     QCR,
     STD,
-    FULL
   }
 
   @Option(
@@ -60,53 +67,53 @@ public class IndexCorrelationBenchmark {
   @Option(names = "--output-path", required = true, description = "Output path for results file")
   String outputPath;
 
-  @Option(names = "--sketch-type", description = "The type of sketch to be used")
-  SketchType sketchType = SketchType.KMV;
-
-  @Option(names = "--index-type", description = "The type of index to be used")
-  IndexType indexType = IndexType.STD;
+  @Option(names = "--params", required = true, description = "Benchmark parameters")
+  String params;
 
   @Option(names = "--num-queries", description = "The numbers of queries to be run")
   int numQueries = 1000;
 
-  @Option(names = "--num-hashes", required = true, description = "Number of hashes per sketch")
-  private double numHashes = KMV.DEFAULT_K;
+  @Option(
+      names = "--aggregate",
+      description = "The aggregate functions to be used by correlation sketches")
+  AggregateFunction aggregate = AggregateFunction.FIRST;
 
   public static void main(String[] args) {
     System.exit(new CommandLine(new IndexCorrelationBenchmark()).execute(args));
   }
 
   @Command(name = "buildIndex")
-  public void buildIndex() throws IOException {
+  public void buildIndex() throws Exception {
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
     final boolean readonly = true;
     BytesBytesHashtable columnStore =
         new BytesBytesHashtable(storeMetadata.dbType, inputPath, readonly);
 
     QueryStats querySample = selectQueriesRandomly(storeMetadata, numQueries);
-    buildIndex(columnStore, outputPath, sketchType, numHashes, querySample);
+
+    final Runnable task =
+        () ->
+            BenchmarkParams.parse(this.params).stream()
+                .parallel()
+                .forEach(
+                    (BenchmarkParams p) -> {
+                      try {
+                        buildIndex(columnStore, outputPath, querySample, p);
+                      } catch (IOException e) {
+                        e.printStackTrace();
+                      }
+                    });
+    parallelExecute(task);
     writeQuerySample(querySample, outputPath);
     columnStore.close();
     System.out.println("Done.");
   }
 
-  @Command(name = "runQueries")
-  public void queryBenchmark() throws Exception {
-    ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
-    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
-
-    QueryStats querySample = readQuerySample(outputPath);
-    runQueries(columnStore, querySample);
-
-    columnStore.close();
-  }
-
   public void buildIndex(
       BytesBytesHashtable columnStore,
       String outputPath,
-      SketchType sketchType,
-      double numHashes,
-      QueryStats querySample)
+      QueryStats querySample,
+      BenchmarkParams params)
       throws IOException {
 
     Set<String> queryColumns = querySample.queries;
@@ -114,12 +121,13 @@ public class IndexCorrelationBenchmark {
     System.out.println("Selecting a random sample of columns as queries...");
 
     // Build index
-    SketchIndex index = openSketchIndex(outputPath, indexType, sketchType, numHashes);
+    SketchIndex index = openSketchIndex(outputPath, params);
 
     System.out.println("Indexing all columns...");
 
     Iterator<KV<byte[], byte[]>> it = columnStore.iterator();
     int i = 0;
+    printProgress(querySample, params, i);
     while (it.hasNext()) {
 
       KV<byte[], byte[]> kv = it.next();
@@ -131,114 +139,236 @@ public class IndexCorrelationBenchmark {
       }
 
       i++;
-      if (i % (querySample.totalColumns / 50) == 0) {
-        final double percent = i / (double) querySample.totalColumns * 100;
-        System.out.printf("Indexed %d columns (%.2f%%)\n", i, percent);
+      if (i % (querySample.totalColumns / 25) == 0) {
+        printProgress(querySample, params, i);
       }
     }
-    final double percent = i / (double) querySample.totalColumns * 100;
-    System.out.printf("Indexed %d columns (%.2f%%)\n", i, percent);
+    printProgress(querySample, params, i);
 
     // close index to force flushing data to disk
     index.close();
   }
 
+  private static void printProgress(QueryStats querySample, BenchmarkParams params, int i) {
+    final double percent = i / (double) querySample.totalColumns * 100;
+    System.out.printf("[%s] Indexed %d columns (%.2f%%)\n", params.params, i, percent);
+  }
+
+  @Command(name = "runQueries")
+  public void queryBenchmark() throws Exception {
+    ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
+    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
+    QueryStats querySample = readQuerySample(outputPath);
+    runQueries(columnStore, querySample, BenchmarkParams.parse(this.params));
+    columnStore.close();
+  }
+
   /** Execute queries against the index */
-  private void runQueries(BytesBytesHashtable columnStore, QueryStats querySample)
-      throws IOException, ExecutionException, InterruptedException {
+  private void runQueries(
+      BytesBytesHashtable columnStore, QueryStats querySample, List<BenchmarkParams> params)
+      throws Exception {
 
     // opens the index
-    SketchIndex index = openSketchIndex(outputPath, indexType, sketchType, numHashes);
-
-    String filename =
-        String.format("query-times_%s.csv", indexType.toString().toLowerCase(Locale.ROOT));
-    FileWriter csv = new FileWriter(Paths.get(outputPath, filename).toFile());
-    csv.write("qid, k, time, qcard, ranking_corr\n");
-
-    System.out.println("Running queries against the index...");
-    Set<String> queryColumns = querySample.queries;
-    //    DoubleList times = new DoubleArrayList();
-
-    int count = 0;
-    for (String query : queryColumns) {
-      byte[] columnPairBytes = columnStore.get(query.getBytes());
-      ColumnPair queryColumnPair = KRYO.unserializeObject(columnPairBytes);
-      int k = 100;
-
-      long start = System.nanoTime();
-      List<Hit> hits = index.search(queryColumnPair, k);
-      long elapsedTime = System.nanoTime() - start;
-      final double timeMs = elapsedTime / 1000000d;
-
-      var pearson = computeActualCorrelations(columnStore, queryColumnPair, hits);
-      //      var pearson = metricsResults.get(0).corr_rp_actual;
-      //      List<String> collect = metricsResults.stream().map((var m) ->
-      // String.valueOf(m.corr_rp_actual))
-      //          .collect(Collectors.toList());
-      //      String.join(",", collect);
-      final String csvLine =
-          String.format(
-              "%s,%f,%.3f,%d,%.3f\n",
-              query, numHashes, timeMs, queryColumnPair.keyValues.size(), pearson);
-      csv.write(csvLine);
-      csv.flush();
-      count++;
-      System.out.printf(
-          "Processed %d queries (%.3f%%)\n", count, 100 * count / (double) queryColumns.size());
+    List<SketchIndex> indexes = new ArrayList<>(params.size());
+    for (var p : params) {
+      indexes.add(openSketchIndex(outputPath, p));
     }
 
-    index.close();
-    csv.close();
+    FileWriter csvHits = new FileWriter(Paths.get(outputPath, "query-results.csv").toFile());
+    csvHits.write("qid, sketch_params, time, qcard\n");
+
+    FileWriter metricsCsv = new FileWriter(Paths.get(outputPath, "query-metrics.csv").toFile());
+    metricsCsv.write(
+        "qid, params, ndgc@5, ndgc@10, ndcg@50, recall_r>0.25, recall_r>0.50, recall_r>0.75\n");
+
+    System.out.println("Running queries against the index...");
+    Set<String> queryIds = querySample.queries;
+
+    final int topK = 100;
+    int count = 0;
+    for (String qid : queryIds) {
+
+      ColumnPair queryColumnPair = readColumnPair(columnStore, qid);
+      final int queryCard = queryColumnPair.keyValues.size();
+
+      var allHitLists = new ArrayList<List<Hit>>();
+      for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
+        var index = indexes.get(paramIdx);
+
+        long start = System.nanoTime();
+        List<Hit> hits = index.search(queryColumnPair, topK);
+        final int timeMs = (int) ((System.nanoTime() - start) / 1000000d);
+        allHitLists.add(hits);
+
+        final String sketchParams = params.get(paramIdx).params;
+        csvHits.write(String.format("%s,%s,%d,%d\n", qid, sketchParams, timeMs, queryCard));
+      }
+
+      List<GroundTruth> groundTruth = computeGroundTruth(columnStore, queryColumnPair, allHitLists);
+
+      for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
+        List<Hit> hits = allHitLists.get(paramIdx);
+        Scores scores = computeRankingScores(hits, groundTruth, params.get(paramIdx).params);
+
+        String csvLine =
+            String.format(
+                "%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+                qid,
+                scores.params,
+                scores.ndcg5,
+                scores.ndcg10,
+                scores.ndcg50,
+                scores.recallR025,
+                scores.recallR050,
+                scores.recallR075);
+        metricsCsv.write(csvLine);
+        metricsCsv.flush();
+      }
+
+      count++;
+      System.out.printf(
+          "Processed %d queries (%.3f%%)\n", count, 100 * count / (double) queryIds.size());
+    }
+
+    for (var index : indexes) {
+      index.close();
+    }
+    csvHits.close();
+    metricsCsv.close();
+
     System.out.println("Done.");
   }
 
-  private double computeActualCorrelations(
-      BytesBytesHashtable columnStore, ColumnPair queryColumnPair, List<Hit> hits)
+  private Scores computeRankingScores(
+      List<Hit> hits, List<GroundTruth> groundTruth, String sketchParams) {
+
+    final Scores scores = new Scores();
+    scores.params = sketchParams;
+
+    if (hits.isEmpty()) {
+      return scores;
+    }
+
+    Map<String, Double> relenvanceMap = new HashMap<>();
+    for (var gt : groundTruth) {
+      relenvanceMap.put(gt.hitId, gt.corr_actual);
+    }
+
+    final EvalMetrics metrics = new EvalMetrics(relenvanceMap);
+    scores.recallR025 = metrics.recall(hits, 0.25);
+    scores.recallR050 = metrics.recall(hits, 0.50);
+    scores.recallR075 = metrics.recall(hits, 0.75);
+    scores.ndcg5 = metrics.ndgc(hits, 5);
+    scores.ndcg10 = metrics.ndgc(hits, 10);
+    scores.ndcg50 = metrics.ndgc(hits, 50);
+
+    return scores;
+  }
+
+  private static ColumnPair readColumnPair(BytesBytesHashtable columnStore, String query) {
+    byte[] columnPairBytes = columnStore.get(query.getBytes());
+    return KRYO.unserializeObject(columnPairBytes);
+  }
+
+  private List<GroundTruth> computeGroundTruth(
+      BytesBytesHashtable columnStore, ColumnPair queryColumnPair, List<List<Hit>> allHitLists)
       throws ExecutionException, InterruptedException {
 
-    List<AggregateFunction> functions = Arrays.asList(AggregateFunction.FIRST);
+    List<String> allHitIds =
+        allHitLists.stream()
+            .flatMap(List::stream)
+            .map(hit -> hit.id)
+            .distinct()
+            .collect(Collectors.toList());
 
+    List<AggregateFunction> aggregateFunctions = Arrays.asList(aggregate);
+
+    return parallelExecute(
+        () ->
+            allHitIds.stream()
+                .parallel()
+                .map(
+                    (String hitId) -> {
+                      ColumnPair hitColumnPair = getColumnPair(cache, columnStore, hitId);
+
+                      HashSet<String> xKeys = new HashSet<>(queryColumnPair.keyValues);
+                      HashSet<String> yKeys = new HashSet<>(hitColumnPair.keyValues);
+
+                      var gt = new GroundTruth();
+                      gt.hitId = hitId;
+                      gt.card_q_actual = xKeys.size();
+                      gt.card_c_actual = yKeys.size();
+                      gt.overlap_qc_actual = Sets.intersectionSize(xKeys, yKeys);
+                      gt.corr_actual =
+                          computeCorrelation(
+                              queryColumnPair, aggregateFunctions, hitId, hitColumnPair);
+                      return gt;
+                    })
+                .collect(Collectors.toList()));
+  }
+
+  private static double computeCorrelation(
+      ColumnPair queryColumnPair,
+      List<AggregateFunction> functions,
+      String hitId,
+      ColumnPair hitColumnPair) {
+    double correlation;
     MetricsResult results = new MetricsResult();
-    results.corr_rp_actual = 0;
+    List<MetricsResult> metricsResults =
+        computeCorrelationsAfterJoin(queryColumnPair, hitColumnPair, functions, results);
+    if (!metricsResults.isEmpty()) {
+      correlation = metricsResults.get(0).corr_rp_actual;
+    } else {
+      System.out.printf(
+          "WARN: no correlation computed for query.id=[%s] hit.id=[%s] join size=[%d]\n",
+          queryColumnPair.id(), hitId, queryColumnPair.keyValues.size());
+      correlation = 0;
+    }
+    return correlation;
+  }
 
-    DoubleList actuals = new DoubleArrayList();
-    DoubleList scores = new DoubleArrayList();
+  public static List<MetricsResult> computeCorrelationsAfterJoin(
+      ColumnPair columnA,
+      ColumnPair columnB,
+      List<AggregateFunction> functions,
+      MetricsResult result) {
 
+    List<NumericJoinAggregation> joins =
+        JoinAggregation.numericJoinAggregate(columnA, columnB, functions);
+
+    List<MetricsResult> results = new ArrayList<>(functions.size());
+    for (NumericJoinAggregation join : joins) {
+      double[] joinedA = join.valuesA;
+      double[] joinedB = join.valuesB;
+      // correlation is defined only for vectors of length at least two
+      MetricsResult r = result.clone();
+      r.aggregate = join.aggregate;
+      int minimumIntersection = 3; // TODO: what value to use here?
+      if (joinedA.length < minimumIntersection) {
+        r.corr_rp_actual = Double.NaN;
+      } else {
+        r.corr_rp_actual = PearsonCorrelation.coefficient(joinedA, joinedB);
+      }
+      results.add(r);
+    }
+
+    return results;
+  }
+
+  private static void parallelExecute(Runnable task)
+      throws InterruptedException, ExecutionException {
     //    int cores = Runtime.getRuntime().availableProcessors();
     int cores = 8;
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-    forkJoinPool
-        .submit(
-            () -> {
-              hits.stream()
-                  .parallel()
-                  .forEach(
-                      (Hit hit) -> {
-                        ColumnPair hitColumnPair = getColumnPair(cache, columnStore, hit.id);
+    forkJoinPool.submit(task).get();
+  }
 
-                        List<MetricsResult> metricsResults =
-                            BenchmarkUtils.computeCorrelationsAfterJoin(
-                                queryColumnPair, hitColumnPair, functions, results);
-
-                        MetricsResult correlations;
-                        if (!metricsResults.isEmpty()) {
-                          correlations = metricsResults.get(0);
-                        } else {
-                          //                          System.out.printf(
-                          //                              "WARN: no correlation computed for
-                          // query.id=[%s] hit.id=[%s] join size=[%d]\n",
-                          //                              queryColumnPair.id(), hit.id,
-                          // queryColumnPair.keyValues.size());
-                          correlations = results;
-                        }
-                        synchronized (actuals) {
-                          actuals.add(Math.abs(correlations.corr_rp_actual));
-                          scores.add(hit.score);
-                        }
-                      });
-            })
-        .get();
-    return PearsonCorrelation.coefficient(actuals.toDoubleArray(), scores.toDoubleArray());
+  private static <T> T parallelExecute(Callable<T> task)
+      throws InterruptedException, ExecutionException {
+    //    int cores = Runtime.getRuntime().availableProcessors();
+    int cores = 8;
+    ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
+    return forkJoinPool.submit(task).get();
   }
 
   private static void writeQuerySample(QueryStats querySample, String outputPath)
@@ -294,16 +424,30 @@ public class IndexCorrelationBenchmark {
     return stats;
   }
 
-  private static SketchIndex openSketchIndex(
-      String outputPath, IndexType indexType, SketchType sketchType, double numHashes)
+  private static SketchIndex openSketchIndex(String outputPath, BenchmarkParams params)
       throws IOException {
-    String indexPath = indexPath(outputPath, indexType, sketchType, numHashes);
+
+    SketchType sketchType = params.sketchOptions.type;
+    Builder builder = CorrelationSketch.builder();
+    switch (params.sketchOptions.type) {
+      case KMV:
+        builder.sketchType(sketchType, ((KMVOptions) params.sketchOptions).k);
+        break;
+      case GKMV:
+        builder.sketchType(sketchType, ((GKMVOptions) params.sketchOptions).t);
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported sketch type: " + params.sketchOptions.type);
+    }
+
+    String indexPath = indexPath(outputPath, params.params);
+    IndexType indexType = params.indexType;
     try {
       switch (indexType) {
         case STD:
-          return new SketchIndex(indexPath, sketchType, numHashes);
+          return new SketchIndex(indexPath, builder);
         case QCR:
-          return new QCRSketchIndex(indexPath, sketchType, numHashes);
+          return new QCRSketchIndex(indexPath, builder);
         default:
           throw new IllegalArgumentException("Undefined index type: " + indexType);
       }
@@ -312,13 +456,8 @@ public class IndexCorrelationBenchmark {
     }
   }
 
-  private static String indexPath(
-      String outputPath, IndexType indexType, SketchType sketchType, double numHashes) {
-    String sketchParams =
-        String.format(
-            "%s-%s=%.3f",
-            indexType.toString().toLowerCase(), sketchType.toString().toLowerCase(), numHashes);
-    return Paths.get(outputPath, sketchParams).toString();
+  private static String indexPath(String outputPath, String params) {
+    return Paths.get(outputPath, params).toString();
   }
 
   private ColumnPair getColumnPair(
@@ -332,9 +471,71 @@ public class IndexCorrelationBenchmark {
     return cp;
   }
 
+  static class Scores {
+
+    public String params;
+    public double ndcg5;
+    public double ndcg10;
+    public double recallR050;
+    public double recallR075;
+    public double recallR025;
+    public double ndcg50;
+  }
+
+  static class GroundTruth {
+
+    public String hitId;
+    public int card_q_actual;
+    public int card_c_actual;
+    public int overlap_qc_actual;
+    public double corr_actual;
+  }
+
   static class QueryStats {
 
     int totalColumns;
     Set<String> queries;
+  }
+
+  public static class BenchmarkParams {
+
+    public final String params;
+    public final IndexType indexType;
+    public final SketchOptions sketchOptions;
+
+    public BenchmarkParams(String params, IndexType indexType, SketchOptions sketchOptions) {
+      this.params = params;
+      this.indexType = indexType;
+      this.sketchOptions = sketchOptions;
+    }
+
+    public static List<BenchmarkParams> parse(String params) {
+      String[] values = params.split(",");
+      List<BenchmarkParams> result = new ArrayList<>();
+      for (String value : values) {
+        result.add(parseValue(value.trim()));
+      }
+      if (result.isEmpty()) {
+        throw new IllegalArgumentException(
+            String.format("[%s] does not have any valid sketch parameters", params));
+      }
+      return result;
+    }
+
+    private static BenchmarkParams parseValue(String params) {
+      String[] values = params.split(":");
+      if (values.length == 3) {
+        final IndexType indexType = IndexType.valueOf(values[0].trim());
+        final SketchType type = SketchType.valueOf(values[1].trim());
+        final SketchOptions options = SketchType.parseOptions(type, values[2]);
+        return new BenchmarkParams(params, indexType, options);
+      }
+      throw new IllegalArgumentException(String.format("[%s] is not a valid parameter", params));
+    }
+
+    @Override
+    public String toString() {
+      return params;
+    }
   }
 }

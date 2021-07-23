@@ -2,7 +2,6 @@ package corrsketches.benchmark.index;
 
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.SketchType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.statistics.Stats;
 import corrsketches.util.Hashes;
@@ -28,13 +27,12 @@ public class QCRSketchIndex extends SketchIndex {
 
   private static final String QCR_HASHES_FIELD_NAME = "c";
 
-  public QCRSketchIndex(String indexPath, SketchType sketchType, double threshold)
-      throws IOException {
-    super(indexPath, sketchType, threshold);
-  }
-
   public QCRSketchIndex() throws IOException {
     super();
+  }
+
+  public QCRSketchIndex(String indexPath, CorrelationSketch.Builder builder) throws IOException {
+    super(indexPath, builder);
   }
 
   public void index(String id, ColumnPair columnPair) throws IOException {
@@ -108,8 +106,8 @@ public class QCRSketchIndex extends SketchIndex {
 
     final ImmutableCorrelationSketch sketch = query.toImmutable();
 
-    int[] keys = sketch.getKeys();
     // System.out.println("q");
+    final int[] keys = sketch.getKeys();
     final double[] values = sketch.getValues();
     int[] posIndexKeys = computeCorrelationIndexKeys(keys, values);
 

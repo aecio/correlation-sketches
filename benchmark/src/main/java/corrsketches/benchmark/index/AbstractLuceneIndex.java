@@ -13,9 +13,9 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.similarities.BooleanSimilarity;
+import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 
 public abstract class AbstractLuceneIndex {
@@ -23,11 +23,10 @@ public abstract class AbstractLuceneIndex {
   protected final IndexWriter writer;
   protected final SearcherManager searcherManager;
 
-  @SuppressWarnings("deprecation")
   public AbstractLuceneIndex(String indexPath) throws IOException {
     Directory dir;
     if (indexPath == null) {
-      dir = new RAMDirectory();
+      dir = new ByteBuffersDirectory();
     } else {
       dir = MMapDirectory.open(Paths.get(indexPath));
     }
