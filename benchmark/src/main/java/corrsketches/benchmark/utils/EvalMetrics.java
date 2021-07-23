@@ -36,7 +36,7 @@ public class EvalMetrics {
 
   private static double dgc(double[] rel, int k) {
     double dcg = 0d;
-    for (int i = 0; i < k; i++) {
+    for (int i = 0; i < Math.min(k, rel.length); i++) {
       // final double num = Math.pow(2, rel[i]);
       final double num = rel[i];
       final double den = log2(i + 2);

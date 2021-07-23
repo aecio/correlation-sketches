@@ -50,6 +50,8 @@ public class EvalMetricsTest {
     assertEquals(1.0, ndcg, 0.01);
     ndcg = metrics.ndgcIds(List.of("1", "5", "4"), 2);
     assertEquals(1.0, ndcg, 0.01);
+    ndcg = metrics.ndgcIds(List.of("1", "5", "4"), 10); // out of bounds
+    assertEquals(1.0, ndcg, 0.01);
   }
 
   @Test
