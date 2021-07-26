@@ -75,6 +75,33 @@ public class EvalMetricsTest {
   }
 
   @Test
+  public void shouldComputeNDCGTreatingNaNsAsZero() {
+    Map<String, Double> relevanceMap = new TreeMap<>();
+    relevanceMap.put("1", 3d);
+    relevanceMap.put("2", 2d);
+    relevanceMap.put("3", 3d);
+    relevanceMap.put("4", Double.NaN);
+    relevanceMap.put("5", 1d);
+    relevanceMap.put("6", 2d);
+
+    EvalMetrics metrics = new EvalMetrics(relevanceMap);
+
+    List<String> rank = List.of("1", "2", "3", "4", "5", "6");
+    double dcg = metrics.dgcIds(rank, rank.size());
+    double ndcg = metrics.ndgcIds(rank, rank.size());
+
+    assertEquals(6.861, dcg, 0.001);
+    assertEquals(0.961, ndcg, 0.001);
+
+    rank = List.of("1", "2", "3", "4", "5", "6", "7"); // id not in relevance map
+    dcg = metrics.dgcIds(rank, rank.size());
+    ndcg = metrics.ndgcIds(rank, rank.size());
+
+    assertEquals(6.861, dcg, 0.001);
+    assertEquals(0.961, ndcg, 0.001);
+  }
+
+  @Test
   public void shouldComputeRecall() {
     Map<String, Double> relevanceMap = new TreeMap<>();
     relevanceMap.put("1", 0.20d);

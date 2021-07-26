@@ -15,6 +15,7 @@ public class EvalMetrics {
     this.relevanceMap = relevanceMap;
     this.idealRel =
         relevanceMap.values().stream()
+            .map(EvalMetrics::ensureNonNullOrNaN)
             .sorted(Comparator.reverseOrder())
             .mapToDouble(i -> i)
             .toArray();
@@ -69,7 +70,14 @@ public class EvalMetrics {
   private double[] mapToGradedRelevance(List<String> hitIds) {
     double[] rel = new double[hitIds.size()];
     for (int i = 0; i < hitIds.size(); i++) {
-      rel[i] = relevanceMap.get(hitIds.get(i));
+      rel[i] = ensureNonNullOrNaN(relevanceMap.get(hitIds.get(i)));
+    }
+    return rel;
+  }
+
+  private static Double ensureNonNullOrNaN(Double rel) {
+    if (rel == null || rel.isNaN()) {
+      return 0.0;
     }
     return rel;
   }
