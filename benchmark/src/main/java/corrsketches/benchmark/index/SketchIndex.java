@@ -92,8 +92,7 @@ public class SketchIndex extends AbstractLuceneIndex {
       bq.add(new TermQuery(term), Occur.SHOULD);
     }
 
-    final boolean sort = true;
-    return executeQuery(k, querySketch.toImmutable(), bq.build(), sort);
+    return executeQuery(k, querySketch.toImmutable(), bq.build(), this.sort);
   }
 
   protected List<Hit> executeQuery(int k, ImmutableCorrelationSketch cs, Query query, boolean sort)

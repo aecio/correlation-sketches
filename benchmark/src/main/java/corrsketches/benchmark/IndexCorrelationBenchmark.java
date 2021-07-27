@@ -187,7 +187,6 @@ public class IndexCorrelationBenchmark {
     System.out.println("Running queries against the index...");
     Set<String> queryIds = querySample.queries;
 
-    final int topK = 100;
     int count = 0;
     for (String qid : queryIds) {
 
@@ -198,6 +197,7 @@ public class IndexCorrelationBenchmark {
       for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
         var index = indexes.get(paramIdx);
 
+        final int topK = params.get(paramIdx).topK;
         long start = System.nanoTime();
         List<Hit> hits = index.search(queryColumnPair, topK);
         final int timeMs = (int) ((System.nanoTime() - start) / 1000000d);
@@ -256,7 +256,7 @@ public class IndexCorrelationBenchmark {
 
     Map<String, Double> relevanceMap = new HashMap<>();
     for (var gt : groundTruth) {
-      relevanceMap.put(gt.hitId, gt.corr_actual);
+      relevanceMap.put(gt.hitId, Math.abs(gt.corr_actual));
     }
 
     final EvalMetrics metrics = new EvalMetrics(relevanceMap);
@@ -506,6 +506,7 @@ public class IndexCorrelationBenchmark {
     public final String params;
     public final IndexType indexType;
     public final SortBy sortBy;
+    public final int topK;
     public final SketchOptions sketchOptions;
 
     public BenchmarkParams(
@@ -513,6 +514,7 @@ public class IndexCorrelationBenchmark {
       this.params = params;
       this.indexType = indexType;
       this.sortBy = sortBy;
+      this.topK = topK;
       this.sketchOptions = sketchOptions;
     }
 
