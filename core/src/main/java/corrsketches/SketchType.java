@@ -19,13 +19,15 @@ public enum SketchType {
     return options;
   }
 
-  public static class SketchOptions {
+  public abstract static class SketchOptions {
 
     public final SketchType type;
 
     protected SketchOptions(SketchType type) {
       this.type = type;
     }
+
+    public abstract String name();
   }
 
   public static class KMVOptions extends SketchOptions {
@@ -36,6 +38,11 @@ public enum SketchType {
       super(SketchType.KMV);
       this.k = k;
     }
+
+    @Override
+    public String name() {
+      return type.toString() + ":k=" + k;
+    }
   }
 
   public static class GKMVOptions extends SketchOptions {
@@ -45,6 +52,11 @@ public enum SketchType {
     public GKMVOptions(double t) {
       super(SketchType.GKMV);
       this.t = t;
+    }
+
+    @Override
+    public String name() {
+      return type.toString() + "t=" + t;
     }
   }
 }

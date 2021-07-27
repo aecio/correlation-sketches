@@ -19,6 +19,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -31,6 +32,7 @@ public class SketchIndex extends AbstractLuceneIndex {
   protected static final String ID_FIELD_NAME = "i";
 
   protected final CorrelationSketch.Builder builder;
+  protected final boolean sort;
 
   public SketchIndex() throws IOException {
     this(SketchType.KMV, 256);
@@ -41,12 +43,14 @@ public class SketchIndex extends AbstractLuceneIndex {
   }
 
   public SketchIndex(String indexPath, SketchType sketchType, double threshold) throws IOException {
-    this(indexPath, CorrelationSketch.builder().sketchType(sketchType, threshold));
+    this(indexPath, CorrelationSketch.builder().sketchType(sketchType, threshold), true, false);
   }
 
-  public SketchIndex(String indexPath, CorrelationSketch.Builder builder) throws IOException {
-    super(indexPath);
+  public SketchIndex(String indexPath, CorrelationSketch.Builder builder, boolean sort, boolean readonly)
+      throws IOException {
+    super(indexPath, readonly);
     this.builder = builder;
+    this.sort = sort;
   }
 
   public void index(String id, ColumnPair columnPair) throws IOException {
@@ -77,30 +81,34 @@ public class SketchIndex extends AbstractLuceneIndex {
 
   public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
 
-    CorrelationSketch query = builder.build(columnPair.keyValues, columnPair.columnValues);
-    query.setCardinality(columnPair.keyValues.size());
+    CorrelationSketch querySketch = builder.build(columnPair.keyValues, columnPair.columnValues);
+    querySketch.setCardinality(columnPair.keyValues.size());
 
+    Builder bq = new BooleanQuery.Builder();
+    TreeSet<ValueHash> kMinValues = querySketch.getKMinValues();
+    for (ValueHash vh : kMinValues) {
+      final Term term = new Term(HASHES_FIELD_NAME, intToBytesRef(vh.keyHash));
+      bq.add(new TermQuery(term), Occur.SHOULD);
+    }
+
+    final boolean sort = true;
+    return executeQuery(k, querySketch.toImmutable(), bq.build(), sort);
+  }
+
+  protected List<Hit> executeQuery(int k, ImmutableCorrelationSketch cs, Query query, boolean sort)
+      throws IOException {
     IndexSearcher searcher = searcherManager.acquire();
     try {
-      Builder bq = new BooleanQuery.Builder();
-      TreeSet<ValueHash> kMinValues = query.getKMinValues();
-      for (ValueHash vh : kMinValues) {
-        final Term term = new Term(HASHES_FIELD_NAME, intToBytesRef(vh.keyHash));
-        bq.add(new TermQuery(term), Occur.SHOULD);
-      }
-
-      TopDocs hits = searcher.search(bq.build(), k);
-
-      ImmutableCorrelationSketch immutable = query.toImmutable();
+      TopDocs hits = searcher.search(query, k);
       List<Hit> results = new ArrayList<>();
       for (int i = 0; i < hits.scoreDocs.length; i++) {
         final ScoreDoc scoreDoc = hits.scoreDocs[i];
-        final Hit hit = createSearchHit(immutable, searcher, scoreDoc, true);
+        final Hit hit = createSearchHit(cs, searcher, scoreDoc, sort);
         results.add(hit);
       }
-
-      results.sort((a, b) -> Double.compare(b.correlationAbsolute(), a.correlationAbsolute()));
-
+      if (sort) {
+        results.sort((a, b) -> Double.compare(b.correlationAbsolute(), a.correlationAbsolute()));
+      }
       return results;
     } finally {
       searcherManager.release(searcher);
@@ -111,13 +119,13 @@ public class SketchIndex extends AbstractLuceneIndex {
       ImmutableCorrelationSketch query,
       IndexSearcher searcher,
       ScoreDoc scoreDoc,
-      boolean lazyLoadSketch)
+      boolean loadSketch)
       throws IOException {
     Document doc = searcher.doc(scoreDoc.doc);
     // retrieve id from index fields
     String id = doc.getValues(ID_FIELD_NAME)[0];
     // read sketch from index fields
-    ImmutableCorrelationSketch sketch = lazyLoadSketch ? readSketchFromIndex(doc) : null;
+    ImmutableCorrelationSketch sketch = loadSketch ? readSketchFromIndex(doc) : null;
     return new Hit(id, query, sketch, scoreDoc.score, scoreDoc.doc, this);
   }
 

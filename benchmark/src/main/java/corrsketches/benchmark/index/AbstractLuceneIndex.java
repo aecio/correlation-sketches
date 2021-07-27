@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -24,6 +25,10 @@ public abstract class AbstractLuceneIndex {
   protected final SearcherManager searcherManager;
 
   public AbstractLuceneIndex(String indexPath) throws IOException {
+    this(indexPath, false);
+  }
+
+  public AbstractLuceneIndex(String indexPath, boolean readonly) throws IOException {
     Directory dir;
     if (indexPath == null) {
       dir = new ByteBuffersDirectory();
@@ -37,11 +42,6 @@ public abstract class AbstractLuceneIndex {
     final BooleanSimilarity similarity = new BooleanSimilarity();
     iwc.setSimilarity(similarity);
     iwc.setRAMBufferSizeMB(256.0);
-    try {
-      this.writer = new IndexWriter(dir, iwc);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to create index writer", e);
-    }
 
     try {
       SearcherFactory searcherFactory =
@@ -52,19 +52,35 @@ public abstract class AbstractLuceneIndex {
               return is;
             }
           };
-      this.searcherManager = new SearcherManager(writer, searcherFactory);
+      if (readonly) {
+        final DirectoryReader reader = DirectoryReader.open(dir);
+        this.searcherManager = new SearcherManager(reader, searcherFactory);
+        this.writer = null;
+      } else {
+        try {
+          this.writer = new IndexWriter(dir, iwc);
+        } catch (IOException e) {
+          throw new RuntimeException("Failed to create index writer", e);
+        }
+        this.searcherManager = new SearcherManager(writer, searcherFactory);
+      }
     } catch (IOException e) {
       throw new RuntimeException("Failed to create search manager", e);
     }
   }
 
   public void refresh() throws IOException {
-    writer.flush();
+    if (writer != null) {
+      writer.flush();
+    }
     searcherManager.maybeRefresh();
   }
 
   public void close() throws IOException {
-    this.writer.close();
+    searcherManager.close();
+    if (writer != null) {
+      this.writer.close();
+    }
   }
 
   protected static int[] bytesRefToIntArray(BytesRef[] hashesBytes) {

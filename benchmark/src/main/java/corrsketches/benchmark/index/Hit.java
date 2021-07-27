@@ -2,7 +2,6 @@ package corrsketches.benchmark.index;
 
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.correlation.Correlation.Estimate;
-import corrsketches.correlation.CorrelationType;
 import java.io.IOException;
 
 public class Hit {
@@ -10,10 +9,10 @@ public class Hit {
   public final String id;
   public final float score;
 
-  private final int docId;
-  private final SketchIndex index;
-  private final ImmutableCorrelationSketch query;
-  private ImmutableCorrelationSketch hit;
+  protected final int docId;
+  protected final SketchIndex index;
+  protected final ImmutableCorrelationSketch query;
+  protected ImmutableCorrelationSketch hit;
   private Estimate correlation;
 
   public Hit(
@@ -47,13 +46,5 @@ public class Hit {
 
   public double correlationAbsolute() {
     return Math.abs(correlation());
-  }
-
-  public double robustCorrelation() {
-    return query.correlationTo(hit, CorrelationType.get(CorrelationType.ROBUST_QN)).coefficient;
-  }
-
-  public double qcrCorrelation() {
-    return query.correlationTo(hit, CorrelationType.get(CorrelationType.QCR)).coefficient;
   }
 }

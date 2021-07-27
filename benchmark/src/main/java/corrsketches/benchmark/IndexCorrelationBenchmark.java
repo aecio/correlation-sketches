@@ -53,11 +53,6 @@ public class IndexCorrelationBenchmark {
   public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
   Cache<String, ColumnPair> cache = CacheBuilder.newBuilder().softValues().build();
 
-  public enum IndexType {
-    QCR,
-    STD,
-  }
-
   @Option(
       names = "--input-path",
       required = true,
@@ -91,14 +86,15 @@ public class IndexCorrelationBenchmark {
 
     QueryStats querySample = selectQueriesRandomly(storeMetadata, numQueries);
 
+    final Map<String, SketchIndex> indexes = createIndexes(this.params);
     final Runnable task =
         () ->
-            BenchmarkParams.parse(this.params).stream()
+            indexes.entrySet().stream()
                 .parallel()
                 .forEach(
-                    (BenchmarkParams p) -> {
+                    (var each) -> {
                       try {
-                        buildIndex(columnStore, outputPath, querySample, p);
+                        buildIndex(columnStore, each.getKey(), each.getValue(), querySample);
                       } catch (IOException e) {
                         e.printStackTrace();
                       }
@@ -109,25 +105,28 @@ public class IndexCorrelationBenchmark {
     System.out.println("Done.");
   }
 
+  public Map<String, SketchIndex> createIndexes(String params) throws IOException {
+    final List<BenchmarkParams> benchmarkParams = BenchmarkParams.parse(params);
+    final Map<String, SketchIndex> indexes = new HashMap();
+    for (var p : benchmarkParams) {
+      final String indexPath = indexPath(outputPath, p.indexType, p.sketchOptions);
+      if (!indexes.containsKey(indexPath)) {
+        indexes.put(indexPath, openSketchIndex(outputPath, p, false));
+      }
+    }
+    return indexes;
+  }
+
   public void buildIndex(
-      BytesBytesHashtable columnStore,
-      String outputPath,
-      QueryStats querySample,
-      BenchmarkParams params)
+      BytesBytesHashtable columnStore, String indexName, SketchIndex index, QueryStats querySample)
       throws IOException {
-
-    Set<String> queryColumns = querySample.queries;
-
-    System.out.println("Selecting a random sample of columns as queries...");
-
-    // Build index
-    SketchIndex index = openSketchIndex(outputPath, params);
 
     System.out.println("Indexing all columns...");
 
+    Set<String> queryColumns = querySample.queries;
     Iterator<KV<byte[], byte[]>> it = columnStore.iterator();
     int i = 0;
-    printProgress(querySample, params, i);
+    printProgress(querySample, indexName, i);
     while (it.hasNext()) {
 
       KV<byte[], byte[]> kv = it.next();
@@ -140,18 +139,18 @@ public class IndexCorrelationBenchmark {
 
       i++;
       if (i % (querySample.totalColumns / 25) == 0) {
-        printProgress(querySample, params, i);
+        printProgress(querySample, indexName, i);
       }
     }
-    printProgress(querySample, params, i);
+    printProgress(querySample, indexName, i);
 
     // close index to force flushing data to disk
     index.close();
   }
 
-  private static void printProgress(QueryStats querySample, BenchmarkParams params, int i) {
+  private static void printProgress(QueryStats querySample, String indexName, int i) {
     final double percent = i / (double) querySample.totalColumns * 100;
-    System.out.printf("[%s] Indexed %d columns (%.2f%%)\n", params.params, i, percent);
+    System.out.printf("[%s] Indexed %d columns (%.2f%%)\n", indexName, i, percent);
   }
 
   @Command(name = "runQueries")
@@ -171,7 +170,7 @@ public class IndexCorrelationBenchmark {
     // opens the index
     List<SketchIndex> indexes = new ArrayList<>(params.size());
     for (var p : params) {
-      indexes.add(openSketchIndex(outputPath, p));
+      indexes.add(openSketchIndex(outputPath, p, true));
     }
 
     FileWriter csvHits = new FileWriter(Paths.get(outputPath, "query-results.csv").toFile());
@@ -179,7 +178,7 @@ public class IndexCorrelationBenchmark {
 
     FileWriter metricsCsv = new FileWriter(Paths.get(outputPath, "query-metrics.csv").toFile());
     metricsCsv.write(
-        "qid, params, ndgc@5, ndgc@10, ndcg@50, recall_r>0.25, recall_r>0.50, recall_r>0.75\n");
+        "qid, params, qcard, n_hits, ndgc@5, ndgc@10, ndcg@50, recall_r>0.25, recall_r>0.50, recall_r>0.75\n");
 
     System.out.println("Running queries against the index...");
     Set<String> queryIds = querySample.queries;
@@ -212,9 +211,11 @@ public class IndexCorrelationBenchmark {
 
         String csvLine =
             String.format(
-                "%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+                "%s,%s,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
                 qid,
                 scores.params,
+                queryCard,
+                hits.size(),
                 scores.ndcg5,
                 scores.ndcg10,
                 scores.ndcg50,
@@ -249,12 +250,12 @@ public class IndexCorrelationBenchmark {
       return scores;
     }
 
-    Map<String, Double> relenvanceMap = new HashMap<>();
+    Map<String, Double> relevanceMap = new HashMap<>();
     for (var gt : groundTruth) {
-      relenvanceMap.put(gt.hitId, gt.corr_actual);
+      relevanceMap.put(gt.hitId, gt.corr_actual);
     }
 
-    final EvalMetrics metrics = new EvalMetrics(relenvanceMap);
+    final EvalMetrics metrics = new EvalMetrics(relevanceMap);
     scores.recallR025 = metrics.recall(hits, 0.25);
     scores.recallR050 = metrics.recall(hits, 0.50);
     scores.recallR075 = metrics.recall(hits, 0.75);
@@ -397,6 +398,7 @@ public class IndexCorrelationBenchmark {
 
   private static QueryStats selectQueriesRandomly(
       ColumnStoreMetadata storeMetadata, int sampleSize) {
+    System.out.println("Selecting a random sample of columns as queries...");
     List<String> queries = new ArrayList<>();
     Random random = new Random(0);
     int seen = 0;
@@ -417,6 +419,7 @@ public class IndexCorrelationBenchmark {
     for (int i = 0; i < 5 && i < queries.size(); i++) {
       System.out.printf(" [%d] %s", i, queries.get(i));
     }
+    System.out.println();
     System.out.printf("Total columns: %d\tQueries selected: %d\n", seen, queries.size());
     QueryStats stats = new QueryStats();
     stats.queries = new HashSet<>(queries);
@@ -424,8 +427,8 @@ public class IndexCorrelationBenchmark {
     return stats;
   }
 
-  private static SketchIndex openSketchIndex(String outputPath, BenchmarkParams params)
-      throws IOException {
+  private static SketchIndex openSketchIndex(
+      String outputPath, BenchmarkParams params, boolean readonly) throws IOException {
 
     SketchType sketchType = params.sketchOptions.type;
     Builder builder = CorrelationSketch.builder();
@@ -440,14 +443,15 @@ public class IndexCorrelationBenchmark {
         throw new IllegalArgumentException("Unsupported sketch type: " + params.sketchOptions.type);
     }
 
-    String indexPath = indexPath(outputPath, params.params);
+    String indexPath = indexPath(outputPath, params.indexType, params.sketchOptions);
     IndexType indexType = params.indexType;
     try {
+      boolean sort = params.sortBy == SortBy.CSK ? true : false;
       switch (indexType) {
         case STD:
-          return new SketchIndex(indexPath, builder);
+          return new SketchIndex(indexPath, builder, sort, readonly);
         case QCR:
-          return new QCRSketchIndex(indexPath, builder);
+          return new QCRSketchIndex(indexPath, builder, sort, readonly);
         default:
           throw new IllegalArgumentException("Undefined index type: " + indexType);
       }
@@ -456,8 +460,10 @@ public class IndexCorrelationBenchmark {
     }
   }
 
-  private static String indexPath(String outputPath, String params) {
-    return Paths.get(outputPath, params).toString();
+  private static String indexPath(
+      String outputPath, IndexType indexType, SketchOptions sketchOptions) {
+    return Paths.get(outputPath, "indexes", indexType.toString() + ":" + sketchOptions.name())
+        .toString();
   }
 
   private ColumnPair getColumnPair(
@@ -501,11 +507,14 @@ public class IndexCorrelationBenchmark {
 
     public final String params;
     public final IndexType indexType;
+    public final SortBy sortBy;
     public final SketchOptions sketchOptions;
 
-    public BenchmarkParams(String params, IndexType indexType, SketchOptions sketchOptions) {
+    public BenchmarkParams(
+        String params, IndexType indexType, SortBy sortBy, int topK, SketchOptions sketchOptions) {
       this.params = params;
       this.indexType = indexType;
+      this.sortBy = sortBy;
       this.sketchOptions = sketchOptions;
     }
 
@@ -524,13 +533,22 @@ public class IndexCorrelationBenchmark {
 
     private static BenchmarkParams parseValue(String params) {
       String[] values = params.split(":");
-      if (values.length == 3) {
-        final IndexType indexType = IndexType.valueOf(values[0].trim());
-        final SketchType type = SketchType.valueOf(values[1].trim());
-        final SketchOptions options = SketchType.parseOptions(type, values[2]);
-        return new BenchmarkParams(params, indexType, options);
+      final int argc = 5;
+      if (values.length == argc) {
+        int i = 0;
+        IndexType indexType = IndexType.valueOf(values[i].trim());
+        i++;
+        SortBy sortBy = SortBy.valueOf(values[i].trim());
+        i++;
+        int topK = Integer.valueOf(values[i].trim());
+        i++;
+        SketchType sketchType = SketchType.valueOf(values[i].trim());
+        i++;
+        SketchOptions options = SketchType.parseOptions(sketchType, values[i]);
+        return new BenchmarkParams(params, indexType, sortBy, topK, options);
       }
-      throw new IllegalArgumentException(String.format("[%s] is not a valid parameter", params));
+      throw new IllegalArgumentException(
+          String.format("[%s] is not a valid parameter. Must have %d parameters", params, argc));
     }
 
     @Override
@@ -538,4 +556,33 @@ public class IndexCorrelationBenchmark {
       return params;
     }
   }
+
+  public enum IndexType {
+    QCR,
+    STD,
+  }
+
+  public enum SortBy {
+    KEY,
+    CSK
+  }
+  // public static class IndexOptions {
+  //
+  //   IndexType indexType = IndexType.QCR;
+  //   SortBy sortBy = SortBy.CSK;
+  //   int topK = 100;
+  //
+  //   public IndexOptions(SortBy type) {
+  //     sortBy = type;
+  //   }
+  //
+  //   static final IndexOptions parse(String params) {
+  //     try {
+  //       SortBy type = SortBy.valueOf(params);
+  //       return new IndexOptions(type);
+  //     } catch (Exception e) {
+  //       throw new IllegalArgumentException("Unsupported sketch type: " + params);
+  //     }
+  //   }
+  // }
 }

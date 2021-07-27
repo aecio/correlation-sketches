@@ -39,9 +39,7 @@ public class SketchIndexTest {
       System.out.printf("\n[%d] ", i + 1);
       System.out.println("id: " + hit.id);
       System.out.println("    score: " + hit.score);
-      //      System.out.println("    containment: " + hit.containment());
       System.out.println("    correlation: " + hit.correlation());
-      System.out.println("    robust-correlation: " + hit.robustCorrelation());
     }
 
     assertEquals(3, hits.size());
@@ -102,9 +100,6 @@ public class SketchIndexTest {
       System.out.printf("\n[%d] ", i + 1);
       System.out.println("id: " + hit.id);
       System.out.printf("          score:  %.3f\n", hit.score);
-      //      System.out.println("    containment: " + hit.containment());
-      System.out.printf("    correlation: %+.3f\n", hit.correlation());
-      System.out.printf("            qcr: %+.3f\n", hit.qcrCorrelation());
     }
 
     assertEquals(6, hits.size());

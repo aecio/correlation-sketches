@@ -6,7 +6,6 @@ import corrsketches.benchmark.ColumnPair;
 import corrsketches.statistics.Stats;
 import corrsketches.util.Hashes;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.document.Document;
@@ -18,49 +17,43 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BooleanQuery.Builder;
 import org.apache.lucene.search.DisjunctionMaxQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
 
 public class QCRSketchIndex extends SketchIndex {
 
   private static final String QCR_HASHES_FIELD_NAME = "c";
 
   public QCRSketchIndex() throws IOException {
-    super();
+    super(null, new CorrelationSketch.Builder(), false, false);
   }
 
-  public QCRSketchIndex(String indexPath, CorrelationSketch.Builder builder) throws IOException {
-    super(indexPath, builder);
+  public QCRSketchIndex(
+      String indexPath, CorrelationSketch.Builder builder, boolean sort, boolean readonly)
+      throws IOException {
+    super(indexPath, builder, sort, readonly);
   }
 
   public void index(String id, ColumnPair columnPair) throws IOException {
 
-    CorrelationSketch sketch = super.builder.build(columnPair.keyValues, columnPair.columnValues);
+    final CorrelationSketch sketch =
+        super.builder.build(columnPair.keyValues, columnPair.columnValues);
+    final ImmutableCorrelationSketch iSketch = sketch.toImmutable();
 
-    Document doc = new Document();
-
-    Field idField = new StringField(ID_FIELD_NAME, id, Field.Store.YES);
-    doc.add(idField);
-
-    final ImmutableCorrelationSketch immutable = sketch.toImmutable();
-
-    final int[] keys = immutable.getKeys();
-    final double[] values = immutable.getValues();
+    final int[] keys = iSketch.getKeys();
+    final double[] values = iSketch.getValues();
 
     // System.out.println(id);
     int[] indexKeys = computeCorrelationIndexKeys(keys, values);
 
+    Document doc = new Document();
+    doc.add(new StringField(ID_FIELD_NAME, id, Field.Store.YES));
     for (int key : indexKeys) {
       doc.add(new StringField(QCR_HASHES_FIELD_NAME, intToBytesRef(key), Field.Store.NO));
     }
-
     // add keys to document
     for (int key : keys) {
       doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(key), Field.Store.YES));
     }
-
     // add values to documents
     byte[] valuesBytes = toByteArray(values);
     doc.add(new StoredField(VALUES_FIELD_NAME, valuesBytes));
@@ -131,18 +124,6 @@ public class QCRSketchIndex extends SketchIndex {
 
     DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(bq1.build(), bq2.build()), 0f);
 
-    IndexSearcher searcher = searcherManager.acquire();
-    try {
-      TopDocs hits = searcher.search(q, k);
-      List<Hit> results = new ArrayList<>();
-      for (int i = 0; i < hits.scoreDocs.length; i++) {
-        final ScoreDoc scoreDoc = hits.scoreDocs[i];
-        final Hit hit = createSearchHit(sketch, searcher, scoreDoc, false);
-        results.add(hit);
-      }
-      return results;
-    } finally {
-      searcherManager.release(searcher);
-    }
+    return executeQuery(k, sketch, q, super.sort);
   }
 }
