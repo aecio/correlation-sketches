@@ -65,8 +65,12 @@ public class IndexCorrelationBenchmark {
   @Option(names = "--params", required = true, description = "Benchmark parameters")
   String params;
 
-  @Option(names = "--num-queries", description = "The numbers of queries to be run")
+  @Option(names = "--num-queries", description = "The number of queries to be run")
   int numQueries = 1000;
+
+  @Option(names = "--cores", description = "The number of CPU cores to be used")
+  int cores = 8;
+  //    int cores = Runtime.getRuntime().availableProcessors();
 
   @Option(
       names = "--aggregate",
@@ -356,18 +360,12 @@ public class IndexCorrelationBenchmark {
     return results;
   }
 
-  private static void parallelExecute(Runnable task)
-      throws InterruptedException, ExecutionException {
-    //    int cores = Runtime.getRuntime().availableProcessors();
-    int cores = 8;
-    ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
+  private void parallelExecute(Runnable task) throws InterruptedException, ExecutionException {
+    ForkJoinPool forkJoinPool = new ForkJoinPool(this.cores);
     forkJoinPool.submit(task).get();
   }
 
-  private static <T> T parallelExecute(Callable<T> task)
-      throws InterruptedException, ExecutionException {
-    //    int cores = Runtime.getRuntime().availableProcessors();
-    int cores = 8;
+  private <T> T parallelExecute(Callable<T> task) throws InterruptedException, ExecutionException {
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
     return forkJoinPool.submit(task).get();
   }

@@ -46,7 +46,8 @@ public class SketchIndex extends AbstractLuceneIndex {
     this(indexPath, CorrelationSketch.builder().sketchType(sketchType, threshold), true, false);
   }
 
-  public SketchIndex(String indexPath, CorrelationSketch.Builder builder, boolean sort, boolean readonly)
+  public SketchIndex(
+      String indexPath, CorrelationSketch.Builder builder, boolean sort, boolean readonly)
       throws IOException {
     super(indexPath, readonly);
     this.builder = builder;
