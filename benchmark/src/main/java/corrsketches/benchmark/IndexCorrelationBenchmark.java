@@ -77,6 +77,11 @@ public class IndexCorrelationBenchmark {
       description = "The aggregate functions to be used by correlation sketches")
   AggregateFunction aggregate = AggregateFunction.FIRST;
 
+  @Option(
+      names = "--runs",
+      description = "The number of runs to execute for the timeQueries command")
+  int runs = 5;
+
   public static void main(String[] args) {
     System.exit(new CommandLine(new IndexCorrelationBenchmark()).execute(args));
   }
@@ -158,7 +163,7 @@ public class IndexCorrelationBenchmark {
   }
 
   @Command(name = "runQueries")
-  public void queryBenchmark() throws Exception {
+  public void runQueriesBenchmark() throws Exception {
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
     BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
     QueryStats querySample = readQuerySample(outputPath);
@@ -177,9 +182,6 @@ public class IndexCorrelationBenchmark {
       indexes.add(openSketchIndex(outputPath, p, true));
     }
 
-    FileWriter csvHits = new FileWriter(Paths.get(outputPath, "query-results.csv").toFile());
-    csvHits.write("qid, sketch_params, time, qcard\n");
-
     FileWriter metricsCsv = new FileWriter(Paths.get(outputPath, "query-metrics.csv").toFile());
     metricsCsv.write(
         "qid, params, qcard, n_hits, ndgc@5, ndgc@10, ndcg@50, recall_r>0.25, recall_r>0.50, recall_r>0.75\n");
@@ -195,16 +197,10 @@ public class IndexCorrelationBenchmark {
 
       var allHitLists = new ArrayList<List<Hit>>();
       for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
-        var index = indexes.get(paramIdx);
-
+        SketchIndex index = indexes.get(paramIdx);
         final int topK = params.get(paramIdx).topK;
-        long start = System.nanoTime();
         List<Hit> hits = index.search(queryColumnPair, topK);
-        final int timeMs = (int) ((System.nanoTime() - start) / 1000000d);
         allHitLists.add(hits);
-
-        final String sketchParams = params.get(paramIdx).params;
-        csvHits.write(String.format("%s,%s,%d,%d\n", qid, sketchParams, timeMs, queryCard));
       }
 
       List<GroundTruth> groundTruth = computeGroundTruth(columnStore, queryColumnPair, allHitLists);
@@ -238,7 +234,6 @@ public class IndexCorrelationBenchmark {
     for (var index : indexes) {
       index.close();
     }
-    csvHits.close();
     metricsCsv.close();
 
     System.out.println("Done.");
@@ -268,6 +263,65 @@ public class IndexCorrelationBenchmark {
     scores.ndcg50 = metrics.ndgc(hits, 50);
 
     return scores;
+  }
+
+  @Command(name = "timeQueries")
+  public void timeQueriesBenchmark() throws Exception {
+    ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
+    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
+    QueryStats querySample = readQuerySample(outputPath);
+    timeQueries(columnStore, querySample, BenchmarkParams.parse(this.params));
+    columnStore.close();
+  }
+
+  private void timeQueries(
+      BytesBytesHashtable columnStore, QueryStats querySample, List<BenchmarkParams> params)
+      throws Exception {
+
+    // opens the index
+    List<SketchIndex> indexes = new ArrayList<>(params.size());
+    for (var p : params) {
+      indexes.add(openSketchIndex(outputPath, p, true));
+    }
+
+    FileWriter csvHits = new FileWriter(Paths.get(outputPath, "query-times.csv").toFile());
+    csvHits.write("qid, params, run, qcard, n_hits, time\n");
+
+    System.out.println("Running queries against the index...");
+    Set<String> queryIds = querySample.queries;
+    int count = 0;
+    for (String qid : queryIds) {
+
+      ColumnPair queryColumnPair = readColumnPair(columnStore, qid);
+      final int queryCard = queryColumnPair.keyValues.size();
+
+      for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
+        var index = indexes.get(paramIdx);
+        final String sketchParams = params.get(paramIdx).params;
+        final int topK = params.get(paramIdx).topK;
+
+        for (int i = 0; i < this.runs; i++) {
+          // measure search time
+          long start = System.nanoTime();
+          List<Hit> hits = index.search(queryColumnPair, topK);
+          final int timeMs = (int) ((System.nanoTime() - start) / 1000000d);
+          // log results
+          csvHits.write(
+              String.format(
+                  "%s,%s,%d,%d,%d,%d\n", qid, sketchParams, i, queryCard, hits.size(), timeMs));
+        }
+      }
+      count++;
+      System.out.printf(
+          "Processed %d queries (%.3f%%)\n", count, 100 * count / (double) queryIds.size());
+    }
+
+    for (var index : indexes) {
+      index.close();
+    }
+    csvHits.close();
+
+    System.out.println("Done.");
   }
 
   private static ColumnPair readColumnPair(BytesBytesHashtable columnStore, String query) {
@@ -425,8 +479,8 @@ public class IndexCorrelationBenchmark {
     return stats;
   }
 
-  private SketchIndex openSketchIndex(
-      String outputPath, BenchmarkParams params, boolean readonly) throws IOException {
+  private SketchIndex openSketchIndex(String outputPath, BenchmarkParams params, boolean readonly)
+      throws IOException {
 
     SketchType sketchType = params.sketchOptions.type;
     Builder builder = CorrelationSketch.builder();

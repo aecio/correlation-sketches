@@ -51,6 +51,7 @@ public class Hit {
   @Override
   public String toString() {
     return String.format(
-        "\nHit{\n\tid='%s'\n\tscore=%.3f\n\tcorrelation=%.3f\n}", id, score, correlation);
+        "\nHit{\n\tid='%s'\n\tscore=%.3f\n\tcorrelation=%s\n}",
+        id, score, correlation != null ? correlation.coefficient : null);
   }
 }
