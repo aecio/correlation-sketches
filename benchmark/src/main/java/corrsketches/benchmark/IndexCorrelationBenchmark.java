@@ -425,11 +425,12 @@ public class IndexCorrelationBenchmark {
     return stats;
   }
 
-  private static SketchIndex openSketchIndex(
+  private SketchIndex openSketchIndex(
       String outputPath, BenchmarkParams params, boolean readonly) throws IOException {
 
     SketchType sketchType = params.sketchOptions.type;
     Builder builder = CorrelationSketch.builder();
+    builder.aggregateFunction(aggregate);
     switch (params.sketchOptions.type) {
       case KMV:
         builder.sketchType(sketchType, ((KMVOptions) params.sketchOptions).k);
