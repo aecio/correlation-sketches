@@ -4,6 +4,8 @@ import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.SketchType;
 import corrsketches.benchmark.ColumnPair;
+import corrsketches.benchmark.IndexCorrelationBenchmark.SortBy;
+import corrsketches.benchmark.index.Hit.RerankStrategy;
 import corrsketches.correlation.PearsonCorrelation;
 import corrsketches.kmv.ValueHash;
 import java.io.IOException;
@@ -32,6 +34,7 @@ public class SketchIndex extends AbstractLuceneIndex {
   protected static final String ID_FIELD_NAME = "i";
 
   protected final CorrelationSketch.Builder builder;
+  protected final RerankStrategy reranker;
   protected final boolean sort;
 
   public SketchIndex() throws IOException {
@@ -43,15 +46,25 @@ public class SketchIndex extends AbstractLuceneIndex {
   }
 
   public SketchIndex(String indexPath, SketchType sketchType, double threshold) throws IOException {
-    this(indexPath, CorrelationSketch.builder().sketchType(sketchType, threshold), true, false);
+    this(
+        indexPath,
+        CorrelationSketch.builder().sketchType(sketchType, threshold),
+        SortBy.CSK,
+        false);
   }
 
   public SketchIndex(
-      String indexPath, CorrelationSketch.Builder builder, boolean sort, boolean readonly)
+      String indexPath, CorrelationSketch.Builder builder, SortBy sortBy, boolean readonly)
       throws IOException {
     super(indexPath, readonly);
     this.builder = builder;
-    this.sort = sort;
+    if (sortBy != SortBy.KEY) {
+      this.sort = true;
+      this.reranker = sortBy.reranker;
+    } else {
+      this.sort = false;
+      this.reranker = null;
+    }
   }
 
   public void index(String id, ColumnPair columnPair) throws IOException {
@@ -92,10 +105,10 @@ public class SketchIndex extends AbstractLuceneIndex {
       bq.add(new TermQuery(term), Occur.SHOULD);
     }
 
-    return executeQuery(k, querySketch.toImmutable(), bq.build(), this.sort);
+    return executeQuery(k, querySketch.toImmutable(), bq.build());
   }
 
-  protected List<Hit> executeQuery(int k, ImmutableCorrelationSketch cs, Query query, boolean sort)
+  protected List<Hit> executeQuery(int k, ImmutableCorrelationSketch cs, Query query)
       throws IOException {
     IndexSearcher searcher = searcherManager.acquire();
     try {
@@ -103,11 +116,11 @@ public class SketchIndex extends AbstractLuceneIndex {
       List<Hit> results = new ArrayList<>();
       for (int i = 0; i < hits.scoreDocs.length; i++) {
         final ScoreDoc scoreDoc = hits.scoreDocs[i];
-        final Hit hit = createSearchHit(cs, searcher, scoreDoc, sort);
+        final Hit hit = createSearchHit(cs, searcher, scoreDoc, this.sort);
         results.add(hit);
       }
-      if (sort) {
-        results.sort((a, b) -> Double.compare(b.correlationAbsolute(), a.correlationAbsolute()));
+      if (this.sort) {
+        this.reranker.sort(results);
       }
       return results;
     } finally {

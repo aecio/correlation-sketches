@@ -3,6 +3,7 @@ package corrsketches.benchmark.index;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.benchmark.ColumnPair;
+import corrsketches.benchmark.IndexCorrelationBenchmark.SortBy;
 import corrsketches.statistics.Stats;
 import corrsketches.util.Hashes;
 import java.io.IOException;
@@ -24,11 +25,11 @@ public class QCRSketchIndex extends SketchIndex {
   private static final String QCR_HASHES_FIELD_NAME = "c";
 
   public QCRSketchIndex() throws IOException {
-    super(null, new CorrelationSketch.Builder(), false, false);
+    super(null, new CorrelationSketch.Builder(), SortBy.KEY, false);
   }
 
   public QCRSketchIndex(
-      String indexPath, CorrelationSketch.Builder builder, boolean sort, boolean readonly)
+      String indexPath, CorrelationSketch.Builder builder, SortBy sort, boolean readonly)
       throws IOException {
     super(indexPath, builder, sort, readonly);
   }
@@ -124,6 +125,6 @@ public class QCRSketchIndex extends SketchIndex {
 
     DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(bq1.build(), bq2.build()), 0f);
 
-    return executeQuery(k, sketch, q, super.sort);
+    return executeQuery(k, sketch, q);
   }
 }

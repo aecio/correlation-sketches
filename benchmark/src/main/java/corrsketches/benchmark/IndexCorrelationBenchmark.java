@@ -12,6 +12,8 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
 import corrsketches.benchmark.index.Hit;
+import corrsketches.benchmark.index.Hit.CorrelationSketchReranker;
+import corrsketches.benchmark.index.Hit.RerankStrategy;
 import corrsketches.benchmark.index.QCRSketchIndex;
 import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.utils.EvalMetrics;
@@ -499,12 +501,11 @@ public class IndexCorrelationBenchmark {
     String indexPath = indexPath(outputPath, params.indexType, params.sketchOptions);
     IndexType indexType = params.indexType;
     try {
-      boolean sort = params.sortBy == SortBy.CSK ? true : false;
       switch (indexType) {
         case STD:
-          return new SketchIndex(indexPath, builder, sort, readonly);
+          return new SketchIndex(indexPath, builder, params.sortBy, readonly);
         case QCR:
-          return new QCRSketchIndex(indexPath, builder, sort, readonly);
+          return new QCRSketchIndex(indexPath, builder, params.sortBy, readonly);
         default:
           throw new IllegalArgumentException("Undefined index type: " + indexType);
       }
@@ -618,8 +619,14 @@ public class IndexCorrelationBenchmark {
   }
 
   public enum SortBy {
-    KEY,
-    CSK
+    KEY(null),
+    CSK(new CorrelationSketchReranker());
+
+    public RerankStrategy reranker;
+
+    SortBy(RerankStrategy reranker) {
+      this.reranker = reranker;
+    }
   }
   // public static class IndexOptions {
   //
