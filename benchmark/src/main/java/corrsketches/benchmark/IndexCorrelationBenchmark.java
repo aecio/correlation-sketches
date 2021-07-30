@@ -20,6 +20,7 @@ import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.utils.EvalMetrics;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.PearsonCorrelation;
+import corrsketches.statistics.Stats;
 import hashtabledb.BytesBytesHashtable;
 import hashtabledb.KV;
 import hashtabledb.Kryos;
@@ -192,7 +193,7 @@ public class IndexCorrelationBenchmark {
 
     FileWriter metricsCsv = new FileWriter(Paths.get(outputPath, "query-metrics.csv").toFile());
     metricsCsv.write(
-        "qid, params, qcard, n_hits, ndgc@5, ndgc@10, ndcg@50, recall_r>0.25, recall_r>0.50, recall_r>0.75\n");
+        "qid, params, qcard, n_hits, ndgc@5, ndgc@10, ndcg@50, recall_r>0.25, recall_r>0.50, recall_r>0.75, avg_jc\n");
 
     System.out.println("Running queries against the index...");
     Set<String> queryIds = querySample.queries;
@@ -216,10 +217,11 @@ public class IndexCorrelationBenchmark {
       for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
         List<Hit> hits = allHitLists.get(paramIdx);
         Scores scores = computeRankingScores(hits, groundTruth, params.get(paramIdx).params);
+        scores.avgJC = avgJaccardContainment(queryCard, hits, groundTruth);
 
         String csvLine =
             String.format(
-                "%s,%s,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+                "%s,%s,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
                 qid,
                 scores.params,
                 queryCard,
@@ -229,7 +231,8 @@ public class IndexCorrelationBenchmark {
                 scores.ndcg50,
                 scores.recallR025,
                 scores.recallR050,
-                scores.recallR075);
+                scores.recallR075,
+                scores.avgJC);
         metricsCsv.write(csvLine);
         metricsCsv.flush();
       }
@@ -271,6 +274,18 @@ public class IndexCorrelationBenchmark {
     scores.ndcg50 = metrics.ndgc(hits, 50);
 
     return scores;
+  }
+
+  private double avgJaccardContainment(int queryCard, List<Hit> hits, List<GroundTruth> groundTruth) {
+    Map<String, Integer> overlapMap = new HashMap<>();
+    for (var gt : groundTruth) {
+      overlapMap.put(gt.hitId, gt.overlap_qc_actual);
+    }
+    double[] jcs = new double[hits.size()];
+    for(int i = 0; i < hits.size(); i++) {
+      jcs[i] = overlapMap.get(hits.get(i).id) / (double) queryCard;
+    }
+    return Stats.mean(jcs);
   }
 
   @Command(name = "timeQueries")
@@ -548,6 +563,7 @@ public class IndexCorrelationBenchmark {
     public double recallR075;
     public double recallR025;
     public double ndcg50;
+    public double avgJC;
   }
 
   static class GroundTruth {
