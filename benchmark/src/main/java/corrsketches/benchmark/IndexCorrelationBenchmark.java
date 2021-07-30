@@ -193,7 +193,10 @@ public class IndexCorrelationBenchmark {
 
     FileWriter metricsCsv = new FileWriter(Paths.get(outputPath, "query-metrics.csv").toFile());
     metricsCsv.write(
-        "qid, params, qcard, n_hits, ndgc@5, ndgc@10, ndcg@50, recall_r>0.25, recall_r>0.50, recall_r>0.75, avg_jc\n");
+        "qid, params, qcard, n_hits, "
+            + "ndgc@5, ndgc@10, ndcg@50, "
+            + "recall_r>0.25, recall_r>0.50, recall_r>0.75, "
+            + "avg_jc, avg_jc@5, avg_jc@10, avg_jc@50\n");
 
     System.out.println("Running queries against the index...");
     Set<String> queryIds = querySample.queries;
@@ -216,12 +219,15 @@ public class IndexCorrelationBenchmark {
 
       for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
         List<Hit> hits = allHitLists.get(paramIdx);
-        Scores scores = computeRankingScores(hits, groundTruth, params.get(paramIdx).params);
-        scores.avgJC = avgJaccardContainment(queryCard, hits, groundTruth);
+
+        Scores scores = new Scores();
+        scores.params = params.get(paramIdx).params;
+        computeRankingScores(hits, groundTruth, scores);
+        computeAvgJaccardContainment(queryCard, hits, groundTruth, scores);
 
         String csvLine =
             String.format(
-                "%s,%s,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+                "%s,%s,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
                 qid,
                 scores.params,
                 queryCard,
@@ -232,7 +238,10 @@ public class IndexCorrelationBenchmark {
                 scores.recallR025,
                 scores.recallR050,
                 scores.recallR075,
-                scores.avgJC);
+                scores.avgJC,
+                scores.avgJC5,
+                scores.avgJC10,
+                scores.avgJC50);
         metricsCsv.write(csvLine);
         metricsCsv.flush();
       }
@@ -251,10 +260,7 @@ public class IndexCorrelationBenchmark {
   }
 
   private Scores computeRankingScores(
-      List<Hit> hits, List<GroundTruth> groundTruth, String sketchParams) {
-
-    final Scores scores = new Scores();
-    scores.params = sketchParams;
+      List<Hit> hits, List<GroundTruth> groundTruth, Scores scores) {
 
     if (hits.isEmpty()) {
       return scores;
@@ -276,16 +282,20 @@ public class IndexCorrelationBenchmark {
     return scores;
   }
 
-  private double avgJaccardContainment(int queryCard, List<Hit> hits, List<GroundTruth> groundTruth) {
+  private void computeAvgJaccardContainment(
+      int queryCard, List<Hit> hits, List<GroundTruth> groundTruth, Scores result) {
     Map<String, Integer> overlapMap = new HashMap<>();
     for (var gt : groundTruth) {
       overlapMap.put(gt.hitId, gt.overlap_qc_actual);
     }
     double[] jcs = new double[hits.size()];
-    for(int i = 0; i < hits.size(); i++) {
+    for (int i = 0; i < hits.size(); i++) {
       jcs[i] = overlapMap.get(hits.get(i).id) / (double) queryCard;
     }
-    return Stats.mean(jcs);
+    result.avgJC = Stats.mean(jcs);
+    result.avgJC5 = Stats.mean(jcs, Math.min(5, jcs.length));
+    result.avgJC10 = Stats.mean(jcs, Math.min(10, jcs.length));
+    result.avgJC50 = Stats.mean(jcs, Math.min(50, jcs.length));
   }
 
   @Command(name = "timeQueries")
@@ -559,10 +569,13 @@ public class IndexCorrelationBenchmark {
     public String params;
     public double ndcg5;
     public double ndcg10;
+    public double ndcg50;
     public double recallR050;
     public double recallR075;
     public double recallR025;
-    public double ndcg50;
+    public double avgJC5;
+    public double avgJC10;
+    public double avgJC50;
     public double avgJC;
   }
 
