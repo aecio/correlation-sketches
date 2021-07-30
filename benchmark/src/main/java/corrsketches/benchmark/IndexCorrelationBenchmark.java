@@ -14,6 +14,7 @@ import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
 import corrsketches.benchmark.index.Hit;
 import corrsketches.benchmark.index.Hit.CorrelationSketchReranker;
 import corrsketches.benchmark.index.Hit.RerankStrategy;
+import corrsketches.benchmark.index.QCRISketchIndex;
 import corrsketches.benchmark.index.QCRSketchIndex;
 import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.utils.EvalMetrics;
@@ -27,6 +28,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -122,7 +124,11 @@ public class IndexCorrelationBenchmark {
     for (var p : benchmarkParams) {
       final String indexPath = indexPath(outputPath, p.indexType, p.sketchOptions);
       if (!indexes.containsKey(indexPath)) {
-        indexes.put(indexPath, openSketchIndex(outputPath, p, false));
+        if (Files.exists(Paths.get(indexPath))) {
+          System.out.printf("Index directory already exits, skipping (%s).\n", indexPath);
+        } else {
+          indexes.put(indexPath, openSketchIndex(outputPath, p, false));
+        }
       }
     }
     return indexes;
@@ -506,11 +512,13 @@ public class IndexCorrelationBenchmark {
           return new SketchIndex(indexPath, builder, params.sortBy, readonly);
         case QCR:
           return new QCRSketchIndex(indexPath, builder, params.sortBy, readonly);
+        case QCRI:
+          return new QCRISketchIndex(indexPath, builder, params.sortBy, readonly);
         default:
           throw new IllegalArgumentException("Undefined index type: " + indexType);
       }
     } finally {
-      System.out.printf("Opened index of type (%s) at: %s\n", indexType, outputPath);
+      System.out.printf("Opened index of type (%s) at: %s\n", indexType, indexPath);
     }
   }
 
@@ -615,6 +623,7 @@ public class IndexCorrelationBenchmark {
 
   public enum IndexType {
     QCR,
+    QCRI,
     STD,
   }
 

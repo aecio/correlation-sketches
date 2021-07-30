@@ -49,7 +49,20 @@ public class SketchIndexTest {
   }
 
   @Test
-  public void shouldIndexSketchesWithQCRIndex() throws IOException {
+  public void shouldIndexSketchesWithQCRISketchIndex() throws IOException {
+    QCRISketchIndex index = new QCRISketchIndex();
+    shouldRetrieveCorrelatedColumns(index);
+  }
+
+  @Test
+  public void shouldIndexSketchesWithQCRSketchIndex() throws IOException {
+    QCRSketchIndex index = new QCRSketchIndex();
+    // QCRSketchIndex index =
+    //     new QCRSketchIndex(null, new CorrelationSketch.Builder(), SortBy.KEY, false);
+    shouldRetrieveCorrelatedColumns(index);
+  }
+
+  private void shouldRetrieveCorrelatedColumns(SketchIndex index) throws IOException {
     ColumnPair q =
         createColumnPair(
             Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h"),
@@ -79,17 +92,17 @@ public class SketchIndexTest {
         createColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {5.0, 4.1, 3.1, 2.0, 1.0});
 
-    // ColumnPair c5 =
-    //     createColumnPair(Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h"), new double[] {8,
-    // 7, 6, 5, 4, 3, 2, 1});
+    ColumnPair c6 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.0, 1.0, 1.0, 1.0, 1.0});
 
-    QCRSketchIndex index = new QCRSketchIndex();
     index.index("c0", c0);
     index.index("c1", c1);
     index.index("c2", c2);
     index.index("c3", c3);
     index.index("c4", c4);
     index.index("c5", c5);
+    index.index("c6", c6);
     index.refresh();
 
     List<Hit> hits = index.search(q, 6);
@@ -98,8 +111,9 @@ public class SketchIndexTest {
     for (int i = 0; i < hits.size(); i++) {
       Hit hit = hits.get(i);
       System.out.printf("\n[%d] ", i + 1);
-      System.out.println("id: " + hit.id);
-      System.out.printf("          score:  %.3f\n", hit.score);
+      System.out.printf("     id: %s\n", hit.id);
+      System.out.printf("      score: %.3f\n", hit.score);
+      System.out.printf("correlation: %.3f\n", hit.correlation());
     }
 
     assertEquals(6, hits.size());
