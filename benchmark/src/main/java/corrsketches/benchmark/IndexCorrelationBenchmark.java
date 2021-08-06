@@ -10,6 +10,7 @@ import corrsketches.SketchType.KMVOptions;
 import corrsketches.SketchType.SketchOptions;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
+import corrsketches.benchmark.CreateColumnStore.QueryStats;
 import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
 import corrsketches.benchmark.index.Hit;
 import corrsketches.benchmark.index.Hit.CorrelationSketchReranker;
@@ -38,7 +39,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -98,7 +98,7 @@ public class IndexCorrelationBenchmark {
     BytesBytesHashtable columnStore =
         new BytesBytesHashtable(storeMetadata.dbType, inputPath, readonly);
 
-    QueryStats querySample = selectQueriesRandomly(storeMetadata, numQueries);
+    final QueryStats querySample = readOrCreateQueryStats(storeMetadata);
 
     final Map<String, SketchIndex> indexes = createIndexes(this.params);
     final Runnable task =
@@ -117,6 +117,14 @@ public class IndexCorrelationBenchmark {
     writeQuerySample(querySample, outputPath);
     columnStore.close();
     System.out.println("Done.");
+  }
+
+  private QueryStats readOrCreateQueryStats(ColumnStoreMetadata storeMetadata) {
+    QueryStats querySample = CreateColumnStore.readQueries(inputPath, storeMetadata);
+    if (querySample == null) {
+      querySample = CreateColumnStore.selectQueriesRandomly(storeMetadata, numQueries);
+    }
+    return querySample;
   }
 
   public Map<String, SketchIndex> createIndexes(String params) throws IOException {
@@ -170,6 +178,7 @@ public class IndexCorrelationBenchmark {
     final double percent = i / (double) querySample.totalColumns * 100;
     System.out.printf("[%s] Indexed %d columns (%.2f%%)\n", indexName, i, percent);
   }
+
 
   @Command(name = "runQueries")
   public void runQueriesBenchmark() throws Exception {
@@ -481,37 +490,6 @@ public class IndexCorrelationBenchmark {
     return querySample;
   }
 
-  private static QueryStats selectQueriesRandomly(
-      ColumnStoreMetadata storeMetadata, int sampleSize) {
-    System.out.println("Selecting a random sample of columns as queries...");
-    List<String> queries = new ArrayList<>();
-    Random random = new Random(0);
-    int seen = 0;
-    for (Set<String> columnSet : storeMetadata.columnSets) {
-      for (String column : columnSet) {
-        if (queries.size() < sampleSize) {
-          queries.add(column);
-        } else {
-          int index = random.nextInt(seen + 1);
-          if (index < sampleSize) {
-            queries.set(index, column);
-          }
-        }
-        seen++;
-      }
-    }
-    System.out.println("Query examples:");
-    for (int i = 0; i < 5 && i < queries.size(); i++) {
-      System.out.printf(" [%d] %s", i, queries.get(i));
-    }
-    System.out.println();
-    System.out.printf("Total columns: %d\tQueries selected: %d\n", seen, queries.size());
-    QueryStats stats = new QueryStats();
-    stats.queries = new HashSet<>(queries);
-    stats.totalColumns = seen;
-    return stats;
-  }
-
   private SketchIndex openSketchIndex(String outputPath, BenchmarkParams params, boolean readonly)
       throws IOException {
 
@@ -586,12 +564,6 @@ public class IndexCorrelationBenchmark {
     public int card_c_actual;
     public int overlap_qc_actual;
     public double corr_actual;
-  }
-
-  static class QueryStats {
-
-    int totalColumns;
-    Set<String> queries;
   }
 
   public static class BenchmarkParams {
