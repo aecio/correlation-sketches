@@ -179,7 +179,6 @@ public class IndexCorrelationBenchmark {
     System.out.printf("[%s] Indexed %d columns (%.2f%%)\n", indexName, i, percent);
   }
 
-
   @Command(name = "runQueries")
   public void runQueriesBenchmark() throws Exception {
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
