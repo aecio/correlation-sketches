@@ -8,7 +8,7 @@ repositories {
 }
 
 googleJavaFormat {
-    toolVersion = '1.9'
+    toolVersion = '1.11.0'
 }
 
 googleJavaFormat {
