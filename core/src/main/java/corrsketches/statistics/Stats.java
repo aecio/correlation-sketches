@@ -100,8 +100,24 @@ public class Stats {
     return unitize(x, ext.min, ext.max);
   }
 
+  /** Computes the (uncorrected) standard deviation, also known as the mean squared deviations. */
   public static double std(double[] x) {
-    return Math.sqrt(Variance.var(x));
+    final double n = x.length;
+    if (n == 0) {
+      return 0.0;
+    }
+    double sum = 0.0;
+    for (double xi : x) {
+      sum += xi;
+    }
+    final double mean = sum / n;
+    double dev;
+    sum = 0.0;
+    for (double xi : x) {
+      dev = xi - mean;
+      sum += dev * dev;
+    }
+    return Math.sqrt(sum / n);
   }
 
   public static double[] standardize(double[] x) {

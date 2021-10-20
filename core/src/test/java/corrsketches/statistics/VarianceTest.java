@@ -15,7 +15,7 @@ public class VarianceTest {
     double[] x;
 
     x = new double[] {1, 2, 3, 4};
-    assertEquals(1.666667, Variance.var(x), 0.00001);
+    assertEquals(1.666667, Variance.uvar(x), 0.00001);
   }
 
   @Test
@@ -47,8 +47,8 @@ public class VarianceTest {
         sample[j] = x[permutation[j]];
       }
 
-      double varx = Variance.var(x);
-      double s2 = Variance.var(sample);
+      double varx = Variance.uvar(x);
+      double s2 = Variance.uvar(sample);
 
       double alpha = .95;
       CI ci = Variance.alsci(sample, alpha);

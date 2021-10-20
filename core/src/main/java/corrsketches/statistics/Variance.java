@@ -7,7 +7,7 @@ public class Variance {
   private static final GaussianDistribution GAUSSIAN = GaussianDistribution.getInstance();
 
   /** Computes the unbiased sample variance of the given vector. */
-  public static double var(double[] x) {
+  public static double uvar(double[] x) {
     if (x.length == 0) {
       return 0.0;
     }
@@ -16,7 +16,7 @@ public class Variance {
       sumx += xi;
       sumx2 += xi * xi;
     }
-    final double n = x.length - 1;
+    final double n = x.length;
     return sumx2 / n - (sumx / x.length) * (sumx / n);
   }
 
@@ -31,7 +31,7 @@ public class Variance {
     final double k = Kurtosis.kc(x, 5);
     final double k2n = (k + (2. * n / (double) (n - 1)));
 
-    final double s2 = var(x);
+    final double s2 = uvar(x);
     final double z = GAUSSIAN.quantile(1. - (alpha / 2));
     final double varLogS2 = (1. / (double) n) * k2n * (1. + ((1. / 2. * n) * k2n));
     final double a = (k + ((2. * n) / (n - 1.))) / (2. * n);

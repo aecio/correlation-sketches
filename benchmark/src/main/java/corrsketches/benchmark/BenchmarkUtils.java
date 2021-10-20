@@ -308,8 +308,8 @@ public class BenchmarkUtils {
     double[] unitRangeY = Stats.unitize(paired.y, result.y_min, result.y_max);
     result.x_sample_mean = Stats.mean(unitRangeX);
     result.y_sample_mean = Stats.mean(unitRangeY);
-    result.x_sample_var = Variance.var(unitRangeX);
-    result.y_sample_var = Variance.var(unitRangeY);
+    result.x_sample_var = Variance.uvar(unitRangeX);
+    result.y_sample_var = Variance.uvar(unitRangeY);
     result.nu_xy = Stats.dotn(unitRangeX, unitRangeY);
     result.nu_x = Stats.dotn(unitRangeX, unitRangeX);
     result.nu_y = Stats.dotn(unitRangeY, unitRangeY);

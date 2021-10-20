@@ -44,6 +44,42 @@ public class PearsonCorrelationTest {
   }
 
   @Test
+  public void shouldComputeCorrelationCoefficient5() {
+    double[] x;
+    double[] y;
+
+    x = new double[] {1, 2, 3, 4};
+    y = new double[] {2, 4, 1, 5};
+    assertEquals(0.424264, PearsonCorrelation.coefficient(x, y), delta);
+
+    x = new double[] {2, 4, 1, 5, 3, 7};
+    y = new double[] {1, 2, 3, 4, 0, 1};
+    assertEquals(-0.020965, PearsonCorrelation.coefficient(x, y), delta);
+
+    x = new double[] {2, 4, 6, 7, 2, 2};
+    y = new double[] {1, 2, 3, 4, 0, 1};
+    assertEquals(0.96532553, PearsonCorrelation.coefficient(x, y), delta);
+  }
+
+  @Test
+  public void shouldComputeCorrelationCoefficient5PVC() {
+    double[] x;
+    double[] y;
+
+    x = new double[] {1, 2, 3, 4};
+    y = new double[] {2, 4, 1, 5};
+    assertEquals(0.424264, PCVCorrelation.correlation(x, y), delta);
+
+    x = new double[] {2, 4, 1, 5, 3, 7};
+    y = new double[] {1, 2, 3, 4, 0, 1};
+    assertEquals(-0.020965, PCVCorrelation.correlation(x, y), delta);
+
+    x = new double[] {2, 4, 6, 7, 2, 2};
+    y = new double[] {1, 2, 3, 4, 0, 1};
+    assertEquals(0.96532553, PCVCorrelation.correlation(x, y), delta);
+  }
+
+  @Test
   public void shouldComputeCorrelationCoefficient4() {
     //    double[] x = {0,0,0,0,1,1,0,0,0,0,0,0};
     double[] y = {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0};

@@ -44,6 +44,15 @@ public class StatsTests {
   }
 
   @Test
+  public void testStandardDeviation() {
+    double[] data = new double[]{3, 8, 6, 10, 12, 9, 11, 10, 12, 7};
+    assertEquals(2.7129319932501073, Stats.std(data), 0.00000001);
+
+    data = new double[]{2, 1, 3, 2, 4};
+    assertEquals( 1.019803902718557, Stats.std(data), 0.00000001);
+  }
+
+  @Test
   public void testMedian() {
     double[] x = new double[] {1, 4, 3, 2, 5};
     double[] original = Arrays.copyOf(x, x.length);
