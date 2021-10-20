@@ -16,7 +16,7 @@ public class Variance {
       sumx += xi;
       sumx2 += xi * xi;
     }
-    final double n = x.length;
+    final double n = x.length - 1;
     return sumx2 / n - (sumx / x.length) * (sumx / n);
   }
 
