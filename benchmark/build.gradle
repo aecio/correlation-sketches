@@ -3,22 +3,10 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
 }
 
-group 'corrsketches'
 version '0.1-SNAPSHOT'
-
-sourceCompatibility = 1.8
 
 shadowJar {
     zip64 true
-}
-
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
-
-test {
-    useJUnitPlatform()
 }
 
 dependencies {
@@ -29,12 +17,15 @@ dependencies {
     implementation group: 'tech.tablesaw', name: 'tablesaw-core', version: '0.37.3'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.8'
     implementation group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
-    implementation group: 'org.slf4j', name: 'slf4j-nop', version: '1.7.30'
-    implementation group: 'info.picocli', name: 'picocli', version: '4.6.1'
-    annotationProcessor group: 'info.picocli', name: 'picocli-codegen', version: '4.6.1'
-
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.5.1")
+    // CLI parsing
+    implementation libraries.picocli
+    annotationProcessor libraries.picocli_codegen
+    // logging
+    implementation libraries.slf4j_nop
+    // testing
+    testImplementation libraries.assertj_core
+    testImplementation libraries.junit_jupiter_api
+    testRuntimeOnly libraries.junit_jupiter_engine
 }
 
 compileJava {

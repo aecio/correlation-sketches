@@ -1,16 +1,59 @@
 plugins {
-    id 'java'
-    id 'com.github.sherter.google-java-format' version '0.9'
+    id 'org.jetbrains.gradle.plugin.idea-ext' version '1.1'
+    id 'com.github.sherter.google-java-format' version '0.9' apply false
 }
 
-repositories {
-    mavenCentral()
+// Run tests in Intellij using gradle test runner
+idea.project.settings {
+    delegateActions {
+        delegateBuildRunToGradle = false
+        testRunner = 'GRADLE'
+    }
 }
 
-googleJavaFormat {
-    toolVersion = '1.11.0'
-}
+subprojects {
+    group 'corrsketches'
 
-googleJavaFormat {
-    exclude '.gradle/*'
+    apply plugin: 'java'
+    apply plugin: 'com.github.sherter.google-java-format'
+
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    // Setup for google-java-format plugin for code formatting.
+    // To format code, use:
+    //     gradle goJF
+    // To verify code format compliance, use:
+    //      gradle verJF
+    googleJavaFormat {
+        toolVersion = '1.11.0'
+        exclude '.gradle/*'
+    }
+
+    // Dependencies used by multiple sub-projects
+    ext.libraries = [
+            // testing
+            junit_jupiter_api: [group: "org.junit.jupiter", name: "junit-jupiter-api", version: "5.8.1"],
+            junit_jupiter_engine: [group: "org.junit.jupiter", name: "junit-jupiter-engine", version: "5.8.1"],
+            assertj_core: [group: "org.assertj", name: "assertj-core", version: "3.20.2"],
+            // logging
+            slf4j_nop: [group: 'org.slf4j', name: 'slf4j-nop',    version: '1.7.32'],
+            slf4j_api: [group: 'org.slf4j', name: 'slf4j-api',    version: '1.7.32'],
+            // CLI parser
+            picocli: [group: 'info.picocli', name: 'picocli', version: '4.6.1'],
+            picocli_codegen: [group: 'info.picocli', name: 'picocli-codegen', version: '4.6.1'],
+            // Others
+            guava: [group: 'com.google.guava', name: 'guava', version: '31.0.1-jre'],
+            smile: [group: 'com.github.haifengl', name: 'smile-core', version: '1.5.3'],
+            fastutil: [group: 'it.unimi.dsi', name: 'fastutil', version: '8.5.6']
+    ]
 }

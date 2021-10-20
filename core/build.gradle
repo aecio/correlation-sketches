@@ -2,27 +2,14 @@ plugins {
     id 'java-library'
 }
 
-group 'corrsketches'
 version '0.1-SNAPSHOT'
 
-sourceCompatibility = 1.8
-
-repositories {
-    mavenCentral()
-}
-
-test {
-    useJUnitPlatform()
-}
-
 dependencies {
-
-    implementation group: 'com.google.guava', name: 'guava', version: '28.0-jre'
-    implementation group: 'it.unimi.dsi', name: 'fastutil', version: '8.3.0'
-    implementation group: 'com.github.haifengl', name: 'smile-core', version: '1.5.3'
-
-    testImplementation("org.assertj:assertj-core:3.20.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.5.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.5.1")
-
+    implementation libraries.guava
+    implementation libraries.fastutil
+    implementation libraries.smile
+    // testing
+    testImplementation libraries.assertj_core
+    testImplementation libraries.junit_jupiter_api
+    testRuntimeOnly libraries.junit_jupiter_engine
 }
