@@ -168,7 +168,7 @@ public class BenchmarkUtils {
     result.cardy_actual = yKeys.size();
     result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
 
-    // No need compute any statistics when there is not intersection
+    // No need compute any statistics when there is no intersection
     if (result.interxy_actual < minimumIntersection) {
       return Collections.emptyList();
     }
