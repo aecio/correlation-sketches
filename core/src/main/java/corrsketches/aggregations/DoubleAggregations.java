@@ -1,6 +1,5 @@
 package corrsketches.aggregations;
 
-import corrsketches.aggregations.AggregateFunction.Aggregator;
 import java.util.List;
 
 public class DoubleAggregations {
@@ -16,15 +15,10 @@ public class DoubleAggregations {
     DoubleAggregations aggregations = new DoubleAggregations();
     aggregations.values = new double[functions.size()];
     aggregations.functions = new AggregateFunction[functions.size()];
-
     for (int i = 0; i < functions.size(); i++) {
-      Aggregator aggregator = functions.get(i).get();
-      double aggregate = aggregator.first(x[0]);
-      for (int xidx = 1; xidx < x.length; xidx++) {
-        aggregate = aggregator.update(aggregate, x[xidx]);
-      }
-      aggregations.values[i] = aggregate;
-      aggregations.functions[i] = functions.get(i);
+      final AggregateFunction fn = functions.get(i);
+      aggregations.values[i] = fn.aggregate(x);
+      aggregations.functions[i] = fn;
     }
     return aggregations;
   }
