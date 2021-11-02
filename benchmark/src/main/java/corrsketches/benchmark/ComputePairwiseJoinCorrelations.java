@@ -20,7 +20,6 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -32,6 +31,11 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
   public static final String JOB_NAME = "ComputePairwiseJoinCorrelations";
 
   public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
+
+  enum BenchmarkType {
+    CORR_STATS,
+    CORR_PERF
+  }
 
   @Option(
       names = "--input-path",
@@ -54,8 +58,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       description = "Whether to consider only intra-dataset column combinations")
   Boolean intraDatasetCombinations = false;
 
-  @Option(names = "--performance", description = "Run performance experiments")
-  Boolean performance = false;
+  @Option(names = "--bench", description = "The type of benchmark to run")
+  BenchmarkType benchmarkType = BenchmarkType.CORR_STATS;
 
   @Option(
       names = "--max-combinations",
@@ -96,19 +100,23 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
     String baseInputPath = Paths.get(inputPath).getFileName().toString();
     String filename =
-        String.format("%s_sketch-params=%s.csv", baseInputPath, sketchParams.toLowerCase());
-    if (performance) {
-      filename = filename.replace("_sketch-params=", "_perf_sketch-params=");
-    }
+        String.format(
+            "%s_bench-type=%s_sketch-params=%s.csv",
+            baseInputPath, benchmarkType.toString(), sketchParams.toLowerCase());
 
     Files.createDirectories(Paths.get(outputPath));
     FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
 
-    if (performance) {
-      resultsFile.write(PerfResult.csvHeader() + "\n");
+    final Benchmark bench;
+    if (benchmarkType == BenchmarkType.CORR_PERF) {
+      bench = new CorrelationPerformanceBenchmark();
+    } else if (benchmarkType == BenchmarkType.CORR_STATS) {
+      bench = new CorrelationStatsBenchmark();
     } else {
-      resultsFile.write(MetricsResult.csvHeader() + "\n");
+      throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
     }
+
+    resultsFile.write(bench.csvHeader() + "\n");
 
     System.out.println("Number of combinations: " + combinations.size());
     final AtomicInteger processed = new AtomicInteger(0);
@@ -118,30 +126,24 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
     int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-    final Runnable task;
-    if (performance) {
-      task =
-          () ->
-              combinations.stream()
-                  .parallel()
-                  .map(
-                      computePerformanceStatistics(
-                          cache, columnStore, processed, total, sketchParamsList, aggregations))
-                  .forEach(writeCSV(resultsFile));
-    } else {
-      task =
-          () ->
-              combinations.stream()
-                  .parallel()
-                  .map(
-                      computeStatistics(
-                          cache, columnStore, processed, total, sketchParamsList, aggregations))
-                  .forEach(writeCSV(resultsFile));
-    }
+    List<AggregateFunction> finalAggregations = aggregations;
+    Runnable task =
+        () ->
+            combinations.stream()
+                .parallel()
+                .map(
+                    (ColumnCombination columnPair) -> {
+                      ColumnPair x = getColumnPair(cache, columnStore, columnPair.x);
+                      ColumnPair y = getColumnPair(cache, columnStore, columnPair.y);
+                      List<String> results = bench.run(x, y, sketchParamsList, finalAggregations);
+                      return toCSV(processed, total, results);
+                    })
+                .forEach(writeCSV(resultsFile));
     forkJoinPool.submit(task).get();
 
     resultsFile.close();
     columnStore.close();
+
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }
 
@@ -165,78 +167,24 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     return aggregateFunctions;
   }
 
-  private Function<ColumnCombination, String> computeStatistics(
-      Cache<String, ColumnPair> cache,
-      BytesBytesHashtable hashtable,
-      AtomicInteger processed,
-      double total,
-      List<SketchParams> params,
-      List<AggregateFunction> functions) {
-    return (ColumnCombination columnPair) -> {
-      ColumnPair x = getColumnPair(cache, hashtable, columnPair.x);
-      ColumnPair y = getColumnPair(cache, hashtable, columnPair.y);
-
-      List<MetricsResult> results = BenchmarkUtils.computeStatistics(x, y, params, functions);
-
-      int current = processed.incrementAndGet();
-      if (current % 1000 == 0) {
-        double percent = 100 * current / total;
-        synchronized (System.out) {
-          System.out.printf("Progress: %.3f%%\n", percent);
-        }
+  private String toCSV(AtomicInteger processed, double total, List<String> results) {
+    int current = processed.incrementAndGet();
+    if (current % 1000 == 0) {
+      double percent = 100 * current / total;
+      synchronized (System.out) {
+        System.out.printf("Progress: %.3f%%\n", percent);
       }
+    }
 
-      if (results == null || results.isEmpty()) {
-        return "";
-      } else {
-        StringBuilder builder = new StringBuilder();
-        for (MetricsResult result : results) {
-          // we don't need to report column pairs that have no intersection at all
-          if (Double.isFinite(result.interxy_actual) && result.interxy_actual >= 2) {
-            builder.append(result.csvLine());
-            builder.append('\n');
-          }
-        }
-        return builder.toString();
+    if (results == null || results.isEmpty()) {
+      return "";
+    } else {
+      StringBuilder builder = new StringBuilder();
+      for (String result : results) {
+        builder.append(result);
       }
-    };
-  }
-
-  private Function<ColumnCombination, String> computePerformanceStatistics(
-      Cache<String, ColumnPair> cache,
-      BytesBytesHashtable hashtable,
-      AtomicInteger processed,
-      double total,
-      List<SketchParams> params,
-      List<AggregateFunction> aggregations) {
-    return (ColumnCombination columnPair) -> {
-      ColumnPair x = getColumnPair(cache, hashtable, columnPair.x);
-      ColumnPair y = getColumnPair(cache, hashtable, columnPair.y);
-
-      List<PerfResult> results = BenchmarkUtils.measurePerformance(x, y, params, aggregations);
-
-      int current = processed.incrementAndGet();
-      if (current % 1000 == 0) {
-        double percent = 100 * current / total;
-        synchronized (System.out) {
-          System.out.printf("Progress: %.3f%%\n", percent);
-        }
-      }
-
-      if (results == null || results.isEmpty()) {
-        return "";
-      } else {
-        StringBuilder builder = new StringBuilder();
-        for (PerfResult result : results) {
-          // we don't need to report column pairs that have no intersection at all
-          if (Double.isFinite(result.interxy_actual) && result.interxy_actual >= 2) {
-            builder.append(result.csvLine());
-            builder.append('\n');
-          }
-        }
-        return builder.toString();
-      }
-    };
+      return builder.toString();
+    }
   }
 
   private ColumnPair getColumnPair(

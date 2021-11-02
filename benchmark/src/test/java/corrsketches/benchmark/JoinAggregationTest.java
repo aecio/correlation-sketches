@@ -136,7 +136,7 @@ public class JoinAggregationTest {
   }
 
   private double getPearsonCorrelation(ColumnPair columnA, ColumnPair columnB) {
-    return BenchmarkUtils.computeCorrelationsAfterJoin(
+    return CorrelationStatsBenchmark.computeCorrelationsAfterJoin(
             columnA,
             columnB,
             Collections.singletonList(AggregateFunction.MEAN),

@@ -25,6 +25,7 @@ dependencies {
     implementation group: 'org.iq80.leveldb', name: 'leveldb', version: '0.12'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.8'
     implementation group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
+    implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-csv', version: '2.13.0'
     implementation group: 'tech.tablesaw', name: 'tablesaw-core', version: tablesawVersion
     implementation group: 'net.tlabs-data', name: "tablesaw_${tablesawVersion}-parquet", version: "${tablesawParquetVersion}"
     // CLI parsing

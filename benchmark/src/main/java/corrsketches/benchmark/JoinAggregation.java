@@ -101,7 +101,7 @@ public class JoinAggregation {
     return index;
   }
 
-  static class NumericJoinAggregation {
+  public static class NumericJoinAggregation {
     public final double[] valuesA;
     public final double[] valuesB;
     public AggregateFunction aggregate;
