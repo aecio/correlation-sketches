@@ -33,7 +33,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -129,7 +129,7 @@ public class IndexCorrelationBenchmark {
 
   public Map<String, SketchIndex> createIndexes(String params) throws IOException {
     final List<BenchmarkParams> benchmarkParams = BenchmarkParams.parse(params);
-    final Map<String, SketchIndex> indexes = new HashMap();
+    final Map<String, SketchIndex> indexes = new HashMap<>();
     for (var p : benchmarkParams) {
       final String indexPath = indexPath(outputPath, p.indexType, p.sketchOptions);
       if (!indexes.containsKey(indexPath)) {
@@ -204,7 +204,12 @@ public class IndexCorrelationBenchmark {
         "qid, params, qcard, n_hits, "
             + "ndgc@5, ndgc@10, ndcg@50, "
             + "recall_r>0.25, recall_r>0.50, recall_r>0.75, "
-            + "avg_jc, avg_jc@5, avg_jc@10, avg_jc@50\n");
+            + "avg_jc, avg_jc@5, avg_jc@10, avg_jc@50, "
+            + "ajr, ajr@5, ajr@10, ajr@50, "
+            + "ahm, ahm@5, ahm@10, ahm@50, "
+            + "aam, aam@5, aam@10, aam@50, "
+            + "agm, agm@5, agm@10, agm@50"
+            + "\n");
 
     System.out.println("Running queries against the index...");
     Set<String> queryIds = querySample.queries;
@@ -230,12 +235,11 @@ public class IndexCorrelationBenchmark {
 
         Scores scores = new Scores();
         scores.params = params.get(paramIdx).params;
-        computeRankingScores(hits, groundTruth, scores);
-        computeAvgJaccardContainment(queryCard, hits, groundTruth, scores);
+        computeScores(hits, groundTruth, queryCard, scores);
 
         String csvLine =
             String.format(
-                "%s,%s,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+                "%s,%s,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
                 qid,
                 scores.params,
                 queryCard,
@@ -249,7 +253,23 @@ public class IndexCorrelationBenchmark {
                 scores.avgJC,
                 scores.avgJC5,
                 scores.avgJC10,
-                scores.avgJC50);
+                scores.avgJC50,
+                scores.ajr,
+                scores.ajr5,
+                scores.ajr10,
+                scores.ajr50,
+                scores.ahm,
+                scores.ahm5,
+                scores.ahm10,
+                scores.ahm50,
+                scores.aam,
+                scores.aam5,
+                scores.aam10,
+                scores.aam50,
+                scores.agm,
+                scores.agm5,
+                scores.agm10,
+                scores.agm50);
         metricsCsv.write(csvLine);
         metricsCsv.flush();
       }
@@ -267,18 +287,18 @@ public class IndexCorrelationBenchmark {
     System.out.println("Done.");
   }
 
-  private Scores computeRankingScores(
-      List<Hit> hits, List<GroundTruth> groundTruth, Scores scores) {
-
-    if (hits.isEmpty()) {
-      return scores;
-    }
-
+  private void computeScores(
+      List<Hit> hits, List<GroundTruth> groundTruth, int queryCard, Scores scores) {
     Map<String, Double> relevanceMap = new HashMap<>();
     for (var gt : groundTruth) {
       relevanceMap.put(gt.hitId, Math.abs(gt.corr_actual));
     }
 
+    if (hits.isEmpty()) {
+      return;
+    }
+
+    // Ranking evaluation metrics
     final EvalMetrics metrics = new EvalMetrics(relevanceMap);
     scores.recallR025 = metrics.recall(hits, 0.25);
     scores.recallR050 = metrics.recall(hits, 0.50);
@@ -287,11 +307,7 @@ public class IndexCorrelationBenchmark {
     scores.ndcg10 = metrics.ndgc(hits, 10);
     scores.ndcg50 = metrics.ndgc(hits, 50);
 
-    return scores;
-  }
-
-  private void computeAvgJaccardContainment(
-      int queryCard, List<Hit> hits, List<GroundTruth> groundTruth, Scores result) {
+    // Avg Jaccard Containment
     Map<String, Integer> overlapMap = new HashMap<>();
     for (var gt : groundTruth) {
       overlapMap.put(gt.hitId, gt.overlap_qc_actual);
@@ -300,10 +316,46 @@ public class IndexCorrelationBenchmark {
     for (int i = 0; i < hits.size(); i++) {
       jcs[i] = overlapMap.get(hits.get(i).id) / (double) queryCard;
     }
-    result.avgJC = Stats.mean(jcs);
-    result.avgJC5 = Stats.mean(jcs, Math.min(5, jcs.length));
-    result.avgJC10 = Stats.mean(jcs, Math.min(10, jcs.length));
-    result.avgJC50 = Stats.mean(jcs, Math.min(50, jcs.length));
+
+    scores.avgJC = Stats.mean(jcs);
+    scores.avgJC5 = Stats.mean(jcs, Math.min(5, jcs.length));
+    scores.avgJC10 = Stats.mean(jcs, Math.min(10, jcs.length));
+    scores.avgJC50 = Stats.mean(jcs, Math.min(50, jcs.length));
+
+    // Weighted Metrics
+    double[] relevances = metrics.mapHitsToGradedRelevance(hits);
+    double[] weights_prod = new double[hits.size()];
+    double[] weights_hm = new double[hits.size()];
+    double[] weights_am = new double[hits.size()];
+    double[] weights_gm = new double[hits.size()];
+    for (int i = 0; i < hits.size(); i++) {
+      double r = relevances[i];
+      double j = jcs[i];
+      weights_prod[i] = r * j; // equal-weights product
+      weights_hm[i] = (2 * r * j) / (r + j); // harmonic mean
+      weights_am[i] = (r + j) / 2.0; // arithmetic mean
+      weights_gm[i] = Math.sqrt(r * j); // geometric mean
+    }
+
+    scores.ajr = Stats.mean(weights_prod);
+    scores.ajr5 = Stats.mean(weights_prod, Math.min(5, weights_prod.length));
+    scores.ajr10 = Stats.mean(weights_prod, Math.min(10, weights_prod.length));
+    scores.ajr50 = Stats.mean(weights_prod, Math.min(50, weights_prod.length));
+
+    scores.ahm = Stats.mean(weights_hm);
+    scores.ahm5 = Stats.mean(weights_hm, Math.min(5, weights_hm.length));
+    scores.ahm10 = Stats.mean(weights_hm, Math.min(10, weights_hm.length));
+    scores.ahm50 = Stats.mean(weights_hm, Math.min(50, weights_hm.length));
+
+    scores.aam = Stats.mean(weights_am);
+    scores.aam5 = Stats.mean(weights_am, Math.min(5, weights_am.length));
+    scores.aam10 = Stats.mean(weights_am, Math.min(10, weights_am.length));
+    scores.aam50 = Stats.mean(weights_am, Math.min(50, weights_am.length));
+
+    scores.agm = Stats.mean(weights_gm);
+    scores.agm5 = Stats.mean(weights_gm, Math.min(5, weights_gm.length));
+    scores.agm10 = Stats.mean(weights_gm, Math.min(10, weights_gm.length));
+    scores.agm50 = Stats.mean(weights_gm, Math.min(50, weights_gm.length));
   }
 
   @Command(name = "timeQueries")
@@ -381,7 +433,7 @@ public class IndexCorrelationBenchmark {
             .distinct()
             .collect(Collectors.toList());
 
-    List<AggregateFunction> aggregateFunctions = Arrays.asList(aggregate);
+    List<AggregateFunction> aggregateFunctions = Collections.singletonList(aggregate);
 
     return parallelExecute(
         () ->
@@ -554,6 +606,26 @@ public class IndexCorrelationBenchmark {
     public double avgJC10;
     public double avgJC50;
     public double avgJC;
+
+    public double ajr;
+    public double ajr5;
+    public double ajr10;
+    public double ajr50;
+
+    public double ahm;
+    public double ahm5;
+    public double ahm10;
+    public double ahm50;
+
+    public double aam;
+    public double aam5;
+    public double aam10;
+    public double aam50;
+
+    public double agm;
+    public double agm5;
+    public double agm10;
+    public double agm50;
   }
 
   static class GroundTruth {
@@ -604,7 +676,7 @@ public class IndexCorrelationBenchmark {
         i++;
         SortBy sortBy = SortBy.valueOf(values[i].trim());
         i++;
-        int topK = Integer.valueOf(values[i].trim());
+        int topK = Integer.parseInt(values[i].trim());
         i++;
         SketchType sketchType = SketchType.valueOf(values[i].trim());
         i++;

@@ -26,12 +26,12 @@ public class EvalMetrics {
   }
 
   double ndgcIds(List<String> hitIds, int k) {
-    double[] rel = mapToGradedRelevance(hitIds);
+    double[] rel = mapIdsToGradedRelevance(hitIds);
     return dgc(rel, k) / dgc(idealRel, k);
   }
 
   double dgcIds(List<String> hitIds, int k) {
-    double[] rel = mapToGradedRelevance(hitIds);
+    double[] rel = mapIdsToGradedRelevance(hitIds);
     return dgc(rel, k);
   }
 
@@ -67,7 +67,11 @@ public class EvalMetrics {
     return hits.stream().map(h -> h.id).collect(Collectors.toList());
   }
 
-  private double[] mapToGradedRelevance(List<String> hitIds) {
+  public double[] mapHitsToGradedRelevance(List<Hit> hits) {
+    return mapIdsToGradedRelevance(mapToIds(hits));
+  }
+
+  public double[] mapIdsToGradedRelevance(List<String> hitIds) {
     double[] rel = new double[hitIds.size()];
     for (int i = 0; i < hitIds.size(); i++) {
       rel[i] = ensureNonNullOrNaN(relevanceMap.get(hitIds.get(i)));
