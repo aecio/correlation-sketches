@@ -20,6 +20,8 @@ public class CategoricalJoinAggregation {
     for (int fnIdx = 0; fnIdx < functions.size(); fnIdx++) {
       final AggregateFunction fn = functions.get(fnIdx);
 
+      var joinStats = new JoinStats();
+
       // numeric values for column A
       DoubleList joinValuesA = new DoubleArrayList(columnA.keyValues.size());
 
@@ -32,32 +34,44 @@ public class CategoricalJoinAggregation {
         final double valueA = columnA.columnValues[i];
         final DoubleArrayList rowsB = indexB.get(keyA);
         if (rowsB == null || rowsB.isEmpty()) {
-
+          joinStats.join_1to0++;
         } else if (rowsB.size() == 1) {
           // 1:1 mapping, we use the single value.
           joinValuesA.add(valueA);
           joinValuesB.add(rowsB.getDouble(0));
-        } else if (rowsB.size() == 1) {
+          joinStats.join_1to1++;
+        } else {
           // 1:n mapping, we aggregate joined values to a single value.
           joinValuesA.add(valueA);
           joinValuesB.add(fn.aggregate(rowsB));
+          joinStats.join_1toN++;
         }
       }
-      results.add(new Aggregation(joinValuesA.toDoubleArray(), joinValuesB.toDoubleArray(), fn));
+      results.add(
+          new Aggregation(joinValuesA.toDoubleArray(), joinValuesB.toDoubleArray(), fn, joinStats));
     }
 
     return results;
+  }
+
+  static class JoinStats {
+    public int join_1to0 = 0;
+    public int join_1to1 = 0;
+    public int join_1toN = 0;
   }
 
   public static class Aggregation {
     public final double[] valuesA;
     public final double[] valuesB;
     public AggregateFunction aggregate;
+    public JoinStats joinStats;
 
-    public Aggregation(double[] valuesA, double[] valuesB, AggregateFunction aggregate) {
+    public Aggregation(
+        double[] valuesA, double[] valuesB, AggregateFunction aggregate, JoinStats joinStats) {
       this.valuesA = valuesA;
       this.valuesB = valuesB;
       this.aggregate = aggregate;
+      this.joinStats = joinStats;
     }
   }
 }

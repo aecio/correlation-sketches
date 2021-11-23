@@ -1,11 +1,13 @@
 package corrsketches.benchmark;
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
+import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.utils.Sets;
@@ -139,6 +141,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
       Result r = result.clone();
       r.aggregate = join.aggregate;
+      r.join_stats = join.joinStats;
 
       Estimate mi = MutualInformation.estimate(joinedA, joinedB);
       r.mi_actual = mi.coefficient;
@@ -164,6 +167,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public String parameters;
     public String columnId;
     public AggregateFunction aggregate;
+
+    @JsonUnwrapped public JoinStats join_stats;
 
     @Override
     public Result clone() {
