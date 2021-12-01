@@ -1,10 +1,10 @@
 package corrsketches.aggregations;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public enum AggregateFunction {
   FIRST((previous, current) -> previous),
@@ -99,7 +99,7 @@ public enum AggregateFunction {
 
   private static class MostFrequent implements BatchAggregator {
 
-    public Map<Integer, Integer> counts = new HashMap<>();
+    public Int2IntMap counts = new Int2IntOpenHashMap();
 
     @Override
     public double first(double value) {
@@ -108,24 +108,20 @@ public enum AggregateFunction {
 
     @Override
     public double update(double previous, double current) {
-      Integer v = counts.get((int) current);
-      if (v == null) {
-        v = 1;
-      } else {
-        v += 1;
-      }
-      counts.put((int) current, v);
+      final int key = (int) current;
+      int currentCount = counts.getOrDefault(key, 0);
+      counts.put(key, currentCount + 1);
       return 1;
     }
 
     @Override
     public double aggregatedValue() {
       int max = -1;
-      Integer maxItem = null;
-      for (var kv : counts.entrySet()) {
-        if (kv.getValue() > max) {
-          max = kv.getValue();
-          maxItem = kv.getKey();
+      int maxItem = -1;
+      for (var kv : counts.int2IntEntrySet()) {
+        if (kv.getIntValue() > max) {
+          max = kv.getIntValue();
+          maxItem = kv.getIntKey();
         }
       }
       return maxItem;
