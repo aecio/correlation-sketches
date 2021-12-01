@@ -48,6 +48,7 @@ subprojects {
             // logging
             slf4j_nop: [group: 'org.slf4j', name: 'slf4j-nop',    version: '1.7.32'],
             slf4j_api: [group: 'org.slf4j', name: 'slf4j-api',    version: '1.7.32'],
+            slf4j_log4j: [group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'],
             // CLI parser
             picocli: [group: 'info.picocli', name: 'picocli', version: '4.6.1'],
             picocli_codegen: [group: 'info.picocli', name: 'picocli-codegen', version: '4.6.1'],

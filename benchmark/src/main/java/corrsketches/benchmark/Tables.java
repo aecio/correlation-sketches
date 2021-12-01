@@ -12,19 +12,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import net.tlabs.tablesaw.parquet.TablesawParquetReadOptions;
+import net.tlabs.tablesaw.parquet.TablesawParquetReader;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
 import tech.tablesaw.api.Table;
 import tech.tablesaw.io.csv.CsvReadOptions;
-import tech.tablesaw.io.csv.CsvReadOptions.Builder;
 
 public class Tables {
 
-  public static List<String> findAllCSVs(String basePath) throws IOException {
+  public static List<String> findAllTables(String basePath) throws IOException {
 
     return Files.walk(Paths.get(basePath))
-        .filter(p -> p.toString().endsWith(".csv"))
+        .filter(p -> p.toString().endsWith(".csv") || p.toString().endsWith(".parquet"))
         .filter(Files::isRegularFile)
         .map(Path::toString)
         .collect(Collectors.toList());
@@ -32,7 +33,7 @@ public class Tables {
 
   public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
     try {
-      Table table = readTable(CsvReadOptions.builderFromFile(datasetFilePath));
+      Table table = readTable(datasetFilePath);
       return readColumnPairs(Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
     } catch (Exception e) {
       System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
@@ -135,18 +136,28 @@ public class Tables {
         dataset, key.name(), keyValues, column.name(), columnValues.toDoubleArray());
   }
 
-  private static Table readTable(Builder csvReadOptionsBuilder) throws IOException {
-    return Table.read()
-        .csv(
-            csvReadOptionsBuilder
-                .sample(true)
-                .sampleSize(5_000_000)
-                .maxCharsPerColumn(10_000)
-                .missingValueIndicator("-"));
+  private static Table readTable(String datasetFilePath) throws IOException {
+
+    if (datasetFilePath.endsWith("csv")) {
+      // Read CSV files
+      return Table.read()
+          .csv(
+              CsvReadOptions.builderFromFile(datasetFilePath)
+                  .sample(true)
+                  .sampleSize(5_000_000)
+                  .maxCharsPerColumn(10_000)
+                  .missingValueIndicator("-"));
+    } else if (datasetFilePath.endsWith("parquet")) {
+      // Read Parquet files
+      return new TablesawParquetReader()
+          .read(TablesawParquetReadOptions.builder(datasetFilePath).sample(true).build());
+    } else {
+      throw new IllegalArgumentException("Invalid file extension in file: " + datasetFilePath);
+    }
   }
 
   public static List<Set<String>> readAllKeyColumns(String dataset) throws IOException {
-    Table df = readTable(CsvReadOptions.builderFromFile(dataset));
+    Table df = readTable(dataset);
     List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
     List<Set<String>> allColumns = new ArrayList<>();
     for (CategoricalColumn<String> column : categoricalColumns) {

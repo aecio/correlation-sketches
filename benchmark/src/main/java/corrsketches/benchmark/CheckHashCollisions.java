@@ -25,7 +25,7 @@ public class CheckHashCollisions extends CliTool implements Serializable {
 
   @Override
   public void execute() throws Exception {
-    List<String> allCSVs = Tables.findAllCSVs(inputPath);
+    List<String> allCSVs = Tables.findAllTables(inputPath);
     System.out.println("> Found  " + allCSVs.size() + " CSV files at " + inputPath);
     Int2ObjectOpenHashMap<TreeSet<String>> allKeys = new Int2ObjectOpenHashMap<>();
     for (String csv : allCSVs) {

@@ -9,19 +9,26 @@ shadowJar {
     zip64 true
 }
 
+ext {
+    tablesawVersion = "0.42.0"
+    tablesawParquetVersion = "0.9.0"
+}
+
 dependencies {
     implementation project(':core')
     implementation group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.21'
     implementation group: 'org.rocksdb', name: 'rocksdbjni', version: '6.2.2'
     implementation group: 'org.iq80.leveldb', name: 'leveldb', version: '0.12'
-    implementation group: 'tech.tablesaw', name: 'tablesaw-core', version: '0.37.3'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.8'
     implementation group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
+    implementation group: 'tech.tablesaw', name: 'tablesaw-core', version: tablesawVersion
+    implementation group: 'net.tlabs-data', name: "tablesaw_${tablesawVersion}-parquet", version: "${tablesawParquetVersion}"
     // CLI parsing
     implementation libraries.picocli
     annotationProcessor libraries.picocli_codegen
     // logging
     implementation libraries.slf4j_nop
+    implementation libraries.slf4j_log4j // required by tablesaw-parquet
     // testing
     testImplementation libraries.assertj_core
     testImplementation libraries.junit_jupiter_api

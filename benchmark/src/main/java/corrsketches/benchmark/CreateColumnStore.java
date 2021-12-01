@@ -60,7 +60,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
     ColumnStore store = createColumnStore(db, dbType);
     System.out.println("Created DB at " + db.toString());
 
-    List<String> allCSVs = Tables.findAllCSVs(inputPath);
+    List<String> allCSVs = Tables.findAllTables(inputPath);
     System.out.println("> Found  " + allCSVs.size() + " CSV files at " + inputPath);
 
     FileWriter metadataFile = new FileWriter(getMetadataFilePath(outputPath).toFile());
