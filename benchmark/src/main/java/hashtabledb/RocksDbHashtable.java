@@ -42,7 +42,7 @@ class RocksDbHashtable implements Closeable, HashtableBackend {
       db.put(keyBytes, valueBytes);
     } catch (RocksDBException e) {
       String hexKey = BaseEncoding.base16().encode(keyBytes);
-      throw new RuntimeException("Failed to write key to database: " + hexKey);
+      throw new RuntimeException("Failed to write key to database: " + hexKey, e);
     }
   }
 
