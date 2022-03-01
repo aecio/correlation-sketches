@@ -7,7 +7,8 @@ import picocli.CommandLine.Command;
     subcommands = {
       ComputePairwiseJoinCorrelations.class,
       CreateColumnStore.class,
-      ComputeBudget.class
+      ComputeBudget.class,
+      IndexCorrelationBenchmark.class
     })
 public class Main {
 
