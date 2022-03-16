@@ -6,8 +6,8 @@ plugins {
 // Run tests in Intellij using gradle test runner
 idea.project.settings {
     delegateActions {
-        delegateBuildRunToGradle = false
-        testRunner = 'GRADLE'
+        delegateBuildRunToGradle = true
+        testRunner = 'PLATFORM'
     }
 }
 
