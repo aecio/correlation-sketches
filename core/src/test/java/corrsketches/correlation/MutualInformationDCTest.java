@@ -1,8 +1,15 @@
 package corrsketches.correlation;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.byLessThan;
+import static org.assertj.core.api.Assertions.*;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 public class MutualInformationDCTest {
@@ -72,5 +79,72 @@ public class MutualInformationDCTest {
           Double.NEGATIVE_INFINITY, -1, 0, 1e99, 0, Double.POSITIVE_INFINITY, Double.NaN, 0
         };
     assertThat(MutualInformationDC.mi(d3, c14, k, base)).isCloseTo(-0.1279, byLessThan(DELTA));
+  }
+
+  /**
+   * This tests compares the current output with previous saved outputs stored in a snapshot file.
+   * This is intended to capture any unintended changes to the output. If the changes are intended,
+   * the snapshot file must be deleted and the snapshot file will be regenerated on the first run of
+   * this test. The snapshot must then be added to the source code versioning system (Git).
+   */
+  @Test
+  public void testSnapshotRegression() throws IOException {
+    final int runs = 1000;
+    final double base = Math.exp(1);
+    int seed = 123;
+    Random rng = new Random(seed);
+    double[] output = new double[runs];
+    for (int run = 0; run < runs; run++) {
+      int n = rng.nextInt(10000);
+      int k = 3 + rng.nextInt(5); // k in range [3,7]
+      int[] d = new int[n];
+      double[] c = new double[n];
+      double p = rng.nextDouble();
+      int categories = 2 + rng.nextInt(1000);
+      for (int i = 0; i < n; i++) {
+        d[i] = rng.nextInt() % categories;
+        c[i] = rng.nextDouble() + p * d[i];
+      }
+      output[run] = MutualInformationDC.mi(d, c, k, base);
+    }
+
+    String filename = "mi-snapshot-test-data_seed-" + seed + ".txt";
+    URL snapshotTestFile = getClass().getClassLoader().getResource(filename);
+    if (snapshotTestFile == null) {
+      // if the snapshot does not exist, we regenerate it at the resource folder.
+      // the next run will use the snapshot.
+      Path testResourcesPath = Paths.get("src/test/resources/", filename);
+      generateSnapshotFile(output, testResourcesPath);
+      String failureMessage =
+          String.format(
+              "Snapshot file not found. Generated snapshot at %s. "
+                  + "This file must be committed to Git to keep output state.",
+              testResourcesPath);
+      fail(failureMessage);
+    }
+
+    // read expected output from snapshot file
+    Path buildResourcePath = Paths.get(snapshotTestFile.getPath());
+    double[] expected =
+        Files.readAllLines(buildResourcePath).stream()
+            .mapToDouble(s -> Double.parseDouble(s))
+            .toArray();
+
+    // ensure that snapshot data has same size as this run
+    assertThat(output.length).isEqualTo(expected.length);
+    // ensure same output from previous runs
+    for (int i = 0; i < expected.length; i++) {
+      assertThat(output[i]).isCloseTo(expected[i], byLessThan(0.000001));
+    }
+  }
+
+  private void generateSnapshotFile(double[] output, Path testResourcesPath)
+      throws FileNotFoundException {
+    System.out.println("Generating new MI test file at: " + testResourcesPath.toAbsolutePath());
+    try (PrintWriter f = new PrintWriter(testResourcesPath.toFile())) {
+      for (double mi : output) {
+        f.println(mi);
+      }
+    }
   }
 }
