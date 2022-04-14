@@ -76,8 +76,6 @@ public class StatsTests {
     double[] y = new double[] {1.5, 2, 2.2};
     double[] yUnitRange = Stats.unitize(y, 1.5, 2.2);
 
-    System.out.println(Arrays.toString(yUnitRange));
-
     assertEquals(0.0, xUnitRange[0]);
     assertEquals(0.5, xUnitRange[1]);
     assertEquals(1.0, xUnitRange[2]);
@@ -89,5 +87,31 @@ public class StatsTests {
         PearsonCorrelation.coefficient(x, y),
         PearsonCorrelation.coefficient(xUnitRange, yUnitRange),
         1e-10);
+  }
+
+  @Test
+  public void testRankAverage() {
+    double[] x = new double[] {1, 2, 3, 3, 4, 5};
+    double[] r = Arrays.copyOf(x, x.length);
+    Stats.rank(r); // defaults to average
+    assertThat(r).containsExactly(1, 2, 3.5, 3.5, 5, 6);
+    Stats.rank(r, Stats.TiesMethod.AVERAGE);
+    assertThat(r).containsExactly(1, 2, 3.5, 3.5, 5, 6);
+  }
+
+  @Test
+  public void testRankMax() {
+    double[] x = new double[] {1, 2, 3, 3, 4, 5};
+    double[] r = Arrays.copyOf(x, x.length);
+    Stats.rank(r, Stats.TiesMethod.MAX);
+    assertThat(r).containsExactly(1, 2, 4, 4, 5, 6);
+  }
+
+  @Test
+  public void testRankMin() {
+    double[] x = new double[] {1, 2, 3, 3, 4, 5};
+    double[] r = Arrays.copyOf(x, x.length);
+    Stats.rank(r, Stats.TiesMethod.MIN);
+    assertThat(r).containsExactly(1, 2, 3, 3, 5, 6);
   }
 }

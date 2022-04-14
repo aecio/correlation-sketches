@@ -131,17 +131,6 @@ public class Stats {
     return result;
   }
 
-  public static class Extent {
-
-    public final double min;
-    public final double max;
-
-    public Extent(double min, double max) {
-      this.min = min;
-      this.max = max;
-    }
-  }
-
   /**
    * Computes a dot product between vectors x and y and divides the result by the length of the
    * vectors:
@@ -161,5 +150,98 @@ public class Stats {
       sum += x[i] * y[i];
     }
     return sum / n;
+  }
+
+  /**
+   * Given a sorted array, replaces the elements by their rank. When values are tied, they are
+   * assigned the mean of ranks of the tied values.
+   *
+   * @param x a sorted array
+   */
+  public static void rank(double[] x) {
+    rank(x, TiesMethod.AVERAGE);
+  }
+
+  /**
+   * Given a sorted array, replaces the elements by their rank. When values are tied, they are
+   * assigned a ranked computed using one of the methods in {@code TiesMethod} enum.
+   *
+   * @param x a sorted array
+   * @param tiesMethod the method to be used to compute the rank of tied values
+   */
+  public static void rank(double[] x, TiesMethod tiesMethod) {
+    int n = x.length;
+    int j = 1;
+    while (j < n) {
+      if (x[j] != x[j - 1]) {
+        x[j - 1] = j;
+        ++j;
+      } else {
+        // find all ties
+        int jt = j + 1;
+        while (jt <= n && x[jt - 1] == x[j - 1]) {
+          jt++;
+        }
+        // compute the rank to replace ties according to the chosen method for handling ties
+        double rank;
+        switch (tiesMethod) {
+          case AVERAGE:
+            rank = 0.5 * (j + jt - 1);
+            break;
+          case MAX:
+            rank = jt - 1;
+            break;
+          case MIN:
+            rank = j;
+            break;
+          default:
+            throw new IllegalArgumentException("Unsupported method: " + tiesMethod);
+        }
+        // replaces tied values according to the computed rank
+        for (int ji = j; ji <= (jt - 1); ji++) {
+          x[ji - 1] = rank;
+        }
+        // advance to next untied result
+        j = jt;
+      }
+    }
+
+    if (j == n) {
+      x[n - 1] = n;
+    }
+  }
+
+  public static double sum(final double[] x) {
+    return sum(x, x.length);
+  }
+
+  public static double sum(final double[] x, int xLength) {
+    double sum = 0d;
+    for (int i = 0; i < xLength; i++) {
+      sum += x[i];
+    }
+    return sum;
+  }
+
+  public enum TiesMethod {
+    AVERAGE,
+    MAX,
+    MIN
+  }
+
+  public static class Extent {
+
+    public final double min;
+    public final double max;
+
+    public Extent(double min, double max) {
+      this.min = min;
+      this.max = max;
+    }
+
+    @Override
+    public String toString() {
+      return "Extent(min=" + min + ", max=" + max + ')';
+    }
   }
 }

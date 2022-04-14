@@ -1,7 +1,8 @@
 package corrsketches.correlation;
 
+import static corrsketches.statistics.Stats.*;
+
 import corrsketches.correlation.Correlation.Estimate;
-import corrsketches.statistics.Stats;
 import smile.sort.QuickSort;
 
 /** Implements the Rank-Based Inverse Normal (RIN) Transformation correlation coefficient. */
@@ -34,11 +35,11 @@ public class RinCorrelation {
     double[] b = y.clone();
 
     QuickSort.sort(a, b);
-    SpearmanCorrelation.rank(a);
+    rank(a);
     rankit(a);
 
     QuickSort.sort(b, a);
-    SpearmanCorrelation.rank(b);
+    rank(b);
     rankit(b);
 
     return PearsonCorrelation.coefficient(a, b);
@@ -52,7 +53,7 @@ public class RinCorrelation {
   private static void rankit(double[] x) {
     final int n = x.length;
     for (int i = 0; i < n; i++) {
-      x[i] = Stats.NORMAL.quantile((x[i] - .5) / n);
+      x[i] = NORMAL.quantile((x[i] - .5) / n);
     }
   }
 }
