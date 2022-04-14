@@ -2,8 +2,36 @@ package corrsketches.util;
 
 import corrsketches.statistics.Stats;
 import java.util.Arrays;
+import java.util.Random;
 
 public class RandomArrays {
+
+  /**
+   * Generates an array of size {@code length} with random values that follow a uniform
+   * distribution.
+   *
+   * @param length the size of the output vector
+   * @return a vector with random data uniformly distributed
+   */
+  public static int[] randIntUniform(int length) {
+    return randIntUniform(length, new Random());
+  }
+
+  /**
+   * Generates an array of size {@code length} with random values that follow a uniform
+   * distribution.
+   *
+   * @param length the size of the output vector
+   * @param rng the random number generator
+   * @return a vector with random data uniformly distributed
+   */
+  public static int[] randIntUniform(int length, final Random rng) {
+    int[] data = new int[length];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = rng.nextInt();
+    }
+    return data;
+  }
 
   public static CI percentiles(long[] x, double alpha) {
     double[] y = new double[x.length];
