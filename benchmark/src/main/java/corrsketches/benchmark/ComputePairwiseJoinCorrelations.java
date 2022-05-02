@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +32,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
   enum BenchmarkType {
     CORR_STATS,
-    CORR_PERF
+    CORR_PERF,
+    MI
   }
 
   @Option(
@@ -112,6 +114,9 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       bench = new CorrelationPerformanceBenchmark();
     } else if (benchmarkType == BenchmarkType.CORR_STATS) {
       bench = new CorrelationStatsBenchmark();
+    } else if (benchmarkType == BenchmarkType.MI) {
+      aggregations = Arrays.asList(AggregateFunction.MOST_FREQUENT);
+      bench = new MutualInformationBenchmark();
     } else {
       throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
     }

@@ -1,5 +1,6 @@
 package corrsketches.benchmark;
 
+import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +18,9 @@ import net.tlabs.tablesaw.parquet.TablesawParquetReader;
 import tech.tablesaw.api.CategoricalColumn;
 import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
+import tech.tablesaw.api.StringColumn;
 import tech.tablesaw.api.Table;
+import tech.tablesaw.columns.Column;
 import tech.tablesaw.io.csv.CsvReadOptions;
 
 public class Tables {
@@ -32,10 +35,16 @@ public class Tables {
     }
   }
 
-  public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
+  public static Iterator<ColumnPair> readColumnPairs(
+      String datasetFilePath, int minRows, boolean categorical) {
     try {
       Table table = readTable(datasetFilePath);
-      return readColumnPairs(Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
+      if (categorical) {
+        return readCategoricalColumnPairs(
+            Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
+      } else {
+        return readColumnPairs(Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
+      }
     } catch (Exception e) {
       System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
       e.printStackTrace(System.out);
@@ -73,26 +82,44 @@ public class Tables {
 
     // Create a "lazy" iterator that creates one ColumnPair at a time to avoid overloading memory
     // with many large column pairs.
-    Iterator<ColumnEntry> it = pairs.iterator();
-    return new Iterator<>() {
-      ColumnEntry nextPair = it.next();
+    return new ColumnPairIterator(datasetName, pairs);
+  }
 
-      @Override
-      public boolean hasNext() {
-        return nextPair != null;
-      }
+  public static Iterator<ColumnPair> readCategoricalColumnPairs(
+      String datasetName, Table df, int minRows) {
+    System.out.println("\nDataset: " + datasetName);
 
-      @Override
-      public ColumnPair next() {
-        ColumnEntry tmp = nextPair;
-        nextPair = it.hasNext() ? it.next() : null;
-        return Tables.createColumnPair(datasetName, tmp.key, tmp.column);
+    System.out.printf("Row count: %d \n", df.rowCount());
+
+    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
+    System.out.println("Categorical columns: " + categoricalColumns.size());
+
+    if (df.rowCount() < minRows) {
+      System.out.println("Column pairs: 0");
+      return Collections.emptyIterator();
+    }
+
+    // Create a list of all column pairs
+    List<ColumnEntry> pairs = new ArrayList<>();
+    for (CategoricalColumn<?> key : categoricalColumns) {
+      for (CategoricalColumn<?> column : categoricalColumns) {
+        if (key != column) {
+          pairs.add(new ColumnEntry(key, column));
+        }
       }
-    };
+    }
+    System.out.println("Column pairs: " + pairs.size());
+    if (pairs.isEmpty()) {
+      return Collections.emptyIterator();
+    }
+
+    // Create a "lazy" iterator that creates one ColumnPair at a time to avoid overloading memory
+    // with many large column pairs.
+    return new ColumnPairIterator(datasetName, pairs);
   }
 
   public static ColumnPair createColumnPair(
-      String dataset, CategoricalColumn<?> key, NumericColumn<?> column) {
+      String dataset, CategoricalColumn<?> key, Column<?> column) {
 
     List<String> keyValues = new ArrayList<>();
     DoubleArrayList columnValues = new DoubleArrayList();
@@ -129,10 +156,19 @@ public class Tables {
           keyValues.add(key.getString(i));
         }
       }
+    } else if (column.type() == ColumnType.TEXT || column.type() == ColumnType.STRING) {
+      StringColumn values = column.asStringColumn();
+      for (int i = 0; i < values.size(); i++) {
+        if (!values.isMissing(i)) {
+          columnValues.add(Hashes.murmur3_32(values.get(i)));
+          keyValues.add(key.getString(i));
+        }
+      }
     } else {
       throw new IllegalArgumentException(
           String.format("Column of type %s can't be cast to double[]", column.type().toString()));
     }
+
     return new ColumnPair(
         dataset, key.name(), keyValues, column.name(), columnValues.toDoubleArray());
   }
@@ -181,11 +217,36 @@ public class Tables {
   static class ColumnEntry {
 
     final CategoricalColumn<?> key;
-    final NumericColumn<?> column;
+    final Column<?> column;
 
-    ColumnEntry(CategoricalColumn<?> key, NumericColumn<?> column) {
+    ColumnEntry(CategoricalColumn<?> key, Column<?> column) {
       this.key = key;
       this.column = column;
+    }
+  }
+
+  public static class ColumnPairIterator implements Iterator<ColumnPair> {
+
+    private final String datasetName;
+    private final Iterator<ColumnEntry> it;
+    private ColumnEntry nextPair;
+
+    public ColumnPairIterator(String datasetName, List<ColumnEntry> pairs) {
+      this.datasetName = datasetName;
+      this.it = pairs.iterator();
+      this.nextPair = this.it.next();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextPair != null;
+    }
+
+    @Override
+    public ColumnPair next() {
+      ColumnEntry tmp = nextPair;
+      this.nextPair = it.hasNext() ? it.next() : null;
+      return Tables.createColumnPair(datasetName, tmp.key, tmp.column);
     }
   }
 }

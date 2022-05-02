@@ -58,6 +58,11 @@ public class CreateColumnStore extends CliTool implements Serializable {
       description = "If should generate query file for synthetic table corpus")
   boolean generateQueryFile = false;
 
+  @Option(
+      names = "--categorical",
+      description = "If should use only categorical columns for value columns")
+  Boolean categorical = false;
+
   public static void main(String[] args) {
     CliTool.run(args, new CreateColumnStore());
   }
@@ -86,7 +91,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
     Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
-      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows);
+      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows, categorical);
       if (!columnPairs.hasNext()) {
         continue;
       }

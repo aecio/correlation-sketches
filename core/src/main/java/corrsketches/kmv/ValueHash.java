@@ -2,6 +2,7 @@ package corrsketches.kmv;
 
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.aggregations.AggregateFunction.Aggregator;
+import corrsketches.aggregations.AggregateFunction.BatchAggregator;
 import java.util.Comparator;
 
 public class ValueHash {
@@ -11,7 +12,7 @@ public class ValueHash {
   public final Aggregator aggregator;
   public final int keyHash;
   public final double unitHash;
-  public double value;
+  private double value;
 
   public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function) {
     this.keyHash = keyHash;
@@ -22,6 +23,13 @@ public class ValueHash {
 
   public void update(double value) {
     this.value = this.aggregator.update(this.value, value);
+  }
+
+  public double value() {
+    if (aggregator instanceof BatchAggregator) {
+      return ((BatchAggregator) aggregator).aggregatedValue();
+    }
+    return value;
   }
 
   @Override

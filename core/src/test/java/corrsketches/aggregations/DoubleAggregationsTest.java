@@ -52,4 +52,17 @@ class DoubleAggregationsTest {
     aggregations = DoubleAggregations.aggregate(x, mean);
     assertEquals((-32 + 0 + 9 + 23) / 4.0, aggregations.get(AggregateFunction.MEAN));
   }
+
+  @Test
+  public void shouldComputeMostFrequentInt() {
+    final List<AggregateFunction> mf = Collections.singletonList(AggregateFunction.MOST_FREQUENT);
+    double[] x = {1, 2, 2, 2, 3, 3};
+
+    DoubleAggregations aggregations = DoubleAggregations.aggregate(x, mf);
+    assertEquals(2, aggregations.get(AggregateFunction.MOST_FREQUENT));
+
+    x = new double[] {-1, -1, 0, 0, 0, 0, 1};
+    aggregations = DoubleAggregations.aggregate(x, mf);
+    assertEquals(0, aggregations.get(AggregateFunction.MOST_FREQUENT));
+  }
 }

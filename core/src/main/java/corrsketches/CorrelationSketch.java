@@ -122,7 +122,7 @@ public class CorrelationSketch {
       int i = 0;
       for (ValueHash vh : thisKMinValues) {
         keys[i] = vh.keyHash;
-        values[i] = vh.value;
+        values[i] = vh.value();
         i++;
       }
       QuickSort.sort(keys, values);

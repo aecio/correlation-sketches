@@ -2,7 +2,9 @@ package corrsketches.aggregations;
 
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public enum AggregateFunction {
   FIRST((previous, current) -> previous),
@@ -11,7 +13,8 @@ public enum AggregateFunction {
   MIN(Math::min),
   SUM(Double::sum),
   MEAN(Mean::new),
-  COUNT(Count::new);
+  COUNT(Count::new),
+  MOST_FREQUENT(MostFrequent::new);
 
   private final AggregatorProvider provider;
 
@@ -45,6 +48,9 @@ public enum AggregateFunction {
     for (int i = 1; i < length; i++) {
       aggregate = fn.update(aggregate, x[i]);
     }
+    if (fn instanceof BatchAggregator) {
+      aggregate = ((BatchAggregator) fn).aggregatedValue();
+    }
     return aggregate;
   }
 
@@ -56,6 +62,10 @@ public enum AggregateFunction {
     }
 
     double update(double previous, double current);
+  }
+
+  public interface BatchAggregator extends Aggregator {
+    public double aggregatedValue();
   }
 
   /** Creates an instance of an aggregator interface. */
@@ -84,6 +94,41 @@ public enum AggregateFunction {
     @Override
     public double update(double previous, double current) {
       return previous + 1;
+    }
+  }
+
+  private static class MostFrequent implements BatchAggregator {
+
+    public Map<Integer, Integer> counts = new HashMap<>();
+
+    @Override
+    public double first(double value) {
+      return update(0, value);
+    }
+
+    @Override
+    public double update(double previous, double current) {
+      Integer v = counts.get((int) current);
+      if (v == null) {
+        v = 1;
+      } else {
+        v += 1;
+      }
+      counts.put((int) current, v);
+      return 1;
+    }
+
+    @Override
+    public double aggregatedValue() {
+      int max = -1;
+      Integer maxItem = null;
+      for (var kv : counts.entrySet()) {
+        if (kv.getValue() > max) {
+          max = kv.getValue();
+          maxItem = kv.getKey();
+        }
+      }
+      return maxItem;
     }
   }
 }

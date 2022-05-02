@@ -21,7 +21,7 @@ public class TablesTest {
   @Test
   public void shouldReadCSVFileColumnPairs() {
     String csvFile = TablesTest.class.getResource("TablesTest/csv-files/test1.csv").getPath();
-    final Iterator<ColumnPair> it = Tables.readColumnPairs(csvFile, 0);
+    final Iterator<ColumnPair> it = Tables.readColumnPairs(csvFile, 0, false);
     assertThat(it.hasNext()).isTrue();
 
     ColumnPair cp = it.next();
@@ -41,7 +41,7 @@ public class TablesTest {
   public void shouldReadParquetFileColumnPairs() {
     String csvFile =
         TablesTest.class.getResource("TablesTest/parquet-files/test1.parquet").getPath();
-    final Iterator<ColumnPair> it = Tables.readColumnPairs(csvFile, 0);
+    final Iterator<ColumnPair> it = Tables.readColumnPairs(csvFile, 0, false);
     assertThat(it.hasNext()).isTrue();
 
     ColumnPair cp = it.next();
