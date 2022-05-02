@@ -13,11 +13,14 @@ import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
+import java.util.regex.Pattern;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -49,6 +52,11 @@ public class CreateColumnStore extends CliTool implements Serializable {
       description = "The type key-value store database: LEVELDB or ROCKSDB")
   DBType dbType = DBType.ROCKSDB;
 
+  @Option(
+      names = "--gen-synth-query-file",
+      description = "If should generate query file for synthetic table corpus")
+  boolean generateQueryFile = false;
+
   public static void main(String[] args) {
     CliTool.run(args, new CreateColumnStore());
   }
@@ -66,6 +74,13 @@ public class CreateColumnStore extends CliTool implements Serializable {
     FileWriter metadataFile = new FileWriter(getMetadataFilePath(outputPath).toFile());
     metadataFile.write(String.format("%s:%s\n", DBTYPE_KEY, dbType));
 
+    FileWriter queryFile = null;
+    Pattern rgx = null;
+    if (generateQueryFile) {
+      queryFile = new FileWriter(Paths.get(outputPath, "query-samples.txt").toFile());
+      rgx = Pattern.compile("synthetic-bivariate_qid=[0-9]+[.]csv");
+    }
+
     System.out.println("\n> Writing columns to key-value DB...");
 
     Set<Set<String>> allColumns = new HashSet<>();
@@ -80,6 +95,15 @@ public class CreateColumnStore extends CliTool implements Serializable {
         String id = cp.id();
         store.store(id, cp);
         columnIds.add(id);
+
+        if (queryFile != null) {
+          System.out.println(
+              "datasetID: " + cp.datasetId + " matches: " + rgx.matcher(cp.datasetId).matches());
+          if (rgx.matcher(cp.datasetId).matches()) {
+            queryFile.write(cp.id());
+            queryFile.write("\n");
+          }
+        }
       }
       metadataFile.write(COLUMNS_KEY + ":");
       metadataFile.write(String.join(" ", columnIds));
@@ -89,6 +113,9 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
     metadataFile.close();
     store.close();
+    if (queryFile != null) {
+      queryFile.close();
+    }
 
     System.out.println(getClass().getSimpleName() + " finished successfully.");
 
@@ -143,6 +170,68 @@ public class CreateColumnStore extends CliTool implements Serializable {
     return new ColumnStoreMetadata(dbType, allColumns);
   }
 
+  public static QueryStats readQueries(String inputPath, ColumnStoreMetadata storeMetadata) {
+    final Path queriesPath = Paths.get(inputPath, "query-samples.txt");
+    System.out.println("Reading queries from file: " + queriesPath);
+    try {
+      if (!Files.exists(queriesPath)) {
+        return null;
+      }
+      List<String> queries = Files.readAllLines(queriesPath);
+
+      int totalColumns = 0;
+      for (Set<String> columnSet : storeMetadata.columnSets) {
+        totalColumns += columnSet.size();
+      }
+
+      System.out.println("Query examples:");
+      for (int i = 0; i < 5 && i < queries.size(); i++) {
+        System.out.printf(" [%d] %s", i, queries.get(i));
+      }
+      System.out.println();
+      System.out.printf("Total columns: %d\tQueries selected: %d\n", totalColumns, queries.size());
+
+      QueryStats stats = new QueryStats();
+      stats.queries = new HashSet<>(queries);
+      stats.totalColumns = totalColumns;
+      return stats;
+
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to read queries file: " + queriesPath.toString(), e);
+    }
+  }
+
+  public static QueryStats selectQueriesRandomly(
+      ColumnStoreMetadata storeMetadata, int sampleSize) {
+    System.out.println("Selecting a random sample of columns as queries...");
+    List<String> queries = new ArrayList<>();
+    Random random = new Random(0);
+    int seen = 0;
+    for (Set<String> columnSet : storeMetadata.columnSets) {
+      for (String column : columnSet) {
+        if (queries.size() < sampleSize) {
+          queries.add(column);
+        } else {
+          int index = random.nextInt(seen + 1);
+          if (index < sampleSize) {
+            queries.set(index, column);
+          }
+        }
+        seen++;
+      }
+    }
+    System.out.println("Query examples:");
+    for (int i = 0; i < 5 && i < queries.size(); i++) {
+      System.out.printf(" [%d] %s", i, queries.get(i));
+    }
+    System.out.println();
+    System.out.printf("Total columns: %d\tQueries selected: %d\n", seen, queries.size());
+    QueryStats stats = new QueryStats();
+    stats.queries = new HashSet<>(queries);
+    stats.totalColumns = seen;
+    return stats;
+  }
+
   interface ColumnStore {
 
     void store(String id, ColumnPair cp);
@@ -194,6 +283,12 @@ public class CreateColumnStore extends CliTool implements Serializable {
     public void close() {
       hashtable.close();
     }
+  }
+
+  static class QueryStats {
+
+    int totalColumns;
+    Set<String> queries;
   }
 
   public static class ColumnStoreMetadata {

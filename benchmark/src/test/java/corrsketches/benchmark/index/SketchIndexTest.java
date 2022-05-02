@@ -3,7 +3,6 @@ package corrsketches.benchmark.index;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import corrsketches.benchmark.ColumnPair;
-import corrsketches.benchmark.index.SketchIndex.Hit;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +29,7 @@ public class SketchIndexTest {
     index.index("c0", c0);
     index.index("c1", c1);
     index.index("c2", c2);
+    index.refresh();
 
     List<Hit> hits = index.search(q, 5);
 
@@ -39,15 +39,87 @@ public class SketchIndexTest {
       System.out.printf("\n[%d] ", i + 1);
       System.out.println("id: " + hit.id);
       System.out.println("    score: " + hit.score);
-      //      System.out.println("    containment: " + hit.containment());
       System.out.println("    correlation: " + hit.correlation());
-      System.out.println("    robust-correlation: " + hit.robustCorrelation());
     }
 
-    assertEquals(hits.size(), 3);
-    assertEquals(hits.get(0).id, "c0");
-    assertEquals(hits.get(1).id, "c1");
-    assertEquals(hits.get(2).id, "c2");
+    assertEquals(3, hits.size());
+    assertEquals("c0", hits.get(0).id);
+    assertEquals("c1", hits.get(1).id);
+    assertEquals("c2", hits.get(2).id);
+  }
+
+  @Test
+  public void shouldIndexSketchesWithQCRISketchIndex() throws IOException {
+    QCRISketchIndex index = new QCRISketchIndex();
+    shouldRetrieveCorrelatedColumns(index);
+  }
+
+  @Test
+  public void shouldIndexSketchesWithQCRSketchIndex() throws IOException {
+    QCRSketchIndex index = new QCRSketchIndex();
+    // QCRSketchIndex index =
+    //     new QCRSketchIndex(null, new CorrelationSketch.Builder(), SortBy.KEY, false);
+    shouldRetrieveCorrelatedColumns(index);
+  }
+
+  private void shouldRetrieveCorrelatedColumns(SketchIndex index) throws IOException {
+    ColumnPair q =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h"),
+            new double[] {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0});
+
+    ColumnPair c0 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {1, 2, 3, 4, 5, 6, 7});
+
+    ColumnPair c1 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {7, 6, 5, 4, 3, 2, 1});
+
+    ColumnPair c2 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.1, 2.5, 3.0, 4.4, 4.6});
+
+    ColumnPair c3 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.1, 2.5, 2.0, 2.7, 3.0});
+
+    ColumnPair c4 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.5, 1.5, 1.0, 1.0, 2.0});
+
+    ColumnPair c5 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {5.0, 4.1, 3.1, 2.0, 1.0});
+
+    ColumnPair c6 =
+        createColumnPair(
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.0, 1.0, 1.0, 1.0, 1.0});
+
+    index.index("c0", c0);
+    index.index("c1", c1);
+    index.index("c2", c2);
+    index.index("c3", c3);
+    index.index("c4", c4);
+    index.index("c5", c5);
+    index.index("c6", c6);
+    index.refresh();
+
+    List<Hit> hits = index.search(q, 6);
+
+    System.out.println("Total hits: " + hits.size());
+    for (int i = 0; i < hits.size(); i++) {
+      Hit hit = hits.get(i);
+      System.out.printf("\n[%d] ", i + 1);
+      System.out.printf("     id: %s\n", hit.id);
+      System.out.printf("      score: %.3f\n", hit.score);
+      System.out.printf("correlation: %.3f\n", hit.correlation());
+    }
+
+    assertEquals(6, hits.size());
+    assertEquals("c0", hits.get(0).id);
+    assertEquals("c1", hits.get(1).id);
+    assertEquals("c2", hits.get(2).id);
   }
 
   @Test

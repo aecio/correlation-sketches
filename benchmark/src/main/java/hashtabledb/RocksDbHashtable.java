@@ -19,7 +19,7 @@ class RocksDbHashtable implements Closeable, HashtableBackend {
 
   protected RocksDbHashtable() {}
 
-  public RocksDbHashtable(String path) {
+  public RocksDbHashtable(String path, boolean readonly) {
     File file = new File(path);
     if (!file.exists()) {
       file.mkdirs();
@@ -27,7 +27,11 @@ class RocksDbHashtable implements Closeable, HashtableBackend {
     this.options = new Options();
     this.options.setCreateIfMissing(true);
     try {
-      this.db = RocksDB.open(options, path);
+      if (readonly) {
+        this.db = RocksDB.openReadOnly(options, path);
+      } else {
+        this.db = RocksDB.open(options, path);
+      }
     } catch (RocksDBException e) {
       String message =
           String.format(

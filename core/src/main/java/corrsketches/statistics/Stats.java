@@ -120,6 +120,17 @@ public class Stats {
     return Math.sqrt(sum / n);
   }
 
+  /**
+   * Standardize the vector {@param x} by removing the mean and scaling to unit variance. The
+   * standard score of a sample x is calculated as:
+   *
+   * <p>z = (x - u) / s
+   *
+   * <p>where u is the mean of {@param x} and s is the standard deviation of {@param x}.
+   *
+   * @param x the input vector
+   * @return the standardized vector z
+   */
   public static double[] standardize(double[] x) {
     final double stdx = std(x);
     final double meanx = mean(x);

@@ -12,6 +12,11 @@ public interface Correlation {
       this.coefficient = coefficient;
       this.sampleSize = sampleSize;
     }
+
+    @Override
+    public String toString() {
+      return "Estimate{" + "coefficient=" + coefficient + ", sampleSize=" + sampleSize + '}';
+    }
   }
 
   Estimate correlation(double[] x, double[] y);

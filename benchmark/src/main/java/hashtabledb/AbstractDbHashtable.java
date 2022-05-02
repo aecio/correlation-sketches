@@ -8,8 +8,12 @@ public abstract class AbstractDbHashtable implements Closeable {
   protected final HashtableBackend db;
 
   public AbstractDbHashtable(DBType backend, String path) {
+    this(backend, path, false);
+  }
+
+  public AbstractDbHashtable(DBType backend, String path, boolean readonly) {
     if (backend == DBType.ROCKSDB) {
-      this.db = new RocksDbHashtable(path);
+      this.db = new RocksDbHashtable(path, readonly);
     } else {
       this.db = new LevelDbHashtable(path);
     }
