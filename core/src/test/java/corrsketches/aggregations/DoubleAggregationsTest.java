@@ -19,6 +19,7 @@ class DoubleAggregationsTest {
     assertSame(AggregateFunction.SUM.get(), AggregateFunction.SUM.get());
     assertNotSame(AggregateFunction.MEAN.get(), AggregateFunction.MEAN.get());
     assertNotSame(AggregateFunction.COUNT.get(), AggregateFunction.COUNT.get());
+    assertNotSame(AggregateFunction.MOST_FREQUENT.get(), AggregateFunction.MOST_FREQUENT.get());
   }
 
   @Test

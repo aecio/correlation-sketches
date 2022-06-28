@@ -1,7 +1,9 @@
 package corrsketches.benchmark;
 
+import static corrsketches.aggregations.AggregateFunction.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import corrsketches.ColumnType;
 import corrsketches.aggregations.AggregateFunction;
 import java.util.Arrays;
 import java.util.Collections;
@@ -18,9 +20,8 @@ public class JoinAggregationTest {
     // mean: a=1, b=2, c=3, d=4
     double[] values = new double[] {1.0, 1.0, 3.0, 3.0, 0.0, 8.0, 4.0};
 
-    final ColumnPair cp = new ColumnPair("B", "fk_b", key, "values_b", values);
-    final List<AggregateFunction> functions =
-        Arrays.asList(AggregateFunction.MEAN, AggregateFunction.COUNT);
+    final ColumnPair cp = createNumericalColumnPair("B", key, values);
+    final List<AggregateFunction> functions = Arrays.asList(MEAN, COUNT);
 
     // when
     final List<ColumnPair> columnPairs = JoinAggregation.aggregateColumnPair(cp, functions);
@@ -49,9 +50,8 @@ public class JoinAggregationTest {
     List<String> keys = Arrays.asList("a", "b", "c", "d", "e");
     double[] values = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    final ColumnPair cp = new ColumnPair("B", "fk_b", keys, "values_b", values);
-    final List<AggregateFunction> functions =
-        Arrays.asList(AggregateFunction.MEAN, AggregateFunction.COUNT);
+    final ColumnPair cp = createNumericalColumnPair("B", keys, values);
+    final List<AggregateFunction> functions = Arrays.asList(MEAN, COUNT);
 
     // when
     final List<ColumnPair> columnPairs = JoinAggregation.aggregateColumnPair(cp, functions);
@@ -91,19 +91,19 @@ public class JoinAggregationTest {
     List<String> keyA = Arrays.asList("a", "b", "c", "d", "e");
     double[] valuesA = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
 
-    List<String> keyB = Arrays.asList(new String[] {"a", "b", "c", "d"});
+    List<String> keyB = Arrays.asList("a", "b", "c", "d");
     double[] valuesB = new double[] {1.0, 2.0, 3.0, 4.0};
 
-    List<String> keyC = Arrays.asList(new String[] {"a", "b", "c", "z", "x"});
+    List<String> keyC = Arrays.asList("a", "b", "c", "z", "x");
     double[] valuesC = new double[] {0., 0., 3.0, 4.0, 5.0};
 
-    List<String> keyD = Arrays.asList(new String[] {"a", "b", "c", "z"});
+    List<String> keyD = Arrays.asList("a", "b", "c", "z");
     double[] valuesD = new double[] {-1., -2., -3.0, 4.0};
 
-    ColumnPair columnA = new ColumnPair("A", "pk_a", keyA, "values_a", valuesA);
-    ColumnPair columnB = new ColumnPair("B", "fk_b", keyB, "values_b", valuesB);
-    ColumnPair columnC = new ColumnPair("C", "fk_c", keyC, "values_c", valuesC);
-    ColumnPair columnD = new ColumnPair("D", "fk_d", keyD, "values_d", valuesD);
+    ColumnPair columnA = createNumericalColumnPair("A", keyA, valuesA);
+    ColumnPair columnB = createNumericalColumnPair("B", keyB, valuesB);
+    ColumnPair columnC = createNumericalColumnPair("C", keyC, valuesC);
+    ColumnPair columnD = createNumericalColumnPair("D", keyD, valuesD);
 
     double delta = 0.0001;
     assertEquals(1.000, getPearsonCorrelation(columnA, columnB), delta);
@@ -127,8 +127,8 @@ public class JoinAggregationTest {
     // mean: a=1, b=2, d=4
     double[] valuesB = new double[] {1.0, 1.0, 3.0, 3.0, 0.0, 8.0};
 
-    ColumnPair columnA = new ColumnPair("A", "pk_a", keyA, "values_a", valuesA);
-    ColumnPair columnB = new ColumnPair("B", "fk_b", keyB, "values_b", valuesB);
+    ColumnPair columnA = createNumericalColumnPair("A", keyA, valuesA);
+    ColumnPair columnB = createNumericalColumnPair("B", keyB, valuesB);
 
     double delta = 0.0001;
     assertEquals(1.000, getPearsonCorrelation(columnA, columnB), delta);
@@ -137,11 +137,13 @@ public class JoinAggregationTest {
 
   private double getPearsonCorrelation(ColumnPair columnA, ColumnPair columnB) {
     return CorrelationStatsBenchmark.computeCorrelationsAfterJoin(
-            columnA,
-            columnB,
-            Collections.singletonList(AggregateFunction.MEAN),
-            new MetricsResult())
+            columnA, columnB, Collections.singletonList(MEAN), new MetricsResult())
         .get(0)
         .corr_rp_actual;
+  }
+
+  private ColumnPair createNumericalColumnPair(String id, List<String> key, double[] values) {
+    ColumnType valueType = ColumnType.NUMERICAL;
+    return new ColumnPair(id, "fk_" + id, key, "values_" + id, valueType, values);
   }
 }

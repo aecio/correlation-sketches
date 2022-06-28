@@ -1,6 +1,7 @@
 package corrsketches.benchmark;
 
 import com.google.common.base.Preconditions;
+import corrsketches.ColumnType;
 import corrsketches.SketchType;
 import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.utils.CliTool;
@@ -59,9 +60,9 @@ public class CreateColumnStore extends CliTool implements Serializable {
   boolean generateQueryFile = false;
 
   @Option(
-      names = "--categorical",
-      description = "If should use only categorical columns for value columns")
-  Boolean categorical = false;
+      names = "--column-type",
+      description = "What data type should be considered for value columns")
+  ColumnType columnType = ColumnType.NUMERICAL;
 
   public static void main(String[] args) {
     CliTool.run(args, new CreateColumnStore());
@@ -91,7 +92,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
     Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
-      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows, categorical);
+      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows, columnType);
       if (!columnPairs.hasNext()) {
         continue;
       }

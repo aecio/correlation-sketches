@@ -1,5 +1,6 @@
 package corrsketches.benchmark;
 
+import corrsketches.ColumnType;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import java.io.IOException;
@@ -16,7 +17,6 @@ import java.util.stream.Collectors;
 import net.tlabs.tablesaw.parquet.TablesawParquetReadOptions;
 import net.tlabs.tablesaw.parquet.TablesawParquetReader;
 import tech.tablesaw.api.CategoricalColumn;
-import tech.tablesaw.api.ColumnType;
 import tech.tablesaw.api.NumericColumn;
 import tech.tablesaw.api.StringColumn;
 import tech.tablesaw.api.Table;
@@ -36,15 +36,11 @@ public class Tables {
   }
 
   public static Iterator<ColumnPair> readColumnPairs(
-      String datasetFilePath, int minRows, boolean categorical) {
+      String datasetFilePath, int minRows, ColumnType columnType) {
     try {
       Table table = readTable(datasetFilePath);
-      if (categorical) {
-        return readCategoricalColumnPairs(
-            Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
-      } else {
-        return readColumnPairs(Paths.get(datasetFilePath).getFileName().toString(), table, minRows);
-      }
+      String datasetName = Paths.get(datasetFilePath).getFileName().toString();
+      return readColumnPairs(datasetName, table, minRows, columnType);
     } catch (Exception e) {
       System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
       e.printStackTrace(System.out);
@@ -52,16 +48,35 @@ public class Tables {
     }
   }
 
-  public static Iterator<ColumnPair> readColumnPairs(String datasetName, Table df, int minRows) {
+  public static Iterator<ColumnPair> readColumnPairs(
+      String datasetName, Table df, int minRows, ColumnType valueColumnType) {
     System.out.println("\nDataset: " + datasetName);
 
     System.out.printf("Row count: %d \n", df.rowCount());
 
-    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
-    System.out.println("Categorical columns: " + categoricalColumns.size());
+    List<CategoricalColumn<String>> joinKeyColumns = getStringColumns(df);
+    System.out.println("Join key columns: " + joinKeyColumns.size());
 
-    List<NumericColumn<?>> numericColumns = df.numericColumns();
-    System.out.println("Numeric columns: " + numericColumns.size());
+    List<Column<?>> valueColumns;
+    if (valueColumnType == ColumnType.CATEGORICAL) {
+      valueColumns =
+          df.columns().stream()
+              .filter(
+                  e ->
+                      e.type() == tech.tablesaw.api.ColumnType.STRING
+                          || e.type() == tech.tablesaw.api.ColumnType.TEXT)
+              .map(e -> (CategoricalColumn<String>) e)
+              .collect(Collectors.toList());
+      System.out.println("String columns: " + valueColumns.size());
+    } else if (valueColumnType == ColumnType.NUMERICAL) {
+      valueColumns =
+          df.columns().stream()
+              .filter(e -> e instanceof NumericColumn<?>)
+              .collect(Collectors.toList());
+      System.out.println("Numerical columns: " + valueColumns.size());
+    } else {
+      throw new IllegalStateException("Invalid table column type." + valueColumnType.toString());
+    }
 
     if (df.rowCount() < minRows) {
       System.out.println("Column pairs: 0");
@@ -70,42 +85,9 @@ public class Tables {
 
     // Create a list of all column pairs
     List<ColumnEntry> pairs = new ArrayList<>();
-    for (CategoricalColumn<?> key : categoricalColumns) {
-      for (NumericColumn<?> column : numericColumns) {
+    for (CategoricalColumn<?> key : joinKeyColumns) {
+      for (Column<?> column : valueColumns) {
         pairs.add(new ColumnEntry(key, column));
-      }
-    }
-    System.out.println("Column pairs: " + pairs.size());
-    if (pairs.isEmpty()) {
-      return Collections.emptyIterator();
-    }
-
-    // Create a "lazy" iterator that creates one ColumnPair at a time to avoid overloading memory
-    // with many large column pairs.
-    return new ColumnPairIterator(datasetName, pairs);
-  }
-
-  public static Iterator<ColumnPair> readCategoricalColumnPairs(
-      String datasetName, Table df, int minRows) {
-    System.out.println("\nDataset: " + datasetName);
-
-    System.out.printf("Row count: %d \n", df.rowCount());
-
-    List<CategoricalColumn<String>> categoricalColumns = getStringColumns(df);
-    System.out.println("Categorical columns: " + categoricalColumns.size());
-
-    if (df.rowCount() < minRows) {
-      System.out.println("Column pairs: 0");
-      return Collections.emptyIterator();
-    }
-
-    // Create a list of all column pairs
-    List<ColumnEntry> pairs = new ArrayList<>();
-    for (CategoricalColumn<?> key : categoricalColumns) {
-      for (CategoricalColumn<?> column : categoricalColumns) {
-        if (key != column) {
-          pairs.add(new ColumnEntry(key, column));
-        }
       }
     }
     System.out.println("Column pairs: " + pairs.size());
@@ -123,8 +105,9 @@ public class Tables {
 
     List<String> keyValues = new ArrayList<>();
     DoubleArrayList columnValues = new DoubleArrayList();
-
-    if (column.type() == ColumnType.INTEGER) {
+    ColumnType valueType;
+    if (column.type() == tech.tablesaw.api.ColumnType.INTEGER) {
+      valueType = ColumnType.NUMERICAL;
       Integer[] ints = (Integer[]) column.asObjectArray();
       for (int i = 0; i < ints.length; i++) {
         if (ints[i] != null) {
@@ -132,7 +115,8 @@ public class Tables {
           keyValues.add(key.getString(i));
         }
       }
-    } else if (column.type() == ColumnType.LONG) {
+    } else if (column.type() == tech.tablesaw.api.ColumnType.LONG) {
+      valueType = ColumnType.NUMERICAL;
       Long[] longs = (Long[]) column.asObjectArray();
       for (int i = 0; i < longs.length; i++) {
         if (longs[i] != null) {
@@ -140,7 +124,8 @@ public class Tables {
           keyValues.add(key.getString(i));
         }
       }
-    } else if (column.type() == ColumnType.FLOAT) {
+    } else if (column.type() == tech.tablesaw.api.ColumnType.FLOAT) {
+      valueType = ColumnType.NUMERICAL;
       Float[] floats = (Float[]) column.asObjectArray();
       for (int i = 0; i < floats.length; i++) {
         if (floats[i] != null) {
@@ -148,7 +133,8 @@ public class Tables {
           keyValues.add(key.getString(i));
         }
       }
-    } else if (column.type() == ColumnType.DOUBLE) {
+    } else if (column.type() == tech.tablesaw.api.ColumnType.DOUBLE) {
+      valueType = ColumnType.NUMERICAL;
       Double[] doubles = (Double[]) column.asObjectArray();
       for (int i = 0; i < doubles.length; i++) {
         if (doubles[i] != null) {
@@ -156,10 +142,13 @@ public class Tables {
           keyValues.add(key.getString(i));
         }
       }
-    } else if (column.type() == ColumnType.TEXT || column.type() == ColumnType.STRING) {
+    } else if (column.type() == tech.tablesaw.api.ColumnType.TEXT
+        || column.type() == tech.tablesaw.api.ColumnType.STRING) {
+      valueType = ColumnType.CATEGORICAL;
       StringColumn values = column.asStringColumn();
       for (int i = 0; i < values.size(); i++) {
         if (!values.isMissing(i)) {
+          // we store the text hash (integer) as double variables
           columnValues.add(Hashes.murmur3_32(values.get(i)));
           keyValues.add(key.getString(i));
         }
@@ -170,7 +159,7 @@ public class Tables {
     }
 
     return new ColumnPair(
-        dataset, key.name(), keyValues, column.name(), columnValues.toDoubleArray());
+        dataset, key.name(), keyValues, column.name(), valueType, columnValues.toDoubleArray());
   }
 
   private static Table readTable(String datasetFilePath) throws IOException {
@@ -209,7 +198,10 @@ public class Tables {
 
   private static List<CategoricalColumn<String>> getStringColumns(Table df) {
     return df.columns().stream()
-        .filter(e -> e.type() == ColumnType.STRING || e.type() == ColumnType.TEXT)
+        .filter(
+            e ->
+                e.type() == tech.tablesaw.api.ColumnType.STRING
+                    || e.type() == tech.tablesaw.api.ColumnType.TEXT)
         .map(e -> (CategoricalColumn<String>) e)
         .collect(Collectors.toList());
   }

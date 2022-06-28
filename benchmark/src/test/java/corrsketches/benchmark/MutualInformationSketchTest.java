@@ -3,6 +3,7 @@ package corrsketches.benchmark;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.byLessThan;
 
+import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.Builder;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
@@ -90,8 +91,9 @@ public class MutualInformationSketchTest {
     //
     // GROUND TRUTH TABLE
     //
-    ColumnPair cpx = new ColumnPair("TX", "PK", pk, "X", x);
-    ColumnPair cpy = new ColumnPair("TY", "FK", fk, "Y", y);
+    ColumnType valueType = ColumnType.CATEGORICAL;
+    ColumnPair cpx = new ColumnPair("TX", "PK", pk, "X", valueType, x);
+    ColumnPair cpy = new ColumnPair("TY", "FK", fk, "Y", valueType, y);
     Aggregation join =
         CategoricalJoinAggregation.leftJoinAggregate(
                 cpy, cpx, Collections.singletonList(AggregateFunction.MOST_FREQUENT))

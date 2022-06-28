@@ -41,6 +41,7 @@ public class JoinAggregation {
               cp.keyName,
               Arrays.asList(aggregatedKeys),
               cp.columnName,
+              functions.get(i).get().getOutputType(cp.columnValueType),
               aggregatedValues[i]));
     }
     return results;
