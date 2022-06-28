@@ -23,12 +23,13 @@ import tech.tablesaw.io.csv.CsvReadOptions;
 public class Tables {
 
   public static List<String> findAllTables(String basePath) throws IOException {
-
-    return Files.walk(Paths.get(basePath))
-        .filter(p -> p.toString().endsWith(".csv") || p.toString().endsWith(".parquet"))
-        .filter(Files::isRegularFile)
-        .map(Path::toString)
-        .collect(Collectors.toList());
+    try (final var pathStream = Files.walk(Paths.get(basePath))) {
+      return pathStream
+          .filter(p -> p.toString().endsWith(".csv") || p.toString().endsWith(".parquet"))
+          .filter(Files::isRegularFile)
+          .map(Path::toString)
+          .collect(Collectors.toList());
+    }
   }
 
   public static Iterator<ColumnPair> readColumnPairs(String datasetFilePath, int minRows) {
@@ -73,7 +74,7 @@ public class Tables {
     // Create a "lazy" iterator that creates one ColumnPair at a time to avoid overloading memory
     // with many large column pairs.
     Iterator<ColumnEntry> it = pairs.iterator();
-    return new Iterator<ColumnPair>() {
+    return new Iterator<>() {
       ColumnEntry nextPair = it.next();
 
       @Override
