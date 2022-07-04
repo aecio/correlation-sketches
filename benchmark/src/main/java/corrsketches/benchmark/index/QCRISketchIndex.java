@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -36,35 +35,23 @@ public class QCRISketchIndex extends SketchIndex {
 
   public void index(String id, ColumnPair columnPair) throws IOException {
 
-    final CorrelationSketch sketch =
-        super.builder.build(columnPair.keyValues, columnPair.columnValues);
-    final ImmutableCorrelationSketch iSketch = sketch.toImmutable();
+    final ImmutableCorrelationSketch sketch =
+        super.builder.build(columnPair.keyValues, columnPair.columnValues).toImmutable();
 
-    final int[] keys = iSketch.getKeys();
-    final double[] values = iSketch.getValues();
-
-    // System.out.println(id);
-    int[] indexKeys = computeCorrelationIndexKeys(keys, values);
-
-    final double[] flippedValues = flip(values);
-    int[] negIndexKeys = computeCorrelationIndexKeys(keys, flippedValues);
+    final int[] keys = sketch.getKeys();
+    final double[] values = sketch.getValues();
 
     Document doc = new Document();
     doc.add(new StringField(ID_FIELD_NAME, id, Field.Store.YES));
-    for (int key : indexKeys) {
-      doc.add(new StringField(QCR_HASHES_FIELD_NAME, intToBytesRef(key), Field.Store.NO));
-    }
-    for (int key : negIndexKeys) {
-      doc.add(new StringField(QCR_OPPOSITE_HASHES_FIELD_NAME, intToBytesRef(key), Field.Store.NO));
-    }
 
-    // add keys to document
-    for (int key : keys) {
-      doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(key), Field.Store.YES));
-    }
-    // add values to documents
-    byte[] valuesBytes = toByteArray(values);
-    doc.add(new StoredField(VALUES_FIELD_NAME, valuesBytes));
+    int[] indexKeys = computeCorrelationIndexKeys(keys, values);
+    int[] negIndexKeys = computeCorrelationIndexKeys(keys, flip(values));
+
+    // store and index sketch data in the document
+    indexIntArray(doc, QCR_HASHES_FIELD_NAME, indexKeys);
+    indexIntArray(doc, QCR_OPPOSITE_HASHES_FIELD_NAME, negIndexKeys);
+    indexAndStoreIntArray(doc, HASHES_FIELD_NAME, keys);
+    storeDoubleArray(doc, VALUES_FIELD_NAME, values);
 
     writer.updateDocument(new Term(ID_FIELD_NAME, id), doc);
     //    refresh();
@@ -73,8 +60,6 @@ public class QCRISketchIndex extends SketchIndex {
   private static int[] computeCorrelationIndexKeys(int[] keys, double[] values) {
     double meanx = Stats.mean(values);
     double stdx = Stats.std(values);
-
-    //    System.out.println("mean: " + meanx);
 
     int[] indexKeys = new int[keys.length];
     for (int i = 0; i < keys.length; i++) {
@@ -86,17 +71,7 @@ public class QCRISketchIndex extends SketchIndex {
         sign = -1;
       }
       indexKeys[i] = Hashes.MURMUR3.newHasher().putInt(keys[i]).putInt(sign).hash().asInt();
-
-      // DEBUG
-      //      String signStr = "=";
-      //      if (sign > 0) {
-      //        signStr = "+";
-      //      } else if (sign < 0) {
-      //        signStr = "-";
-      //      }
-      //      System.out.printf("%d\t[%s]\t%s\n", keys[i], signStr, indexKeys[i]);
     }
-    //    System.out.printf("\n");
     return indexKeys;
   }
 
@@ -107,7 +82,6 @@ public class QCRISketchIndex extends SketchIndex {
 
     final ImmutableCorrelationSketch sketch = query.toImmutable();
 
-    // System.out.println("q");
     int[] indexKeys = computeCorrelationIndexKeys(sketch.getKeys(), sketch.getValues());
 
     Builder bq1 = new Builder();
@@ -119,7 +93,6 @@ public class QCRISketchIndex extends SketchIndex {
       final Term term2 = new Term(QCR_OPPOSITE_HASHES_FIELD_NAME, intToBytesRef(key));
       bq2.add(new TermQuery(term2), Occur.SHOULD);
     }
-    // Query q = bq1.build();
     DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(bq1.build(), bq2.build()), 0f);
 
     return executeQuery(k, sketch, q);

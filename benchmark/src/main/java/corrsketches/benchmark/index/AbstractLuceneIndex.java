@@ -5,6 +5,10 @@ import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -81,6 +85,33 @@ public abstract class AbstractLuceneIndex {
     if (writer != null) {
       this.writer.close();
     }
+  }
+
+  protected static void indexIntArray(Document doc, String fieldName, int[] keys) {
+    for (int key : keys) {
+      doc.add(new StringField(fieldName, intToBytesRef(key), Field.Store.NO));
+    }
+  }
+
+  protected static void indexAndStoreIntArray(Document doc, String fieldName, int[] keys) {
+    for (int key : keys) {
+      doc.add(new StringField(fieldName, intToBytesRef(key), Field.Store.YES));
+    }
+  }
+
+  protected static void storeDoubleArray(Document doc, String fieldName, double[] values) {
+    byte[] valuesBytes = toByteArray(values);
+    doc.add(new StoredField(fieldName, valuesBytes));
+  }
+
+  protected static double[] readDoubleArrayField(Document doc, String fieldName) {
+    BytesRef[] fieldData = doc.getBinaryValues(fieldName);
+    return toDoubleArray(fieldData[0].bytes);
+  }
+
+  protected static int[] readIntArrayField(Document doc, String fieldName) {
+    BytesRef[] fieldData = doc.getBinaryValues(fieldName);
+    return bytesRefToIntArray(fieldData);
   }
 
   protected static int[] bytesRefToIntArray(BytesRef[] hashesBytes) {

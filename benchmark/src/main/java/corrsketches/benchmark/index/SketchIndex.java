@@ -12,10 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
@@ -25,7 +22,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.BytesRef;
 
 public class SketchIndex extends AbstractLuceneIndex {
 
@@ -69,28 +65,21 @@ public class SketchIndex extends AbstractLuceneIndex {
 
   public void index(String id, ColumnPair columnPair) throws IOException {
 
-    CorrelationSketch sketch = builder.build(columnPair.keyValues, columnPair.columnValues);
+    final ImmutableCorrelationSketch sketch =
+        builder.build(columnPair.keyValues, columnPair.columnValues).toImmutable();
+
+    final int[] keys = sketch.getKeys();
+    final double[] values = sketch.getValues();
 
     Document doc = new Document();
+    doc.add(new StringField(ID_FIELD_NAME, id, Field.Store.YES));
 
-    Field idField = new StringField(ID_FIELD_NAME, id, Field.Store.YES);
-    doc.add(idField);
-
-    final ImmutableCorrelationSketch immutable = sketch.toImmutable();
-
-    // add keys to document
-    final int[] keys = immutable.getKeys();
-    for (int key : keys) {
-      doc.add(new StringField(HASHES_FIELD_NAME, intToBytesRef(key), Field.Store.YES));
-    }
-
-    // add values to documents
-    final double[] values = immutable.getValues();
-    byte[] valuesBytes = toByteArray(values);
-    doc.add(new StoredField(VALUES_FIELD_NAME, valuesBytes));
+    // store and index sketch data in the document
+    indexAndStoreIntArray(doc, HASHES_FIELD_NAME, keys);
+    storeDoubleArray(doc, VALUES_FIELD_NAME, values);
 
     writer.updateDocument(new Term(ID_FIELD_NAME, id), doc);
-    //    refresh();
+    // refresh();
   }
 
   public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
@@ -143,12 +132,9 @@ public class SketchIndex extends AbstractLuceneIndex {
   }
 
   protected ImmutableCorrelationSketch readSketchFromIndex(Document doc) {
-    // retrieve data from index fields
-    BytesRef[] hashesRef = doc.getBinaryValues(HASHES_FIELD_NAME);
-    BytesRef[] valuesRef = doc.getBinaryValues(VALUES_FIELD_NAME);
-    // re-construct sketch data structures from bytes
-    int[] hashes = bytesRefToIntArray(hashesRef);
-    double[] values = toDoubleArray(valuesRef[0].bytes);
+    // re-construct sketch data structures from bytes read from the doc
+    int[] hashes = readIntArrayField(doc, HASHES_FIELD_NAME);
+    double[] values = readDoubleArrayField(doc, VALUES_FIELD_NAME);
     return new ImmutableCorrelationSketch(hashes, values, PearsonCorrelation::estimate);
   }
 
