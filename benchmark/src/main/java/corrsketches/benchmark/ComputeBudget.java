@@ -2,8 +2,7 @@ package corrsketches.benchmark;
 
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.utils.CliTool;
-import hashtabledb.BytesBytesHashtable;
-import hashtabledb.Kryos;
+import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,8 +13,6 @@ import picocli.CommandLine.Option;
 public class ComputeBudget extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "ComputeBudget";
-
-  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
   @Option(
       names = "--input-path",
@@ -31,7 +28,8 @@ public class ComputeBudget extends CliTool implements Serializable {
   public void execute() throws Exception {
 
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
-    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
+    StringObjectKVDB<ColumnPair> columnStore =
+        CreateColumnStore.KVColumnStore.create(inputPath, DBType.ROCKSDB, true);
 
     Set<Set<String>> columnSets = storeMetadata.columnSets;
     System.out.println(
@@ -42,8 +40,7 @@ public class ComputeBudget extends CliTool implements Serializable {
 
     for (Set<String> datasetColumnPairIds : columnSets) {
       for (String columnPairId : datasetColumnPairIds) {
-        byte[] id = columnPairId.getBytes();
-        ColumnPair x = KRYO.unserializeObject(columnStore.get(id));
+        ColumnPair x = columnStore.get(columnPairId);
         keyColumns.add(x.datasetId + "/" + x.keyName);
         uniqueElements.addAll(x.keyValues);
       }

@@ -22,9 +22,9 @@ import corrsketches.benchmark.utils.EvalMetrics;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.PearsonCorrelation;
 import corrsketches.statistics.Stats;
-import hashtabledb.BytesBytesHashtable;
-import hashtabledb.KV;
-import hashtabledb.Kryos;
+import edu.nyu.engineering.vida.kvdb4j.api.KV;
+import edu.nyu.engineering.vida.kvdb4j.api.KVIterator;
+import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,7 +54,6 @@ public class IndexCorrelationBenchmark {
 
   public static final String JOB_NAME = "IndexCorrelationBenchmark";
 
-  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
   Cache<String, ColumnPair> cache = CacheBuilder.newBuilder().softValues().build();
 
   @Option(
@@ -95,8 +93,8 @@ public class IndexCorrelationBenchmark {
   public void buildIndex() throws Exception {
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
     final boolean readonly = true;
-    BytesBytesHashtable columnStore =
-        new BytesBytesHashtable(storeMetadata.dbType, inputPath, readonly);
+    final StringObjectKVDB<ColumnPair> columnStore =
+        CreateColumnStore.KVColumnStore.create(inputPath, storeMetadata.dbType, readonly);
 
     final QueryStats querySample = readOrCreateQueryStats(storeMetadata);
 
@@ -109,7 +107,7 @@ public class IndexCorrelationBenchmark {
                     (var each) -> {
                       try {
                         buildIndex(columnStore, each.getKey(), each.getValue(), querySample);
-                      } catch (IOException e) {
+                      } catch (Exception e) {
                         e.printStackTrace();
                       }
                     });
@@ -144,20 +142,23 @@ public class IndexCorrelationBenchmark {
   }
 
   public void buildIndex(
-      BytesBytesHashtable columnStore, String indexName, SketchIndex index, QueryStats querySample)
-      throws IOException {
+      StringObjectKVDB<ColumnPair> columnStore,
+      String indexName,
+      SketchIndex index,
+      QueryStats querySample)
+      throws Exception {
 
     System.out.println("Indexing all columns...");
 
     Set<String> queryColumns = querySample.queries;
-    Iterator<KV<byte[], byte[]>> it = columnStore.iterator();
+    KVIterator<String, ColumnPair> it = columnStore.iterator();
     int i = 0;
     printProgress(querySample, indexName, i);
     while (it.hasNext()) {
 
-      KV<byte[], byte[]> kv = it.next();
-      String key = new String(kv.getKey());
-      ColumnPair columnPair = KRYO.unserializeObject(kv.getValue());
+      KV<String, ColumnPair> kv = it.next();
+      String key = kv.getKey();
+      ColumnPair columnPair = kv.getValue();
 
       if (!queryColumns.contains(key)) {
         index.index(key, columnPair);
@@ -171,6 +172,7 @@ public class IndexCorrelationBenchmark {
     printProgress(querySample, indexName, i);
 
     // close index to force flushing data to disk
+    it.close();
     index.close();
   }
 
@@ -181,8 +183,11 @@ public class IndexCorrelationBenchmark {
 
   @Command(name = "runQueries")
   public void runQueriesBenchmark() throws Exception {
-    ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
-    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
+
+    final ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
+    final StringObjectKVDB<ColumnPair> columnStore =
+        CreateColumnStore.KVColumnStore.create(inputPath, storeMetadata.dbType, true);
+
     QueryStats querySample = readQuerySample(outputPath);
     runQueries(columnStore, querySample, BenchmarkParams.parse(this.params));
     columnStore.close();
@@ -190,7 +195,9 @@ public class IndexCorrelationBenchmark {
 
   /** Execute queries against the index */
   private void runQueries(
-      BytesBytesHashtable columnStore, QueryStats querySample, List<BenchmarkParams> params)
+      StringObjectKVDB<ColumnPair> columnStore,
+      QueryStats querySample,
+      List<BenchmarkParams> params)
       throws Exception {
 
     // opens the index
@@ -217,7 +224,7 @@ public class IndexCorrelationBenchmark {
     int count = 0;
     for (String qid : queryIds) {
 
-      ColumnPair queryColumnPair = readColumnPair(columnStore, qid);
+      ColumnPair queryColumnPair = columnStore.get(qid);
       final int queryCard = queryColumnPair.keyValues.size();
 
       var allHitLists = new ArrayList<List<Hit>>();
@@ -361,14 +368,18 @@ public class IndexCorrelationBenchmark {
   @Command(name = "timeQueries")
   public void timeQueriesBenchmark() throws Exception {
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
-    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
+    StringObjectKVDB<ColumnPair> columnStore =
+        CreateColumnStore.KVColumnStore.create(inputPath, storeMetadata.dbType, true);
+
     QueryStats querySample = readQuerySample(outputPath);
     timeQueries(columnStore, querySample, BenchmarkParams.parse(this.params));
     columnStore.close();
   }
 
   private void timeQueries(
-      BytesBytesHashtable columnStore, QueryStats querySample, List<BenchmarkParams> params)
+      StringObjectKVDB<ColumnPair> columnStore,
+      QueryStats querySample,
+      List<BenchmarkParams> params)
       throws Exception {
 
     // opens the index
@@ -385,7 +396,7 @@ public class IndexCorrelationBenchmark {
     int count = 0;
     for (String qid : queryIds) {
 
-      ColumnPair queryColumnPair = readColumnPair(columnStore, qid);
+      ColumnPair queryColumnPair = columnStore.get(qid);
       final int queryCard = queryColumnPair.keyValues.size();
 
       for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
@@ -417,13 +428,10 @@ public class IndexCorrelationBenchmark {
     System.out.println("Done.");
   }
 
-  private static ColumnPair readColumnPair(BytesBytesHashtable columnStore, String query) {
-    byte[] columnPairBytes = columnStore.get(query.getBytes());
-    return KRYO.unserializeObject(columnPairBytes);
-  }
-
   private List<GroundTruth> computeGroundTruth(
-      BytesBytesHashtable columnStore, ColumnPair queryColumnPair, List<List<Hit>> allHitLists)
+      StringObjectKVDB<ColumnPair> columnStore,
+      ColumnPair queryColumnPair,
+      List<List<Hit>> allHitLists)
       throws ExecutionException, InterruptedException {
 
     List<String> allHitIds =
@@ -583,11 +591,10 @@ public class IndexCorrelationBenchmark {
   }
 
   private ColumnPair getColumnPair(
-      Cache<String, ColumnPair> cache, BytesBytesHashtable hashtable, String key) {
+      Cache<String, ColumnPair> cache, StringObjectKVDB<ColumnPair> db, String key) {
     ColumnPair cp = cache.getIfPresent(key);
     if (cp == null) {
-      byte[] keyBytes = key.getBytes();
-      cp = KRYO.unserializeObject(hashtable.get(keyBytes));
+      cp = db.get(key);
       cache.put(key, cp);
     }
     return cp;

@@ -6,8 +6,7 @@ import corrsketches.SketchType;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.utils.CliTool;
-import hashtabledb.BytesBytesHashtable;
-import hashtabledb.Kryos;
+import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Serializable;
@@ -29,8 +28,6 @@ import picocli.CommandLine.Option;
 public class ComputePairwiseJoinCorrelations extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "ComputePairwiseJoinCorrelations";
-
-  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
 
   enum BenchmarkType {
     CORR_STATS,
@@ -87,7 +84,10 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     System.out.println("> Using aggregate functions: " + aggregations);
 
     ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
-    BytesBytesHashtable columnStore = new BytesBytesHashtable(storeMetadata.dbType, inputPath);
+
+    final boolean readonly = true;
+    StringObjectKVDB<ColumnPair> columnStore =
+        CreateColumnStore.KVColumnStore.create(inputPath, storeMetadata.dbType, readonly);
 
     Set<Set<String>> columnSets = storeMetadata.columnSets;
     System.out.println(
@@ -188,11 +188,10 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
   }
 
   private ColumnPair getColumnPair(
-      Cache<String, ColumnPair> cache, BytesBytesHashtable hashtable, String key) {
+      Cache<String, ColumnPair> cache, StringObjectKVDB<ColumnPair> db, String key) {
     ColumnPair cp = cache.getIfPresent(key);
     if (cp == null) {
-      byte[] keyBytes = key.getBytes();
-      cp = KRYO.unserializeObject(hashtable.get(keyBytes));
+      cp = db.get(key);
       cache.put(key, cp);
     }
     return cp;

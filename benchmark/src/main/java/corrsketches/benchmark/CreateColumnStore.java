@@ -4,9 +4,11 @@ import com.google.common.base.Preconditions;
 import corrsketches.SketchType;
 import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.utils.CliTool;
-import hashtabledb.BytesBytesHashtable;
-import hashtabledb.DBType;
-import hashtabledb.Kryos;
+import edu.nyu.engineering.vida.kvdb4j.KryoIO;
+import edu.nyu.engineering.vida.kvdb4j.api.KVDB;
+import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
+import edu.nyu.engineering.vida.kvdb4j.leveldb.LevelDBBackend;
+import edu.nyu.engineering.vida.kvdb4j.rocksdb.RocksDBBackend;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Serializable;
@@ -31,7 +33,6 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
   public static final String JOB_NAME = "CreateColumnStore";
 
-  public static final Kryos<ColumnPair> KRYO = new Kryos<>(ColumnPair.class);
   public static final String COLUMNS_KEY = "columns";
   public static final String DBTYPE_KEY = "dbtype";
 
@@ -197,7 +198,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
       return stats;
 
     } catch (IOException e) {
-      throw new RuntimeException("Failed to read queries file: " + queriesPath.toString(), e);
+      throw new RuntimeException("Failed to read queries file: " + queriesPath, e);
     }
   }
 
@@ -247,7 +248,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
       try {
         index = new SketchIndex(path.toString(), SketchType.KMV, 512);
       } catch (IOException e) {
-        throw new RuntimeException("Failed to initialize index at " + path.toString(), e);
+        throw new RuntimeException("Failed to initialize index at " + path, e);
       }
     }
 
@@ -268,20 +269,33 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
   public static class KVColumnStore implements ColumnStore {
 
-    BytesBytesHashtable hashtable;
+    final StringObjectKVDB<ColumnPair> db;
 
     public KVColumnStore(DBType dbType, Path db) {
-      hashtable = new BytesBytesHashtable(dbType, db.toString());
+      this.db = create(db.toString(), dbType, false);
+    }
+
+    public static StringObjectKVDB<ColumnPair> create(
+        String inputPath, DBType dbType, boolean readonly) {
+      final KVDB kvdb;
+      if (dbType == DBType.ROCKSDB) {
+        kvdb = RocksDBBackend.create(inputPath, readonly);
+      } else if (dbType == DBType.LEVELDB) {
+        kvdb = LevelDBBackend.create(inputPath);
+      } else {
+        throw new IllegalArgumentException("Unsupported database type: " + dbType);
+      }
+      return new StringObjectKVDB<>(kvdb, new KryoIO<>(ColumnPair.class));
     }
 
     @Override
     public void store(String id, ColumnPair cp) {
-      hashtable.put(id.getBytes(), KRYO.serializeObject(cp));
+      db.put(id, cp);
     }
 
     @Override
     public void close() {
-      hashtable.close();
+      db.close();
     }
   }
 

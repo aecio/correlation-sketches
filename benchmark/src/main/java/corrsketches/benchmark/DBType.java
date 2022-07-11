@@ -1,4 +1,4 @@
-package hashtabledb;
+package corrsketches.benchmark;
 
 public enum DBType {
   ROCKSDB,
