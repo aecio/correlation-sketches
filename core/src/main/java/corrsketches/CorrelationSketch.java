@@ -2,7 +2,7 @@ package corrsketches;
 
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation;
-import corrsketches.correlation.Correlation.Estimate;
+import corrsketches.correlation.Estimate;
 import corrsketches.correlation.PearsonCorrelation;
 import corrsketches.kmv.AbstractMinValueSketch;
 import corrsketches.kmv.GKMV;

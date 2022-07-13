@@ -9,9 +9,9 @@ import corrsketches.util.Sorting;
 public class ChatterjeeCorrelation {
 
   /** Computes the Chatterjee's correlation coefficient for two vectors. */
-  public static Correlation.Estimate estimate(double[] x, double[] y) {
+  public static Estimate estimate(double[] x, double[] y) {
     double r = coefficient(x, y);
-    return new Correlation.Estimate(r, x.length);
+    return new Estimate(r, x.length);
   }
 
   /** Computes the Chatterjee's correlation coefficient for two vectors. */

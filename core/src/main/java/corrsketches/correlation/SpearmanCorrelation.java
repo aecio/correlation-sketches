@@ -2,7 +2,6 @@ package corrsketches.correlation;
 
 import static corrsketches.statistics.Stats.rank;
 
-import corrsketches.correlation.Correlation.Estimate;
 import smile.sort.QuickSort;
 
 /** Implements Spearman's correlation coefficient. */

@@ -10,7 +10,7 @@ import corrsketches.benchmark.PerfResult.ComputingTime;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.BootstrapedPearson;
 import corrsketches.correlation.BootstrapedPearson.BootstrapEstimate;
-import corrsketches.correlation.Correlation.Estimate;
+import corrsketches.correlation.Estimate;
 import corrsketches.correlation.PearsonCorrelation;
 import corrsketches.correlation.QnCorrelation;
 import corrsketches.correlation.RinCorrelation;
@@ -157,7 +157,7 @@ public class CorrelationStatsBenchmark implements Benchmark {
 
     // correlation estimates
     Estimate estimate = PearsonCorrelation.estimate(join.x, join.y);
-    result.corr_rp_est = estimate.coefficient;
+    result.corr_rp_est = estimate.value;
     result.corr_rp_delta = result.corr_rp_actual - result.corr_rp_est;
 
     //    if (estimate.sampleSize > 2) {
@@ -174,15 +174,15 @@ public class CorrelationStatsBenchmark implements Benchmark {
     //    }
 
     Estimate qncorr = QnCorrelation.estimate(join.x, join.y);
-    result.corr_rqn_est = qncorr.coefficient;
+    result.corr_rqn_est = qncorr.value;
     result.corr_rqn_delta = result.corr_rqn_actual - result.corr_rqn_est;
 
     Estimate corrSpearman = SpearmanCorrelation.estimate(join.x, join.y);
-    result.corr_rs_est = corrSpearman.coefficient;
+    result.corr_rs_est = corrSpearman.value;
     result.corr_rs_delta = result.corr_rs_actual - result.corr_rs_est;
 
     Estimate corrRin = RinCorrelation.estimate(join.x, join.y);
-    result.corr_rin_est = corrRin.coefficient;
+    result.corr_rin_est = corrRin.value;
     result.corr_rin_delta = result.corr_rin_actual - result.corr_rin_est;
 
     BootstrapEstimate corrPm1 = BootstrapedPearson.estimate(join.x, join.y);

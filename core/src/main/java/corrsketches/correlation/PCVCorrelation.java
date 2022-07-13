@@ -1,7 +1,6 @@
 package corrsketches.correlation;
 
 import com.google.common.base.Preconditions;
-import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.statistics.Stats;
 import smile.math.Math;
 

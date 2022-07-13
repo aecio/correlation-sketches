@@ -1,6 +1,5 @@
 package corrsketches.correlation;
 
-import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.statistics.Stats;
 import java.util.Arrays;
 import java.util.Random;

@@ -9,7 +9,6 @@ import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.MinhashCorrelationSketch;
 import corrsketches.SketchType;
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.util.RandomArrays;
 import corrsketches.util.RandomArrays.CI;
 import java.util.Arrays;
@@ -74,10 +73,10 @@ public class CorrelationSketchTest {
     CorrelationSketch c2sk = builder.build(fk, c2);
 
     double delta = 0.1;
-    assertEquals(1.000, qsk.correlationTo(qsk).coefficient, delta);
-    assertEquals(1.000, qsk.correlationTo(c0sk).coefficient, delta);
-    assertEquals(0.9895, qsk.correlationTo(c1sk).coefficient, delta);
-    assertEquals(0.9558, qsk.correlationTo(c2sk).coefficient, delta);
+    assertEquals(1.000, qsk.correlationTo(qsk).value, delta);
+    assertEquals(1.000, qsk.correlationTo(c0sk).value, delta);
+    assertEquals(0.9895, qsk.correlationTo(c1sk).value, delta);
+    assertEquals(0.9558, qsk.correlationTo(c2sk).value, delta);
   }
 
   @Test
@@ -102,9 +101,9 @@ public class CorrelationSketchTest {
     CorrelationSketch csxCount = builder.aggregateFunction(AggregateFunction.COUNT).build(kx, x);
 
     double delta = 0.0001;
-    assertEquals(1.000, csxSum.correlationTo(csySum).coefficient, delta);
-    assertEquals(1.000, csxMean.correlationTo(csyMean).coefficient, delta);
-    assertEquals(1.000, csxCount.correlationTo(csyCount).coefficient, delta);
+    assertEquals(1.000, csxSum.correlationTo(csySum).value, delta);
+    assertEquals(1.000, csxMean.correlationTo(csyMean).value, delta);
+    assertEquals(1.000, csxCount.correlationTo(csyCount).value, delta);
   }
 
   @Test
@@ -129,17 +128,17 @@ public class CorrelationSketchTest {
     ImmutableCorrelationSketch ic2sk = c2sk.toImmutable();
 
     double delta = 0.1;
-    assertEquals(1.000, qsk.correlationTo(qsk).coefficient, delta);
-    assertEquals(1.000, iqsk.correlationTo(iqsk).coefficient, delta);
+    assertEquals(1.000, qsk.correlationTo(qsk).value, delta);
+    assertEquals(1.000, iqsk.correlationTo(iqsk).value, delta);
 
-    assertEquals(1.000, qsk.correlationTo(c0sk).coefficient, delta);
-    assertEquals(1.000, iqsk.correlationTo(ic0sk).coefficient, delta);
+    assertEquals(1.000, qsk.correlationTo(c0sk).value, delta);
+    assertEquals(1.000, iqsk.correlationTo(ic0sk).value, delta);
 
-    assertEquals(0.9895, qsk.correlationTo(c1sk).coefficient, delta);
-    assertEquals(0.9895, iqsk.correlationTo(ic1sk).coefficient, delta);
+    assertEquals(0.9895, qsk.correlationTo(c1sk).value, delta);
+    assertEquals(0.9895, iqsk.correlationTo(ic1sk).value, delta);
 
-    assertEquals(0.9558, qsk.correlationTo(c2sk).coefficient, delta);
-    assertEquals(0.9558, iqsk.correlationTo(ic2sk).coefficient, delta);
+    assertEquals(0.9558, qsk.correlationTo(c2sk).value, delta);
+    assertEquals(0.9558, iqsk.correlationTo(ic2sk).value, delta);
   }
 
   @Test
@@ -166,8 +165,8 @@ public class CorrelationSketchTest {
     assertEquals(3, estimate.sampleSize);
     assertEquals(intersection.keys.length, estimate.sampleSize);
     assertEquals(estimate.sampleSize, estimateImmutable.sampleSize);
-    assertEquals(estimate.coefficient, estimateImmutable.coefficient);
-    assertEquals(1.0, estimateImmutable.coefficient);
+    assertEquals(estimate.value, estimateImmutable.value);
+    assertEquals(1.0, estimateImmutable.value);
   }
 
   @Test
@@ -235,7 +234,7 @@ public class CorrelationSketchTest {
         t1 = System.nanoTime();
         runningTimesImmutable[i] = t1 - t0;
       }
-      assertEquals(estimate2.coefficient, estimate1.coefficient);
+      assertEquals(estimate2.value, estimate1.value);
     }
 
     double alpha = 0.05;

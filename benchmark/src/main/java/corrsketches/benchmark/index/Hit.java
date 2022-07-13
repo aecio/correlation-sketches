@@ -1,7 +1,7 @@
 package corrsketches.benchmark.index;
 
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.correlation.Correlation.Estimate;
+import corrsketches.correlation.Estimate;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
@@ -44,14 +44,14 @@ public class Hit {
       }
       this.correlation = query.correlationTo(sketch);
     }
-    return correlation.coefficient;
+    return correlation.value;
   }
 
   @Override
   public String toString() {
     return String.format(
         "\nHit{\n\tid='%s'\n\tscore=%.3f\n\trerankScore=%.3f\n\tcorrelation=%s\n\tsketch=%s\n}",
-        id, score, rerankScore, correlation != null ? correlation.coefficient : null, sketch);
+        id, score, rerankScore, correlation != null ? correlation.value : null, sketch);
   }
 
   public interface RerankStrategy {

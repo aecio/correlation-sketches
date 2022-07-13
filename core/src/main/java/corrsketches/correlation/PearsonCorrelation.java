@@ -1,6 +1,5 @@
 package corrsketches.correlation;
 
-import corrsketches.correlation.Correlation.Estimate;
 import smile.stat.distribution.GaussianDistribution;
 import smile.stat.distribution.TDistribution;
 

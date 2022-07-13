@@ -2,7 +2,6 @@ package corrsketches.correlation;
 
 import static corrsketches.statistics.Stats.*;
 
-import corrsketches.correlation.Correlation.Estimate;
 import smile.sort.QuickSort;
 
 /** Implements the Rank-Based Inverse Normal (RIN) Transformation correlation coefficient. */

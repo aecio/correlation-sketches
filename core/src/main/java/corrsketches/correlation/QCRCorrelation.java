@@ -1,6 +1,5 @@
 package corrsketches.correlation;
 
-import corrsketches.correlation.Correlation.Estimate;
 import corrsketches.statistics.Stats;
 
 /** Implements Quadrant Count Ratio (QCR) correlation. */
