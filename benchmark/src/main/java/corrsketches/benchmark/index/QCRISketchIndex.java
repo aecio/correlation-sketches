@@ -36,7 +36,9 @@ public class QCRISketchIndex extends SketchIndex {
   public void index(String id, ColumnPair columnPair) throws IOException {
 
     final ImmutableCorrelationSketch sketch =
-        super.builder.build(columnPair.keyValues, columnPair.columnValues).toImmutable();
+        super.builder
+            .build(columnPair.keyValues, columnPair.columnValues, columnPair.columnValueType)
+            .toImmutable();
 
     final int[] keys = sketch.getKeys();
     final double[] values = sketch.getValues();
@@ -52,9 +54,9 @@ public class QCRISketchIndex extends SketchIndex {
     indexIntArray(doc, QCR_OPPOSITE_HASHES_FIELD_NAME, negIndexKeys);
     indexAndStoreIntArray(doc, HASHES_FIELD_NAME, keys);
     storeDoubleArray(doc, VALUES_FIELD_NAME, values);
+    storeInt(doc, VALUES_TYPE_FIELD_NAME, sketch.valuesType().intValue);
 
     writer.updateDocument(new Term(ID_FIELD_NAME, id), doc);
-    //    refresh();
   }
 
   private static int[] computeCorrelationIndexKeys(int[] keys, double[] values) {
@@ -77,7 +79,8 @@ public class QCRISketchIndex extends SketchIndex {
 
   public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
 
-    CorrelationSketch query = builder.build(columnPair.keyValues, columnPair.columnValues);
+    CorrelationSketch query =
+        builder.build(columnPair.keyValues, columnPair.columnValues, columnPair.columnValueType);
     query.setCardinality(columnPair.keyValues.size());
 
     final ImmutableCorrelationSketch sketch = query.toImmutable();

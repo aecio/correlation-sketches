@@ -2,7 +2,10 @@ package corrsketches.benchmark.index;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import corrsketches.ColumnType;
+import corrsketches.CorrelationSketch;
 import corrsketches.benchmark.ColumnPair;
+import corrsketches.benchmark.IndexCorrelationBenchmark;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -13,17 +16,19 @@ public class SketchIndexTest {
   @Test
   public void shouldIndexSketches() throws IOException {
     ColumnPair q =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.0, 2.0, 3.0, 4.0, 5.0});
 
     ColumnPair c0 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.0, 2.0, 3.0, 4.0, 5.0});
 
     ColumnPair c1 =
-        createColumnPair(Arrays.asList("a", "b", "c", "d"), new double[] {1.1, 2.5, 3.0, 4.4});
+        createNumericalColumnPair(
+            Arrays.asList("a", "b", "c", "d"), new double[] {1.1, 2.5, 3.0, 4.4});
 
-    ColumnPair c2 = createColumnPair(Arrays.asList("a", "b", "c"), new double[] {1.0, 3.1, 3.2});
+    ColumnPair c2 =
+        createNumericalColumnPair(Arrays.asList("a", "b", "c"), new double[] {1.0, 3.1, 3.2});
 
     SketchIndex index = new SketchIndex();
     index.index("c0", c0);
@@ -57,43 +62,49 @@ public class SketchIndexTest {
   @Test
   public void shouldIndexSketchesWithQCRSketchIndex() throws IOException {
     QCRSketchIndex index = new QCRSketchIndex();
-    // QCRSketchIndex index =
-    //     new QCRSketchIndex(null, new CorrelationSketch.Builder(), SortBy.KEY, false);
+    shouldRetrieveCorrelatedColumns(index);
+  }
+
+  @Test
+  public void shouldIndexSketchesWithQCRSketchIndexSortedByKey() throws IOException {
+    QCRSketchIndex index =
+        new QCRSketchIndex(
+            null, new CorrelationSketch.Builder(), IndexCorrelationBenchmark.SortBy.KEY, false);
     shouldRetrieveCorrelatedColumns(index);
   }
 
   private void shouldRetrieveCorrelatedColumns(SketchIndex index) throws IOException {
     ColumnPair q =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h"),
             new double[] {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0});
 
     ColumnPair c0 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {1, 2, 3, 4, 5, 6, 7});
 
     ColumnPair c1 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {7, 6, 5, 4, 3, 2, 1});
 
     ColumnPair c2 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.1, 2.5, 3.0, 4.4, 4.6});
 
     ColumnPair c3 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.1, 2.5, 2.0, 2.7, 3.0});
 
     ColumnPair c4 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.5, 1.5, 1.0, 1.0, 2.0});
 
     ColumnPair c5 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {5.0, 4.1, 3.1, 2.0, 1.0});
 
     ColumnPair c6 =
-        createColumnPair(
+        createNumericalColumnPair(
             Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.0, 1.0, 1.0, 1.0, 1.0});
 
     index.index("c0", c0);
@@ -132,10 +143,11 @@ public class SketchIndexTest {
     }
   }
 
-  public ColumnPair createColumnPair(List<String> keyValues, double[] columnValues) {
+  public ColumnPair createNumericalColumnPair(List<String> keyValues, double[] columnValues) {
     ColumnPair cp = new ColumnPair();
     cp.columnValues = columnValues;
     cp.keyValues = keyValues;
+    cp.columnValueType = ColumnType.NUMERICAL;
     return cp;
   }
 }
