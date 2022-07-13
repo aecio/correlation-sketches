@@ -120,6 +120,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     result.nmi_sqrt_est = mi.nmiSqrt();
     result.nmi_max_est = mi.nmiMax();
     result.nmi_min_est = mi.nmiMin();
+    result.ex_est = mi.ex;
+    result.ey_est = mi.ey;
   }
 
   public static List<Result> computeMutualInfoAfterJoin(
@@ -148,6 +150,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.nmi_sqrt_actual = mi.nmiSqrt();
       r.nmi_max_actual = mi.nmiMax();
       r.nmi_min_actual = mi.nmiMin();
+      r.ex_actual = mi.ex;
+      r.ey_actual = mi.ey;
       r.join_size_actual = mi.sampleSize;
 
       results.add(r);
@@ -168,6 +172,11 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public double nmi_sqrt_est;
     public double nmi_max_est;
     public double nmi_min_est;
+    // entropy
+    public double ex_actual;
+    public double ey_actual;
+    public double ex_est;
+    public double ey_est;
     // join statistics
     public int join_size_sketch;
     public int join_size_actual;

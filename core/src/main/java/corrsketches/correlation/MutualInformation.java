@@ -152,5 +152,13 @@ public class MutualInformation {
     public double nmiSqrt() {
       return value / Math.sqrt(ex * ey);
     }
+
+    public double infoGainRatioX() {
+      return value / ex;
+    }
+
+    public double infoGainRatioY() {
+      return value / ey;
+    }
   }
 }
