@@ -6,7 +6,8 @@ public enum CorrelationType {
   RIN,
   ROBUST_QN,
   PM1_BOOTSTRAP,
-  QCR;
+  QCR,
+  MUTUAL_INFORMATION;
 
   public static Correlation get(CorrelationType type) {
     switch (type) {
@@ -22,6 +23,8 @@ public enum CorrelationType {
         return BootstrapedPearson::estimate;
       case QCR:
         return QCRCorrelation::estimate;
+      case MUTUAL_INFORMATION:
+        return MutualInformation::estimate;
       default:
         throw new IllegalArgumentException("Invalid correlation type: " + type);
     }

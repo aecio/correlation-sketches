@@ -1,5 +1,7 @@
 package corrsketches.correlation;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.byLessThan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import corrsketches.CorrelationSketch;
@@ -270,5 +272,34 @@ public class CorrelationSketchTest {
     assertEquals(1.000, q1sk.correlationTo(c0sk), delta);
     assertEquals(0.987, q1sk.correlationTo(c1sk), delta);
     assertEquals(0.947, q1sk.correlationTo(c2sk), delta);
+  }
+
+  @Test
+  public void shouldEstimateMutualInformation() {
+    List<String> pk = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
+    double[] q = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 3, 3};
+
+    List<String> fk = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
+    double[] c0 = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 3, 3};
+    double[] c1 = new double[] {1, 2, 2, 3, 2, 3, 2, 3, 1, 2};
+    double[] c2 = new double[] {1, 2, 2, 1, 2, 3, 2, 3, 2, 2};
+
+    final Builder builder =
+        CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);
+
+    CorrelationSketch qsk = builder.build(pk, q);
+    CorrelationSketch c0sk = builder.build(fk, c0);
+    CorrelationSketch c1sk = builder.build(fk, c1);
+    CorrelationSketch c2sk = builder.build(fk, c2);
+
+    double delta = 0.00001;
+
+    assertThat(qsk.correlationTo(qsk).value).isCloseTo(1.0296530140645737, byLessThan(delta));
+    assertThat(qsk.correlationTo(c0sk).value).isCloseTo(1.0296530140645737, byLessThan(delta));
+
+    assertThat(qsk.correlationTo(c1sk).value).isCloseTo(0.3635634939595127, byLessThan(delta));
+    assertThat(qsk.correlationTo(c2sk).value).isCloseTo(0.23185620475171878, byLessThan(delta));
+
+    assertThat(c1sk.correlationTo(c2sk).value).isCloseTo(0.6206868526328018, byLessThan(delta));
   }
 }

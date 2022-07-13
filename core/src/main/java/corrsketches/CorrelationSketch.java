@@ -2,6 +2,7 @@ package corrsketches;
 
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation;
+import corrsketches.correlation.CorrelationType;
 import corrsketches.correlation.Estimate;
 import corrsketches.correlation.PearsonCorrelation;
 import corrsketches.kmv.AbstractMinValueSketch;
@@ -226,6 +227,11 @@ public class CorrelationSketch {
 
     public Builder estimator(Correlation estimator) {
       this.estimator = estimator;
+      return this;
+    }
+
+    public Builder estimator(CorrelationType correlationType) {
+      this.estimator(CorrelationType.get(correlationType));
       return this;
     }
 
