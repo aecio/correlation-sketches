@@ -3,7 +3,7 @@ package corrsketches.benchmark;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
+import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
@@ -11,7 +11,7 @@ import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.utils.Sets;
-import corrsketches.correlation.Correlation.Estimate;
+import corrsketches.correlation.Estimate;
 import corrsketches.correlation.MutualInformation;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,14 +95,14 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
     ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
 
-    Paired paired = iSketchX.intersection(iSketchY);
+    Join join = iSketchX.join(iSketchY);
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check whether the actual cardinality and sketch sizes are large enough.
     if (result.interxy_actual >= MINIMUM_INTERSECTION
-        && paired.keys.length >= MINIMUM_INTERSECTION) {
+        && join.keys.length >= MINIMUM_INTERSECTION) {
       // computes statistics on joined data (e.g., correlations)
-      estimateMutualInfo(result, paired);
+      estimateMutualInfo(result, join);
     }
 
     result.parameters = sketchParams.toString();
@@ -114,11 +114,11 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return result;
   }
 
-  private static void estimateMutualInfo(Result result, Paired paired) {
+  private static void estimateMutualInfo(Result result, Join paired) {
     result.join_size_sketch = paired.keys.length;
 
     Estimate mi = MutualInformation.estimate(paired.x, paired.y);
-    result.mi_est = mi.coefficient;
+    result.mi_est = mi.value;
     result.mi_delta = result.mi_actual - result.mi_est;
   }
 
@@ -144,7 +144,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.join_stats = join.joinStats;
 
       Estimate mi = MutualInformation.estimate(joinedA, joinedB);
-      r.mi_actual = mi.coefficient;
+      r.mi_actual = mi.value;
       r.join_size_actual = mi.sampleSize;
       results.add(r);
     }

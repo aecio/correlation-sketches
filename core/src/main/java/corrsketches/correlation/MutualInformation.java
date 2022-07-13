@@ -2,7 +2,9 @@ package corrsketches.correlation;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.util.Arrays;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+
 
 public class MutualInformation {
 
@@ -24,28 +26,28 @@ public class MutualInformation {
     checkArgument(x.length == y.length, "x and y must have same size");
 
     final int n = x.length;
-    final int[] xlabels = Arrays.stream(x).distinct().toArray();
-    final int[] ylabels = Arrays.stream(x).distinct().toArray();
-
-    int[][] cooMatrix = coOccurrenceMatrix(x, y, n, xlabels, ylabels);
+    int[][] cooMatrix = coOccurrenceMatrix(x, y, n);
+    final int xlabelLength = cooMatrix.length;
+    final int ylabelLength = cooMatrix[0].length;
 
     // Now compute the marginals using the co-occurrence matrix
-    final int[] xSum = new int[xlabels.length];
-    final int[] ySum = new int[ylabels.length];
-    for (int i = 0; i < xlabels.length; i++) {
-      for (int j = 0; j < ylabels.length; j++) {
+    final int[] xSum = new int[xlabelLength];
+    final int[] ySum = new int[ylabelLength];
+
+    for (int i = 0; i < xlabelLength; i++) {
+      for (int j = 0; j < ylabelLength; j++) {
         xSum[i] += cooMatrix[i][j];
         ySum[j] += cooMatrix[i][j];
       }
     }
 
     // transform marginals into probabilities
-    final double[] px = new double[xlabels.length];
-    for (int i = 0; i < xlabels.length; i++) {
+    final double[] px = new double[xlabelLength];
+    for (int i = 0; i < xlabelLength; i++) {
       px[i] = xSum[i] / (double) n;
     }
-    final double[] py = new double[ylabels.length];
-    for (int i = 0; i < ylabels.length; i++) {
+    final double[] py = new double[ylabelLength];
+    for (int i = 0; i < ylabelLength; i++) {
       py[i] = ySum[i] / (double) n;
     }
 
@@ -63,26 +65,28 @@ public class MutualInformation {
     return mi;
   }
 
-  /**
-   * Computes the co-occurrence matrix by doing one pass in the original vectors for each pair of
-   * labels. The algorithm assumes that the number of labels is small, and doing {@code
-   * xlabels.length * ylabels.length} passes in the original arrays does not cause a performance
-   * problem.
-   */
-  private static int[][] coOccurrenceMatrix(int[] x, int[] y, int n, int[] xlabels, int[] ylabels) {
-    int[][] cooMatrix = new int[xlabels.length][ylabels.length];
-    for (int i = 0; i < xlabels.length; i++) {
-      for (int j = 0; j < ylabels.length; j++) {
-        // computes co-occurrences for the labels i and j
-        int occurrences = 0;
-        for (int k = 0; k < n; k++) {
-          if (xlabels[i] == x[k] && ylabels[j] == y[k]) {
-            occurrences++;
-          }
-        }
-        cooMatrix[i][j] = occurrences;
-      }
+  /** Computes the co-occurrence matrix. */
+  protected static int[][] coOccurrenceMatrix(int[] x, int[] y, int n) {
+    Int2IntMap xmap = createValueToIndexMapping(x);
+    Int2IntMap ymap = createValueToIndexMapping(y);
+    final int[][] cooMatrix = new int[xmap.size()][ymap.size()];
+    for (int i = 0; i < n; i++) {
+      int xidx = xmap.get(x[i]);
+      int yidx = ymap.get(y[i]);
+      cooMatrix[xidx][yidx]++;
     }
     return cooMatrix;
+  }
+
+  private static Int2IntMap createValueToIndexMapping(int[] x) {
+    Int2IntMap indexMap = new Int2IntOpenHashMap();
+    int xLabelsLen = 0;
+    for (int i = 0; i < x.length; i++) {
+      if (!indexMap.containsKey(x[i])) {
+        indexMap.put(x[i], xLabelsLen);
+        xLabelsLen++;
+      }
+    }
+    return indexMap;
   }
 }

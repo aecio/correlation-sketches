@@ -19,4 +19,21 @@ public class MutualInformationTest {
     assertThat(MutualInformation.score(x, z)).isCloseTo(0.23185620475171878, byLessThan(DELTA));
     assertThat(MutualInformation.score(y, z)).isCloseTo(0.6206868526328018, byLessThan(DELTA));
   }
+
+  @Test
+  public void shouldComputeCoOccurrenceMatrix() {
+    int[] x = new int[] {1, 2, 3};
+    int[] y = new int[] {1, 2, 3};
+
+    int[][] com = MutualInformation.coOccurrenceMatrix(x, y, x.length);
+    assertThat(com[0][0]).isEqualTo(1);
+    assertThat(com[0][1]).isEqualTo(0);
+    assertThat(com[0][2]).isEqualTo(0);
+    assertThat(com[1][0]).isEqualTo(0);
+    assertThat(com[1][1]).isEqualTo(1);
+    assertThat(com[1][2]).isEqualTo(0);
+    assertThat(com[2][0]).isEqualTo(0);
+    assertThat(com[2][1]).isEqualTo(0);
+    assertThat(com[2][2]).isEqualTo(1);
+  }
 }
