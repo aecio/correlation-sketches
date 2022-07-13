@@ -140,11 +140,11 @@ public class CorrelationSketch {
     }
 
     public Estimate correlationTo(ImmutableCorrelationSketch other, Correlation estimator) {
-      final Paired paired = intersection(other);
-      return estimator.correlation(paired.x, paired.y);
+      final Join join = join(other);
+      return estimator.correlation(join.x, join.y);
     }
 
-    public Paired intersection(ImmutableCorrelationSketch other) {
+    public Join join(ImmutableCorrelationSketch other) {
       final int capacity = Math.max(this.keys.length, other.keys.length);
       IntArrayList k = new IntArrayList(capacity);
       DoubleArrayList x = new DoubleArrayList(capacity);
@@ -165,16 +165,16 @@ public class CorrelationSketch {
           yidx++;
         }
       }
-      return new Paired(k.toIntArray(), x.toDoubleArray(), y.toDoubleArray());
+      return new Join(k.toIntArray(), x.toDoubleArray(), y.toDoubleArray());
     }
 
-    public static class Paired {
+    public static class Join {
 
       public final int[] keys;
       public final double[] x;
       public final double[] y;
 
-      Paired(int[] keys, double[] x, double[] y) {
+      Join(int[] keys, double[] x, double[] y) {
         this.keys = keys;
         this.x = x;
         this.y = y;
@@ -182,7 +182,7 @@ public class CorrelationSketch {
 
       @Override
       public String toString() {
-        return "Paired{"
+        return "Join{"
             + "keys="
             + Arrays.toString(keys)
             + ", x="

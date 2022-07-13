@@ -2,7 +2,7 @@ package corrsketches.benchmark;
 
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
+import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
 import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
@@ -128,17 +128,17 @@ public class CorrelationStatsBenchmark implements Benchmark {
 
     ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
     ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
-    Paired paired = iSketchX.intersection(iSketchY);
+    Join join = iSketchX.join(iSketchY);
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check weather the actual cardinality and sketch sizes are large enough.
-    if (result.interxy_actual >= minimumIntersection && paired.keys.length >= minimumIntersection) {
+    if (result.interxy_actual >= minimumIntersection && join.keys.length >= minimumIntersection) {
 
       // set operations estimates (jaccard, cardinality, etc)
       computeSetStatisticsEstimates(result, sketchX, sketchY);
 
       // computes statistics on joined data (e.g., correlations)
-      computePairedStatistics(result, paired);
+      computeSketchJoinStatistics(result, join);
     }
 
     result.parameters = sketchParams.toString();
@@ -150,13 +150,13 @@ public class CorrelationStatsBenchmark implements Benchmark {
     return result;
   }
 
-  private static void computePairedStatistics(MetricsResult result, Paired paired) {
+  private static void computeSketchJoinStatistics(MetricsResult result, Join join) {
 
     // Sample size used to estimate correlations
-    result.corr_est_sample_size = paired.keys.length;
+    result.corr_est_sample_size = join.keys.length;
 
     // correlation estimates
-    Estimate estimate = PearsonCorrelation.estimate(paired.x, paired.y);
+    Estimate estimate = PearsonCorrelation.estimate(join.x, join.y);
     result.corr_rp_est = estimate.coefficient;
     result.corr_rp_delta = result.corr_rp_actual - result.corr_rp_est;
 
@@ -173,19 +173,19 @@ public class CorrelationStatsBenchmark implements Benchmark {
     //          PearsonCorrelation.isSignificant(result.corr_rp_est, sampleSize, alpha);
     //    }
 
-    Estimate qncorr = QnCorrelation.estimate(paired.x, paired.y);
+    Estimate qncorr = QnCorrelation.estimate(join.x, join.y);
     result.corr_rqn_est = qncorr.coefficient;
     result.corr_rqn_delta = result.corr_rqn_actual - result.corr_rqn_est;
 
-    Estimate corrSpearman = SpearmanCorrelation.estimate(paired.x, paired.y);
+    Estimate corrSpearman = SpearmanCorrelation.estimate(join.x, join.y);
     result.corr_rs_est = corrSpearman.coefficient;
     result.corr_rs_delta = result.corr_rs_actual - result.corr_rs_est;
 
-    Estimate corrRin = RinCorrelation.estimate(paired.x, paired.y);
+    Estimate corrRin = RinCorrelation.estimate(join.x, join.y);
     result.corr_rin_est = corrRin.coefficient;
     result.corr_rin_delta = result.corr_rin_actual - result.corr_rin_est;
 
-    BootstrapEstimate corrPm1 = BootstrapedPearson.estimate(paired.x, paired.y);
+    BootstrapEstimate corrPm1 = BootstrapedPearson.estimate(join.x, join.y);
     result.corr_pm1_mean = corrPm1.corrBsMean;
     result.corr_pm1_mean_delta = result.corr_rp_actual - result.corr_pm1_mean;
 
@@ -195,24 +195,24 @@ public class CorrelationStatsBenchmark implements Benchmark {
     result.corr_pm1_lb = corrPm1.lowerBound;
     result.corr_pm1_ub = corrPm1.upperBound;
 
-    // Kurtosis of paired variables
-    result.kurtx_g2 = Kurtosis.g2(paired.x);
-    result.kurtx_G2 = Kurtosis.G2(paired.x);
-    result.kurtx_k5 = Kurtosis.k5(paired.x);
-    result.kurty_g2 = Kurtosis.G2(paired.y);
-    result.kurty_G2 = Kurtosis.G2(paired.y);
-    result.kurty_k5 = Kurtosis.k5(paired.y);
+    // Kurtosis of variables after the join
+    result.kurtx_g2 = Kurtosis.g2(join.x);
+    result.kurtx_G2 = Kurtosis.G2(join.x);
+    result.kurtx_k5 = Kurtosis.k5(join.x);
+    result.kurty_g2 = Kurtosis.G2(join.y);
+    result.kurty_G2 = Kurtosis.G2(join.y);
+    result.kurty_k5 = Kurtosis.k5(join.y);
 
-    final Extent extentX = Stats.extent(paired.x);
+    final Extent extentX = Stats.extent(join.x);
     result.x_min_sample = extentX.min;
     result.x_max_sample = extentX.max;
 
-    final Extent extentY = Stats.extent(paired.y);
+    final Extent extentY = Stats.extent(join.y);
     result.y_min_sample = extentY.min;
     result.y_max_sample = extentY.max;
 
-    double[] unitRangeX = Stats.unitize(paired.x, result.x_min, result.x_max);
-    double[] unitRangeY = Stats.unitize(paired.y, result.y_min, result.y_max);
+    double[] unitRangeX = Stats.unitize(join.x, result.x_min, result.x_max);
+    double[] unitRangeY = Stats.unitize(join.y, result.y_min, result.y_max);
     result.x_sample_mean = Stats.mean(unitRangeX);
     result.y_sample_mean = Stats.mean(unitRangeY);
     result.x_sample_var = Variance.uvar(unitRangeX);

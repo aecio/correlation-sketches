@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.Builder;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
+import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.MinhashCorrelationSketch;
 import corrsketches.SketchType;
 import corrsketches.aggregations.AggregateFunction;
@@ -160,7 +160,7 @@ public class CorrelationSketchTest {
 
     final Estimate estimate = xs.correlationTo(ys);
     final Estimate estimateImmutable = xsi.correlationTo(ysi);
-    final Paired intersection = xsi.intersection(ysi);
+    final Join intersection = xsi.join(ysi);
 
     System.out.println(intersection);
     assertEquals(3, estimate.sampleSize);

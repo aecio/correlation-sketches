@@ -2,7 +2,7 @@ package corrsketches.benchmark;
 
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Paired;
+import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
 import corrsketches.benchmark.utils.Sets;
@@ -78,35 +78,35 @@ public class CorrelationPerformanceBenchmark implements Benchmark {
     ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
 
     time0 = System.nanoTime();
-    Paired paired = iSketchX.intersection(iSketchY);
+    Join join = iSketchX.join(iSketchY);
     result.sketch_join_time = System.nanoTime() - time0;
-    result.sketch_join_size = paired.keys.length;
+    result.sketch_join_size = join.keys.length;
 
     if (result.interxy_actual >= CorrelationStatsBenchmark.minimumIntersection
-        && paired.keys.length >= CorrelationStatsBenchmark.minimumIntersection) {
+        && join.keys.length >= CorrelationStatsBenchmark.minimumIntersection) {
 
       time0 = System.nanoTime();
-      PearsonCorrelation.estimate(paired.x, paired.y);
+      PearsonCorrelation.estimate(join.x, join.y);
       result.rp_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      QnCorrelation.estimate(paired.x, paired.y);
+      QnCorrelation.estimate(join.x, join.y);
       result.rqn_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      SpearmanCorrelation.estimate(paired.x, paired.y);
+      SpearmanCorrelation.estimate(join.x, join.y);
       result.rs_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      RinCorrelation.estimate(paired.x, paired.y);
+      RinCorrelation.estimate(join.x, join.y);
       result.rrin_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      BootstrapedPearson.estimate(paired.x, paired.y);
+      BootstrapedPearson.estimate(join.x, join.y);
       result.rpm1_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      BootstrapedPearson.simpleEstimate(paired.x, paired.y);
+      BootstrapedPearson.simpleEstimate(join.x, join.y);
       result.rpm1s_time = System.nanoTime() - time0;
     }
 
