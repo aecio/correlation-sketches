@@ -1,5 +1,6 @@
 package corrsketches.benchmark;
 
+import corrsketches.Column;
 import corrsketches.aggregations.AggregateFunction;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
@@ -54,7 +55,12 @@ public class CategoricalJoinAggregation {
       }
       results.add(
           new Aggregation(
-              joinKeysA, joinValuesA.toDoubleArray(), joinValuesB.toDoubleArray(), fn, joinStats));
+              joinKeysA,
+              Column.of(joinValuesA.toDoubleArray(), columnA.columnValueType),
+              Column.of(
+                  joinValuesB.toDoubleArray(), fn.get().getOutputType(columnB.columnValueType)),
+              fn,
+              joinStats));
     }
 
     return results;
@@ -68,21 +74,17 @@ public class CategoricalJoinAggregation {
 
   public static class Aggregation {
 
-    public List<String> keys;
-    public final double[] valuesA;
-    public final double[] valuesB;
-    public AggregateFunction aggregate;
-    public JoinStats joinStats;
+    public final List<String> keys;
+    public final Column a;
+    public final Column b;
+    public final AggregateFunction aggregate;
+    public final JoinStats joinStats;
 
     public Aggregation(
-        List<String> keys,
-        double[] valuesA,
-        double[] valuesB,
-        AggregateFunction aggregate,
-        JoinStats joinStats) {
+        List<String> keys, Column a, Column b, AggregateFunction aggregate, JoinStats joinStats) {
       this.keys = keys;
-      this.valuesA = valuesA;
-      this.valuesB = valuesB;
+      this.a = a;
+      this.b = b;
       this.aggregate = aggregate;
       this.joinStats = joinStats;
     }

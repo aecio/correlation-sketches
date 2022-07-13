@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.byLessThan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import corrsketches.CorrelationSketch;
+import corrsketches.*;
 import corrsketches.CorrelationSketch.Builder;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
@@ -22,19 +22,16 @@ public class CorrelationSketchTest {
 
   @Test
   public void test() {
-    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
-    double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
-
     final Builder builder = CorrelationSketch.builder();
 
+    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
+    Column q = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
     CorrelationSketch qsk = builder.build(pk, q);
 
     List<String> c4fk = Arrays.asList("a", "b", "c", "z", "x");
-    double[] c4 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
-    //        List<String> c4fk = Arrays.asList(new String[]{"a", "b", "c", "d"});
-    //        double[] c4 = new double[]{1.0, 2.0, 3.0, 4.0};
-
+    Column c4 = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
     CorrelationSketch c4sk = builder.build(c4fk, c4);
+
     System.out.println();
     System.out.println("         union: " + qsk.unionSize(c4sk));
     System.out.println("  intersection: " + qsk.intersectionSize(c4sk));
@@ -60,12 +57,12 @@ public class CorrelationSketchTest {
   @Test
   public void shouldEstimateCorrelationUsingKMVSketch() {
     List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
-    double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
+    Column q = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
 
     List<String> fk = Arrays.asList("a", "b", "c", "d", "e");
-    double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
-    double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
-    double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
+    Column c0 = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
+    Column c1 = Column.numerical(1.1, 2.5, 3.0, 4.4, 5.9);
+    Column c2 = Column.numerical(1.0, 3.2, 3.1, 4.9, 5.4);
 
     final Builder builder = CorrelationSketch.builder();
 
@@ -85,12 +82,12 @@ public class CorrelationSketchTest {
   public void shouldEstimateCorrelationBetweenColumnAggregations() {
     List<String> kx = Arrays.asList("a", "a", "b", "b", "c", "d");
     // sum: a=1 b=2 c=3 d=4, mean: a=0.5 b=1 c=3 d=4, count: a=2, c=2, c=1, d=1
-    double[] x = new double[] {-20., 21.0, 1.0, 1.0, 3.0, 4.0};
+    Column x = Column.numerical(-20., 21.0, 1.0, 1.0, 3.0, 4.0);
 
     List<String> ky = Arrays.asList("a", "b", "c", "d");
-    double[] ysum = new double[] {1.0, 2.0, 3.0, 4.0};
-    double[] ymean = new double[] {0.5, 1.0, 3.0, 4.0};
-    double[] ycount = new double[] {2.0, 2.0, 1.0, 1.0};
+    Column ysum = Column.numerical(1.0, 2.0, 3.0, 4.0);
+    Column ymean = Column.numerical(0.5, 1.0, 3.0, 4.0);
+    Column ycount = Column.numerical(2.0, 2.0, 1.0, 1.0);
 
     final Builder builder = CorrelationSketch.builder().aggregateFunction(AggregateFunction.FIRST);
 
@@ -111,12 +108,12 @@ public class CorrelationSketchTest {
   @Test
   public void shouldCreateImmutableCorrelationSketch() {
     List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
-    double[] q = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
+    Column q = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
 
     List<String> fk = Arrays.asList("a", "b", "c", "d", "e");
-    double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
-    double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
-    double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
+    Column c0 = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
+    Column c1 = Column.numerical(1.1, 2.5, 3.0, 4.4, 5.9);
+    Column c2 = Column.numerical(1.0, 3.2, 3.1, 4.9, 5.4);
 
     final Builder builder = CorrelationSketch.builder();
     CorrelationSketch qsk = builder.build(pk, q);
@@ -146,10 +143,10 @@ public class CorrelationSketchTest {
   @Test
   public void shouldCreateImmutableSketch() {
     List<String> xkeys = Arrays.asList("a", "b", "c", "d", "f");
-    double[] xvalues = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
+    Column xvalues = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
 
     List<String> ykeys = Arrays.asList("!", "a", "b", "c", "d", "e");
-    double[] yvalues = new double[] {0.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    Column yvalues = Column.numerical(0.0, 2.0, 3.0, 4.0, 5.0, 6.0);
 
     final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, 5);
 
@@ -172,6 +169,93 @@ public class CorrelationSketchTest {
   }
 
   @Test
+  public void sketchAggregationShouldHaveCorrectType1() {
+    List<String> xkeys = Arrays.asList("a", "a", "a", "b", "b", "c");
+    Column xvalues = Column.categorical(0, 0, 0, 0, 0, 0);
+
+    List<String> ykeys = Arrays.asList("a", "b", "c");
+    Column yvalues = Column.categorical(1, 2, 3);
+
+    final Builder builder =
+        CorrelationSketch.builder()
+            .sketchType(SketchType.KMV, xkeys.size())
+            .aggregateFunction(AggregateFunction.COUNT);
+
+    CorrelationSketch xs = builder.build(xkeys, xvalues);
+    CorrelationSketch ys = builder.build(ykeys, yvalues);
+
+    final ImmutableCorrelationSketch xsi = xs.toImmutable();
+    final ImmutableCorrelationSketch ysi = ys.toImmutable();
+
+    // COUNT aggregation should change the output types to numerical
+    assertEquals(ColumnType.NUMERICAL, xs.getOutputType());
+    assertEquals(ColumnType.NUMERICAL, ys.getOutputType());
+
+    final var join = xsi.join(ysi);
+    assertEquals(3, join.keys.length);
+    assertEquals(3, join.x.values.length);
+    assertEquals(3, join.y.values.length);
+
+    assertEquals(ColumnType.NUMERICAL, join.y.type);
+    assertEquals(1, join.y.values[0]);
+    assertEquals(1, join.y.values[1]);
+    assertEquals(1, join.y.values[2]);
+
+    assertEquals(ColumnType.NUMERICAL, join.x.type);
+    assertThat(join.x.values).containsOnlyOnce(1);
+    assertThat(join.x.values).containsOnlyOnce(2);
+    assertThat(join.x.values).containsOnlyOnce(3);
+  }
+
+  @Test
+  public void sketchAggregationShouldHaveCorrectType2() {
+    List<String> xkeys = Arrays.asList("a", "a", "a", "b", "b", "b", "c", "c", "c");
+    Column xvalues = Column.categorical(2, 2, 0, 2, 2, 1, 2, 2, 0);
+
+    List<String> ykeys = Arrays.asList("a", "b", "c");
+    Column yvalues = Column.categorical(1, 2, 3);
+
+    final Builder builder =
+        CorrelationSketch.builder()
+            .sketchType(SketchType.KMV, xkeys.size())
+            .aggregateFunction(AggregateFunction.MOST_FREQUENT);
+
+    // when
+    CorrelationSketch ys = builder.build(ykeys, yvalues);
+    CorrelationSketch xs = builder.build(xkeys, xvalues);
+    final ImmutableCorrelationSketch ysi = ys.toImmutable();
+    final ImmutableCorrelationSketch xsi = xs.toImmutable();
+
+    // then
+
+    // MOST_FREQUENT aggregation should maintain the input type
+    assertEquals(ColumnType.CATEGORICAL, ys.getOutputType());
+    assertEquals(ColumnType.CATEGORICAL, xs.getOutputType());
+
+    assertThat(ysi.getValues()).containsOnlyOnce(1);
+    assertThat(ysi.getValues()).containsOnlyOnce(2);
+    assertThat(ysi.getValues()).containsOnlyOnce(3);
+
+    assertEquals(2, xsi.getValues()[0]);
+    assertEquals(2, xsi.getValues()[1]);
+    assertEquals(2, xsi.getValues()[2]);
+
+    // when
+    final var join = xsi.join(ysi);
+    // then
+    assertEquals(3, join.x.values.length);
+    assertEquals(3, join.y.values.length);
+    assertEquals(ColumnType.CATEGORICAL, join.x.type);
+    assertEquals(2, join.x.values[0]);
+    assertEquals(2, join.x.values[1]);
+    assertEquals(2, join.x.values[2]);
+    assertEquals(ColumnType.CATEGORICAL, join.y.type);
+    assertThat(join.y.values).containsOnlyOnce(1);
+    assertThat(join.y.values).containsOnlyOnce(2);
+    assertThat(join.y.values).containsOnlyOnce(3);
+  }
+
+  @Test
   public void shouldComputeCorrelationUsingImmutableSketchOnRandomVectors() {
     Random r = new Random();
 
@@ -181,7 +265,6 @@ public class CorrelationSketchTest {
 
     for (int i = 0; i < runs; i++) {
       final double jc = r.nextDouble();
-      //      final int n = (25 + r.nextInt(512)) * 1000;
       final int n = 10_000;
       double[] y = new double[n];
       double[] x = new double[n];
@@ -189,10 +272,6 @@ public class CorrelationSketchTest {
       String[] ky = new String[n];
       for (int j = 0; j < n; j++) {
         x[j] = r.nextGaussian() * (1_000_000);
-        //      y[j] = r.nextGaussian();
-        //      y[j] = x[j] + (r.nextGaussian() > r.nextGaussian() ? 3 :
-        // Math.log(1-r.nextDouble())/-1); // r.nextGaussian());
-        //      y[j] = x[j]*(-10)*r.nextGaussian();
         y[j] = Math.log(1 - r.nextDouble()) / (-1);
 
         if (r.nextDouble() < jc) {
@@ -208,8 +287,8 @@ public class CorrelationSketchTest {
       int k = 256;
       Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, k);
 
-      CorrelationSketch xsketch = builder.build(kx, x);
-      CorrelationSketch ysketch = builder.build(ky, y);
+      CorrelationSketch xsketch = builder.build(kx, Column.numerical(x));
+      CorrelationSketch ysketch = builder.build(ky, Column.numerical(y));
 
       final Estimate estimate1;
       final Estimate estimate2;
@@ -277,12 +356,12 @@ public class CorrelationSketchTest {
   @Test
   public void shouldEstimateMutualInformation() {
     List<String> pk = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
-    double[] q = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 3, 3};
+    Column q = Column.categorical(1, 1, 1, 2, 2, 2, 2, 2, 3, 3);
 
     List<String> fk = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
-    double[] c0 = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 3, 3};
-    double[] c1 = new double[] {1, 2, 2, 3, 2, 3, 2, 3, 1, 2};
-    double[] c2 = new double[] {1, 2, 2, 1, 2, 3, 2, 3, 2, 2};
+    Column c0 = Column.categorical(1, 1, 1, 2, 2, 2, 2, 2, 3, 3);
+    Column c1 = Column.categorical(1, 2, 2, 3, 2, 3, 2, 3, 1, 2);
+    Column c2 = Column.categorical(1, 2, 2, 1, 2, 3, 2, 3, 2, 2);
 
     final Builder builder =
         CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);

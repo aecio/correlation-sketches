@@ -33,13 +33,13 @@ public class MutualInformationSketchTest {
     double[] c0 = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 3, 3};
     double[] c1 = new double[] {1, 2, 2, 3, 2, 3, 2, 3, 1, 2};
     double[] c2 = new double[] {1, 2, 2, 1, 2, 3, 2, 3, 2, 2};
-
+    ColumnType type = ColumnType.CATEGORICAL;
     Builder builder = CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);
 
-    CorrelationSketch qsk = builder.build(pk, q);
-    CorrelationSketch c0sk = builder.build(fk, c0);
-    CorrelationSketch c1sk = builder.build(fk, c1);
-    CorrelationSketch c2sk = builder.build(fk, c2);
+    CorrelationSketch qsk = builder.build(pk, q, type);
+    CorrelationSketch c0sk = builder.build(fk, c0, type);
+    CorrelationSketch c1sk = builder.build(fk, c1, type);
+    CorrelationSketch c2sk = builder.build(fk, c2, type);
 
     double delta = 0.00001;
 
@@ -68,8 +68,10 @@ public class MutualInformationSketchTest {
             .aggregateFunction(AggregateFunction.MOST_FREQUENT)
             .estimator(CorrelationType.MUTUAL_INFORMATION);
 
-    CorrelationSketch xsk = builder.build(pk, x);
-    CorrelationSketch ysk = builder.build(fk, y);
+    ColumnType type = ColumnType.CATEGORICAL;
+
+    CorrelationSketch xsk = builder.build(pk, x, type);
+    CorrelationSketch ysk = builder.build(fk, y, type);
 
     Table tx =
         Table.create(
@@ -104,13 +106,13 @@ public class MutualInformationSketchTest {
         Table.create(
             "Left Join (Left=Y, right=X)",
             StringColumn.create("FK", join.keys),
-            DoubleColumn.create("Y", join.valuesA).asIntColumn(),
-            DoubleColumn.create("X", join.valuesB).asIntColumn());
+            DoubleColumn.create("Y", join.a.values).asIntColumn(),
+            DoubleColumn.create("X", join.b.values).asIntColumn());
     System.out.println(tlj);
-    System.out.println("Y: " + Arrays.toString(join.valuesA));
-    System.out.println("X: " + Arrays.toString(join.valuesB));
+    System.out.println("Y: " + Arrays.toString(join.a.values));
+    System.out.println("X: " + Arrays.toString(join.b.values));
     System.out.printf(
-        "MI(Y,X) = %.4f\n", MutualInformation.estimateMi(join.valuesA, join.valuesB).value);
+        "MI(Y,X) = %.4f\n", MutualInformation.estimateMi(join.a.values, join.b.values).value);
 
     //
     // SKETCH INTERSECTION TABLE
@@ -125,12 +127,12 @@ public class MutualInformationSketchTest {
         Table.create(
             "Sketch intersection table",
             IntColumn.create("PK", sketchJoin.keys),
-            DoubleColumn.create("agg(X)", sketchJoin.x).asIntColumn(),
-            DoubleColumn.create("agg(Y)", sketchJoin.y).asIntColumn());
+            DoubleColumn.create("agg(X)", sketchJoin.x.values).asIntColumn(),
+            DoubleColumn.create("agg(Y)", sketchJoin.y.values).asIntColumn());
     System.out.println(df);
     System.out.printf(
         "MI(agg(X), agg(Y)) = %.4f\n",
-        MutualInformation.estimateMi(sketchJoin.x, sketchJoin.y).value);
+        MutualInformation.estimateMi(sketchJoin.x.values, sketchJoin.y.values).value);
 
     double delta = 0.1;
     assertThat(xsk.correlationTo(ysk).value).isCloseTo(0.1808106406067122, byLessThan(delta));

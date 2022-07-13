@@ -78,7 +78,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return CorrelationSketch.builder()
         .aggregateFunction(function)
         .sketchType(sketchParams.type, sketchParams.budget)
-        .build(cp.keyValues, cp.columnValues);
+        .build(cp.keyValues, cp.columnValues, cp.columnValueType);
   }
 
   public static Result computeSketchStatistics(
@@ -114,7 +114,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   private static void estimateMutualInfo(Result result, Join paired) {
-    MI mi = MutualInformation.of(paired.x, paired.y);
+    MI mi = MutualInformation.ofCategorical(paired.x, paired.y);
     result.mi_est = mi.value;
     result.join_size_sketch = mi.sampleSize;
     result.nmi_sqrt_est = mi.nmiSqrt();
@@ -135,19 +135,19 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     List<Result> results = new ArrayList<>(functions.size());
 
     for (Aggregation join : joins) {
-      double[] joinedA = join.valuesA;
-      double[] joinedB = join.valuesB;
 
       // correlation is defined only for vectors of length at least two
-      if (joinedA.length < MINIMUM_INTERSECTION) {
+      if (join.a.values.length < MINIMUM_INTERSECTION) {
         continue;
       }
 
       Result r = result.clone();
       r.aggregate = join.aggregate;
       r.join_stats = join.joinStats;
+      r.xtype = join.a.type.toString();
+      r.ytype = join.b.type.toString();
 
-      MI mi = MutualInformation.of(joinedA, joinedB);
+      MI mi = MutualInformation.ofCategorical(join.a, join.b);
       r.mi_actual = mi.value;
       r.nmi_sqrt_actual = mi.nmiSqrt();
       r.nmi_max_actual = mi.nmiMax();
@@ -192,6 +192,9 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public int interxy_actual;
     public int cardx_actual;
     public int cardy_actual;
+    // data types
+    public String xtype;
+    public String ytype;
 
     public String parameters;
     public String columnId;

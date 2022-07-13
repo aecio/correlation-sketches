@@ -86,27 +86,27 @@ public class CorrelationPerformanceBenchmark implements Benchmark {
         && join.keys.length >= CorrelationStatsBenchmark.minimumIntersection) {
 
       time0 = System.nanoTime();
-      PearsonCorrelation.estimate(join.x, join.y);
+      PearsonCorrelation.estimate(join.x.values, join.y.values);
       result.rp_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      QnCorrelation.estimate(join.x, join.y);
+      QnCorrelation.estimate(join.x.values, join.y.values);
       result.rqn_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      SpearmanCorrelation.estimate(join.x, join.y);
+      SpearmanCorrelation.estimate(join.x.values, join.y.values);
       result.rs_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      RinCorrelation.estimate(join.x, join.y);
+      RinCorrelation.estimate(join.x.values, join.y.values);
       result.rrin_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      BootstrapedPearson.estimate(join.x, join.y);
+      BootstrapedPearson.estimate(join.x.values, join.y.values);
       result.rpm1_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      BootstrapedPearson.simpleEstimate(join.x, join.y);
+      BootstrapedPearson.simpleEstimate(join.x.values, join.y.values);
       result.rpm1s_time = System.nanoTime() - time0;
     }
 

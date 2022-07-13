@@ -122,6 +122,10 @@ public abstract class AbstractMinValueSketch<T> {
     return intersection.size();
   }
 
+  public AggregateFunction aggregateFunction() {
+    return function;
+  }
+
   public abstract static class Builder<T extends AbstractMinValueSketch<T>> {
 
     protected AggregateFunction aggregateFunction = AggregateFunction.FIRST;

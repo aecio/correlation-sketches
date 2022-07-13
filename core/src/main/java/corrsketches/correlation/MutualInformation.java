@@ -2,40 +2,45 @@ package corrsketches.correlation;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import corrsketches.Column;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 
 public class MutualInformation {
 
   public static Estimate estimateMi(final double[] x, final double[] y) {
-    return new Estimate(MutualInformation.of(x, y).value, x.length);
+    return new Estimate(MutualInformation.ofCategorical(x, y).value, x.length);
   }
 
   public static Estimate estimateNmiSqrt(double[] x, double[] y) {
-    return new Estimate(MutualInformation.of(x, y).nmiSqrt(), x.length);
+    return new Estimate(MutualInformation.ofCategorical(x, y).nmiSqrt(), x.length);
   }
 
   public static Estimate estimateNmiMax(double[] x, double[] y) {
-    return new Estimate(MutualInformation.of(x, y).nmiMax(), x.length);
+    return new Estimate(MutualInformation.ofCategorical(x, y).nmiMax(), x.length);
   }
 
   public static Estimate estimateNmiMin(double[] x, double[] y) {
-    return new Estimate(MutualInformation.of(x, y).nmiMin(), x.length);
+    return new Estimate(MutualInformation.ofCategorical(x, y).nmiMin(), x.length);
+  }
+
+  public static MI ofCategorical(final Column x, final Column y) {
+    return ofCategorical(x.values, y.values);
   }
 
   /**
-   * Computes the Normalized Mutual Information (NMI) between the elements of {@param x} and {@param
-   * y}. This functions assumes that the values in {@param x} and {@param y} as integers that
-   * identify categorical data entries and explicitly casts their double values to ints.
+   * Computes the (Normalized) Mutual Information (MI) between the elements of {@param x} and
+   * {@param y}. This functions assumes that the values in {@param x} and {@param y} are integers
+   * that identify categorical data entries and explicitly casts their double values to ints.
    */
-  public static MI of(final double[] x, final double[] y) {
+  public static MI ofCategorical(final double[] x, final double[] y) {
     checkArgument(x.length == y.length, "x and y must have same size");
     int[] xi = castToIntArray(x);
     int[] yi = castToIntArray(y);
-    return of(xi, yi);
+    return ofCategorical(xi, yi);
   }
 
-  public static MI of(int[] x, int[] y) {
+  public static MI ofCategorical(int[] x, int[] y) {
     checkArgument(x.length == y.length, "x and y must have same size");
 
     final int n = x.length;
@@ -128,8 +133,8 @@ public class MutualInformation {
   public static final class MI extends Estimate {
 
     // the MI is stored in super class, here we store additional data
-    public double ex; // entropy of x
-    public double ey; // entropy of y
+    public final double ex; // entropy of x
+    public final double ey; // entropy of y
     public final int nx; // cardinality of x
     public final int ny; // cardinality of y
 

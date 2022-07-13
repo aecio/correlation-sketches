@@ -29,11 +29,13 @@ public class CorrelationSketch {
 
   private final Correlation estimator;
   private final AbstractMinValueSketch minValueSketch;
+  private final ColumnType valuesType;
   private int cardinality;
 
   private CorrelationSketch(Builder builder) {
     this.cardinality = builder.cardinality;
     this.estimator = builder.estimator;
+    this.valuesType = builder.valuesType;
     if (builder.sketch != null) {
       // pre-built sketch provided: just use it
       this.minValueSketch = builder.sketch;
@@ -102,19 +104,27 @@ public class CorrelationSketch {
     return new ImmutableCorrelationSketch(this);
   }
 
+  public ColumnType valuesType() {
+    return valuesType;
+  }
+
   public static class ImmutableCorrelationSketch {
 
     final Correlation correlation;
     final int[] keys; // sorted in ascending order
     final double[] values; // values associated with the keys
+    final ColumnType valuesType; // the data type of values variable
 
-    public ImmutableCorrelationSketch(int[] keys, double[] values, Correlation correlation) {
+    public ImmutableCorrelationSketch(
+        int[] keys, double[] values, ColumnType valuesType, Correlation correlation) {
       this.keys = keys;
       this.values = values;
+      this.valuesType = valuesType;
       this.correlation = correlation;
     }
 
     public ImmutableCorrelationSketch(CorrelationSketch cs) {
+      this.valuesType = cs.getOutputType();
       this.correlation = cs.estimator;
       TreeSet<ValueHash> thisKMinValues = cs.getKMinValues();
       this.keys = new int[thisKMinValues.size()];
@@ -166,16 +176,23 @@ public class CorrelationSketch {
           yidx++;
         }
       }
-      return new Join(k.toIntArray(), x.toDoubleArray(), y.toDoubleArray());
+      return new Join(
+          k.toIntArray(),
+          Column.of(x.toDoubleArray(), this.valuesType),
+          Column.of(y.toDoubleArray(), other.valuesType));
+    }
+
+    public ColumnType valuesType() {
+      return valuesType;
     }
 
     public static class Join {
 
       public final int[] keys;
-      public final double[] x;
-      public final double[] y;
+      public final Column x;
+      public final Column y;
 
-      Join(int[] keys, double[] x, double[] y) {
+      Join(int[] keys, Column x, Column y) {
         this.keys = keys;
         this.x = x;
         this.y = y;
@@ -183,16 +200,13 @@ public class CorrelationSketch {
 
       @Override
       public String toString() {
-        return "Join{"
-            + "keys="
-            + Arrays.toString(keys)
-            + ", x="
-            + Arrays.toString(x)
-            + ", y="
-            + Arrays.toString(y)
-            + '}';
+        return "Join{" + "keys=" + Arrays.toString(keys) + ", x=" + x + ", y=" + y + '}';
       }
     }
+  }
+
+  public ColumnType getOutputType() {
+    return this.minValueSketch.aggregateFunction().get().getOutputType(valuesType);
   }
 
   public static class Builder {
@@ -203,6 +217,7 @@ public class CorrelationSketch {
     protected SketchType sketchType = SketchType.KMV;
     protected double budget = KMV.DEFAULT_K;
     protected AbstractMinValueSketch sketch;
+    protected ColumnType valuesType;
 
     public Builder aggregateFunction(AggregateFunction aggregateFunction) {
       this.aggregateFunction = aggregateFunction;
@@ -235,15 +250,29 @@ public class CorrelationSketch {
       return this;
     }
 
+    private Builder valuesType(ColumnType valuesType) {
+      this.valuesType = valuesType;
+      return this;
+    }
+
     public CorrelationSketch build() {
       return new CorrelationSketch(this);
     }
 
-    public CorrelationSketch build(String[] keys, double[] values) {
-      return build(Arrays.asList(keys), values);
+    public CorrelationSketch build(String[] keys, Column column) {
+      return build(keys, column.values, column.type);
     }
 
-    public CorrelationSketch build(List<String> keys, double[] values) {
+    public CorrelationSketch build(List<String> keys, Column column) {
+      return build(keys, column.values, column.type);
+    }
+
+    public CorrelationSketch build(String[] keys, double[] values, ColumnType valuesType) {
+      return build(Arrays.asList(keys), values, valuesType);
+    }
+
+    public CorrelationSketch build(List<String> keys, double[] values, ColumnType valuesType) {
+      this.valuesType(valuesType);
       return new CorrelationSketch(this).updateAll(keys, values);
     }
   }
