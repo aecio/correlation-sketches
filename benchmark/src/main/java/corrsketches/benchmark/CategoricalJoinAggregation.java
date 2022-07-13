@@ -39,18 +39,19 @@ public class CategoricalJoinAggregation {
         final DoubleArrayList rowsB = indexB.get(keyA);
         if (rowsB == null || rowsB.isEmpty()) {
           joinStats.join_1to0++;
-        } else if (rowsB.size() == 1) {
-          // 1:1 mapping, we use the single value.
-          joinKeysA.add(keyA);
-          joinValuesA.add(valueA);
-          joinValuesB.add(rowsB.getDouble(0));
-          joinStats.join_1to1++;
         } else {
-          // 1:n mapping, we aggregate joined values to a single value.
+          if (rowsB.size() == 1) {
+            // 1:1 mapping
+            joinStats.join_1to1++;
+          } else {
+            // 1:n mapping
+            joinStats.join_1toN++;
+          }
           joinKeysA.add(keyA);
           joinValuesA.add(valueA);
+          // We need to aggregate even for 1:1 mappings, because some
+          // aggregate functions may transform the original value (e.g., COUNT)
           joinValuesB.add(fn.aggregate(rowsB));
-          joinStats.join_1toN++;
         }
       }
       results.add(
