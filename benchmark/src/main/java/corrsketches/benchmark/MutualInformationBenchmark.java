@@ -11,8 +11,8 @@ import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.utils.Sets;
-import corrsketches.correlation.Estimate;
 import corrsketches.correlation.MutualInformation;
+import corrsketches.correlation.MutualInformation.MI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -99,8 +99,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check whether the actual cardinality and sketch sizes are large enough.
-    if (result.interxy_actual >= MINIMUM_INTERSECTION
-        && join.keys.length >= MINIMUM_INTERSECTION) {
+    if (result.interxy_actual >= MINIMUM_INTERSECTION && join.keys.length >= MINIMUM_INTERSECTION) {
       // computes statistics on joined data (e.g., correlations)
       estimateMutualInfo(result, join);
     }
@@ -115,11 +114,12 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   private static void estimateMutualInfo(Result result, Join paired) {
-    result.join_size_sketch = paired.keys.length;
-
-    Estimate mi = MutualInformation.estimate(paired.x, paired.y);
+    MI mi = MutualInformation.of(paired.x, paired.y);
     result.mi_est = mi.value;
-    result.mi_delta = result.mi_actual - result.mi_est;
+    result.join_size_sketch = mi.sampleSize;
+    result.nmi_sqrt_est = mi.nmiSqrt();
+    result.nmi_max_est = mi.nmiMax();
+    result.nmi_min_est = mi.nmiMin();
   }
 
   public static List<Result> computeMutualInfoAfterJoin(
@@ -143,9 +143,13 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.aggregate = join.aggregate;
       r.join_stats = join.joinStats;
 
-      Estimate mi = MutualInformation.estimate(joinedA, joinedB);
+      MI mi = MutualInformation.of(joinedA, joinedB);
       r.mi_actual = mi.value;
+      r.nmi_sqrt_actual = mi.nmiSqrt();
+      r.nmi_max_actual = mi.nmiMax();
+      r.nmi_min_actual = mi.nmiMin();
       r.join_size_actual = mi.sampleSize;
+
       results.add(r);
     }
 
@@ -154,11 +158,18 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
   public static class Result implements Cloneable {
 
+    // mutual information
     public double mi_actual;
     public double mi_est;
-    public double mi_delta;
+    // normalized mutual information variants
+    public double nmi_sqrt_actual;
+    public double nmi_max_actual;
+    public double nmi_min_actual;
+    public double nmi_sqrt_est;
+    public double nmi_max_est;
+    public double nmi_min_est;
+    // join statistics
     public int join_size_sketch;
-
     public int join_size_actual;
     public int interxy_actual;
     public int cardx_actual;

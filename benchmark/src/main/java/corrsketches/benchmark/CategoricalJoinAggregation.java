@@ -22,6 +22,9 @@ public class CategoricalJoinAggregation {
 
       var joinStats = new JoinStats();
 
+      // Join keys for column A
+      List<String> joinKeysA = new ArrayList<>();
+
       // numeric values for column A
       DoubleList joinValuesA = new DoubleArrayList(columnA.keyValues.size());
 
@@ -37,18 +40,21 @@ public class CategoricalJoinAggregation {
           joinStats.join_1to0++;
         } else if (rowsB.size() == 1) {
           // 1:1 mapping, we use the single value.
+          joinKeysA.add(keyA);
           joinValuesA.add(valueA);
           joinValuesB.add(rowsB.getDouble(0));
           joinStats.join_1to1++;
         } else {
           // 1:n mapping, we aggregate joined values to a single value.
+          joinKeysA.add(keyA);
           joinValuesA.add(valueA);
           joinValuesB.add(fn.aggregate(rowsB));
           joinStats.join_1toN++;
         }
       }
       results.add(
-          new Aggregation(joinValuesA.toDoubleArray(), joinValuesB.toDoubleArray(), fn, joinStats));
+          new Aggregation(
+              joinKeysA, joinValuesA.toDoubleArray(), joinValuesB.toDoubleArray(), fn, joinStats));
     }
 
     return results;
@@ -61,13 +67,20 @@ public class CategoricalJoinAggregation {
   }
 
   public static class Aggregation {
+
+    public List<String> keys;
     public final double[] valuesA;
     public final double[] valuesB;
     public AggregateFunction aggregate;
     public JoinStats joinStats;
 
     public Aggregation(
-        double[] valuesA, double[] valuesB, AggregateFunction aggregate, JoinStats joinStats) {
+        List<String> keys,
+        double[] valuesA,
+        double[] valuesB,
+        AggregateFunction aggregate,
+        JoinStats joinStats) {
+      this.keys = keys;
       this.valuesA = valuesA;
       this.valuesB = valuesB;
       this.aggregate = aggregate;
