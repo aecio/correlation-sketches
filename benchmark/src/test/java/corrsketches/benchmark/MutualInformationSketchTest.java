@@ -1,8 +1,10 @@
 package corrsketches.benchmark;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.byLessThan;
 
+import corrsketches.Column;
 import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.Builder;
@@ -26,20 +28,20 @@ public class MutualInformationSketchTest {
 
   @Test
   public void shouldEstimateMutualInformation() {
-    List<String> pk = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
-    double[] q = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 3, 3};
+    List<String> pk = asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
+    Column q = Column.categorical(1, 1, 1, 2, 2, 2, 2, 2, 3, 3);
 
-    List<String> fk = Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
-    double[] c0 = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 3, 3};
-    double[] c1 = new double[] {1, 2, 2, 3, 2, 3, 2, 3, 1, 2};
-    double[] c2 = new double[] {1, 2, 2, 1, 2, 3, 2, 3, 2, 2};
-    ColumnType type = ColumnType.CATEGORICAL;
+    List<String> fk = asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
+    Column c0 = Column.categorical(1, 1, 1, 2, 2, 2, 2, 2, 3, 3);
+    Column c1 = Column.categorical(1, 2, 2, 3, 2, 3, 2, 3, 1, 2);
+    Column c2 = Column.categorical(1, 2, 2, 1, 2, 3, 2, 3, 2, 2);
+
     Builder builder = CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);
 
-    CorrelationSketch qsk = builder.build(pk, q, type);
-    CorrelationSketch c0sk = builder.build(fk, c0, type);
-    CorrelationSketch c1sk = builder.build(fk, c1, type);
-    CorrelationSketch c2sk = builder.build(fk, c2, type);
+    CorrelationSketch qsk = builder.build(pk, q);
+    CorrelationSketch c0sk = builder.build(fk, c0);
+    CorrelationSketch c1sk = builder.build(fk, c1);
+    CorrelationSketch c2sk = builder.build(fk, c2);
 
     double delta = 0.00001;
 
@@ -54,13 +56,11 @@ public class MutualInformationSketchTest {
 
   @Test
   public void shouldEstimateMutualInformationAfterJoin() {
-    List<String> pk =
-        Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m");
-    double[] x = new double[] {1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 1, 2};
+    List<String> pk = asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m");
+    Column x = Column.categorical(1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 1, 2);
 
-    List<String> fk =
-        Arrays.asList("e", "e", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o");
-    double[] y = new double[] {1, 2, 2, 3, 2, 2, 3, 1, 2, 3, 2, 3, 1};
+    List<String> fk = asList("e", "e", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o");
+    Column y = Column.categorical(1, 2, 2, 3, 2, 2, 3, 1, 2, 3, 2, 3, 1);
 
     Builder builder =
         CorrelationSketch.builder()
@@ -68,17 +68,15 @@ public class MutualInformationSketchTest {
             .aggregateFunction(AggregateFunction.MOST_FREQUENT)
             .estimator(CorrelationType.MUTUAL_INFORMATION);
 
-    ColumnType type = ColumnType.CATEGORICAL;
-
-    CorrelationSketch xsk = builder.build(pk, x, type);
-    CorrelationSketch ysk = builder.build(fk, y, type);
+    CorrelationSketch xsk = builder.build(pk, x);
+    CorrelationSketch ysk = builder.build(fk, y);
 
     Table tx =
         Table.create(
             "T_X",
             StringColumn.create("PK", pk),
             IntColumn.create("h(PK)", pk.stream().mapToInt(Hashes::murmur3_32).toArray()),
-            DoubleColumn.create("X", x).asIntColumn());
+            DoubleColumn.create("X", x.values).asIntColumn());
     System.out.println(tx);
 
     System.out.println();
@@ -87,15 +85,15 @@ public class MutualInformationSketchTest {
             "T_Y",
             StringColumn.create("FK", fk),
             IntColumn.create("h(FK)", fk.stream().mapToInt(Hashes::murmur3_32).toArray()),
-            DoubleColumn.create("Y", y).asIntColumn());
+            DoubleColumn.create("Y", y.values).asIntColumn());
     System.out.println(ty);
 
     //
     // GROUND TRUTH TABLE
     //
     ColumnType valueType = ColumnType.CATEGORICAL;
-    ColumnPair cpx = new ColumnPair("TX", "PK", pk, "X", valueType, x);
-    ColumnPair cpy = new ColumnPair("TY", "FK", fk, "Y", valueType, y);
+    ColumnPair cpx = new ColumnPair("TX", "PK", pk, "X", valueType, x.values);
+    ColumnPair cpy = new ColumnPair("TY", "FK", fk, "Y", valueType, y.values);
     Aggregation join =
         CategoricalJoinAggregation.leftJoinAggregate(
                 cpy, cpx, Collections.singletonList(AggregateFunction.MOST_FREQUENT))
@@ -118,9 +116,6 @@ public class MutualInformationSketchTest {
     // SKETCH INTERSECTION TABLE
     //
 
-    //    System.out.println(Arrays.toString(xsk.toImmutable().getKeys()));
-    //    System.out.println(Arrays.toString(ysk.toImmutable().getKeys()));
-    //    System.out.println(xsk.toImmutable().join(ysk.toImmutable()));
     System.out.println();
     Join sketchJoin = xsk.toImmutable().join(ysk.toImmutable());
     Table df =
