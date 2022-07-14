@@ -1,6 +1,7 @@
 package corrsketches.benchmark;
 
 import corrsketches.Column;
+import corrsketches.ColumnType;
 import corrsketches.aggregations.AggregateFunction;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
@@ -31,7 +32,6 @@ public class CategoricalJoinAggregation {
 
       // numeric values for each aggregation of column B
       DoubleList joinValuesB = new DoubleArrayList();
-
       // compute aggregation vectors of joined values for each join key
       for (int i = 0; i < columnA.keyValues.size(); i++) {
         String keyA = columnA.keyValues.get(i);
@@ -54,12 +54,15 @@ public class CategoricalJoinAggregation {
           joinValuesB.add(fn.aggregate(rowsB));
         }
       }
+
+      // In a LEFT join, the type of aggregated column B may be different from the type of the input
+      // column B. (As opposed to column A, which is not aggregated, and thus keeps the same type.)
+      ColumnType joinValuesBType = fn.get().getOutputType(columnB.columnValueType);
       results.add(
           new Aggregation(
               joinKeysA,
               Column.of(joinValuesA.toDoubleArray(), columnA.columnValueType),
-              Column.of(
-                  joinValuesB.toDoubleArray(), fn.get().getOutputType(columnB.columnValueType)),
+              Column.of(joinValuesB.toDoubleArray(), joinValuesBType),
               fn,
               joinStats));
     }
