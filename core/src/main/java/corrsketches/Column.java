@@ -28,4 +28,16 @@ public class Column {
   public String toString() {
     return "Column{" + "values=" + Arrays.toString(values) + ", type=" + type + '}';
   }
+
+  public int[] valuesAsIntArray() {
+    return castToIntArray(values);
+  }
+
+  static int[] castToIntArray(double[] x) {
+    int[] xi = new int[x.length];
+    for (int i = 0; i < x.length; i++) {
+      xi[i] = (int) x[i];
+    }
+    return xi;
+  }
 }

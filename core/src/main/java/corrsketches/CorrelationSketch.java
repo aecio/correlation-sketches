@@ -4,7 +4,6 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation;
 import corrsketches.correlation.CorrelationType;
 import corrsketches.correlation.Estimate;
-import corrsketches.correlation.PearsonCorrelation;
 import corrsketches.kmv.AbstractMinValueSketch;
 import corrsketches.kmv.GKMV;
 import corrsketches.kmv.KMV;
@@ -24,7 +23,7 @@ import java.util.TreeSet;
  */
 public class CorrelationSketch {
 
-  public static final Correlation DEFAULT_ESTIMATOR = PearsonCorrelation::estimate;
+  public static final Correlation DEFAULT_ESTIMATOR = CorrelationType.PEARSONS.get();
   public static final int UNKNOWN_CARDINALITY = -1;
 
   private final Correlation estimator;
@@ -152,7 +151,7 @@ public class CorrelationSketch {
 
     public Estimate correlationTo(ImmutableCorrelationSketch other, Correlation estimator) {
       final Join join = join(other);
-      return estimator.correlation(join.x, join.y);
+      return estimator.of(join.x, join.y);
     }
 
     public Join join(ImmutableCorrelationSketch other) {
@@ -246,7 +245,7 @@ public class CorrelationSketch {
     }
 
     public Builder estimator(CorrelationType correlationType) {
-      this.estimator(CorrelationType.get(correlationType));
+      this.estimator(correlationType.get());
       return this;
     }
 

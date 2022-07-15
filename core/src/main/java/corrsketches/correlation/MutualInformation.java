@@ -138,6 +138,10 @@ public class MutualInformation {
     public final int nx; // cardinality of x
     public final int ny; // cardinality of y
 
+    public MI(double mi, int sampleSize) {
+      this(mi, sampleSize, -1, -1, -1, -1);
+    }
+
     public MI(double mi, int sampleSize, double ex, double ey, int nx, int ny) {
       super(mi, sampleSize);
       this.ex = ex;

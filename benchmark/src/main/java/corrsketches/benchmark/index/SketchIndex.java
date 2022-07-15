@@ -7,7 +7,7 @@ import corrsketches.SketchType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.IndexCorrelationBenchmark.SortBy;
 import corrsketches.benchmark.index.Hit.RerankStrategy;
-import corrsketches.correlation.PearsonCorrelation;
+import corrsketches.correlation.CorrelationType;
 import corrsketches.kmv.ValueHash;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -141,7 +141,8 @@ public class SketchIndex extends AbstractLuceneIndex {
     int[] hashes = readIntArrayField(doc, HASHES_FIELD_NAME);
     double[] values = readDoubleArrayField(doc, VALUES_FIELD_NAME);
     ColumnType valuesType = ColumnType.valueOf(readIntField(doc, VALUES_TYPE_FIELD_NAME));
-    return new ImmutableCorrelationSketch(hashes, values, valuesType, PearsonCorrelation::estimate);
+    return new ImmutableCorrelationSketch(
+        hashes, values, valuesType, CorrelationType.PEARSONS.get());
   }
 
   ImmutableCorrelationSketch loadSketch(int docId) throws IOException {

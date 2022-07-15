@@ -1,6 +1,7 @@
 package corrsketches.benchmark;
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
@@ -11,8 +12,8 @@ import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
 import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.utils.Sets;
-import corrsketches.correlation.MutualInformation;
 import corrsketches.correlation.MutualInformation.MI;
+import corrsketches.correlation.MutualInformationMixed;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -70,7 +71,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     //    result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
 
     // correlation ground-truth after join-aggregations
-    return computeMutualInfoAfterJoin(x, y, functions, result);
+    return computeMutualInfoAfterFullJoin(x, y, functions, result);
   }
 
   public static CorrelationSketch createCorrelationSketch(
@@ -101,7 +102,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     // so we need to check whether the actual cardinality and sketch sizes are large enough.
     if (result.interxy_actual >= MINIMUM_INTERSECTION && join.keys.length >= MINIMUM_INTERSECTION) {
       // computes statistics on joined data (e.g., correlations)
-      estimateMutualInfo(result, join);
+      estimateMutualInfoFromSketchJoin(result, join);
     }
 
     result.parameters = sketchParams.toString();
@@ -113,8 +114,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return result;
   }
 
-  private static void estimateMutualInfo(Result result, Join paired) {
-    MI mi = MutualInformation.ofCategorical(paired.x, paired.y);
+  private static void estimateMutualInfoFromSketchJoin(Result result, Join join) {
+    MI mi = (MI) MutualInformationMixed.INSTANCE.of(join.x, join.y);
     result.mi_est = mi.value;
     result.join_size_sketch = mi.sampleSize;
     result.nmi_sqrt_est = mi.nmiSqrt();
@@ -126,7 +127,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     result.mi_ny_est = mi.ny;
   }
 
-  public static List<Result> computeMutualInfoAfterJoin(
+  public static List<Result> computeMutualInfoAfterFullJoin(
       ColumnPair columnA, ColumnPair columnB, List<AggregateFunction> functions, Result result) {
 
     List<Aggregation> joins =
@@ -141,13 +142,20 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
         continue;
       }
 
+      // FIXME: Remove this when numerical-numerical MI is implemented
+      if (columnA.columnValueType == ColumnType.NUMERICAL
+          && columnB.columnValueType == ColumnType.NUMERICAL) {
+        continue;
+      }
+
       Result r = result.clone();
       r.aggregate = join.aggregate;
       r.join_stats = join.joinStats;
       r.xtype = join.a.type.toString();
       r.ytype = join.b.type.toString();
 
-      MI mi = MutualInformation.ofCategorical(join.a, join.b);
+      MI mi = (MI) MutualInformationMixed.INSTANCE.of(join.a, join.b);
+      // (MI) CorrelationType.MUTUAL_INFORMATION.get().of(join.a, join.b);
       r.mi_actual = mi.value;
       r.nmi_sqrt_actual = mi.nmiSqrt();
       r.nmi_max_actual = mi.nmiMax();

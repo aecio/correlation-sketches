@@ -15,28 +15,32 @@ public enum CorrelationType {
   NMI_MAX,
   NMI_MIN;
 
+  public Correlation get() {
+    return get(this);
+  }
+
   public static Correlation get(CorrelationType type) {
     switch (type) {
       case PEARSONS:
-        return PearsonCorrelation::estimate;
+        return (NumericalCorrelation) PearsonCorrelation::estimate;
       case ROBUST_QN:
-        return QnCorrelation::estimate;
+        return (NumericalCorrelation) QnCorrelation::estimate;
       case SPEARMANS:
-        return SpearmanCorrelation::estimate;
+        return (NumericalCorrelation) SpearmanCorrelation::estimate;
       case RIN:
-        return RinCorrelation::estimate;
+        return (NumericalCorrelation) RinCorrelation::estimate;
       case PM1_BOOTSTRAP:
-        return BootstrapedPearson::estimate;
+        return (NumericalCorrelation) BootstrapedPearson::estimate;
       case QCR:
-        return QCRCorrelation::estimate;
+        return (NumericalCorrelation) QCRCorrelation::estimate;
       case MUTUAL_INFORMATION:
-        return MutualInformation::estimateMi;
+        return MutualInformationMixed.INSTANCE;
       case NMI_SQRT:
-        return MutualInformation::estimateNmiSqrt;
+        return (NumericalCorrelation) MutualInformation::estimateNmiSqrt; // FIXME
       case NMI_MAX:
-        return MutualInformation::estimateNmiMax;
+        return (NumericalCorrelation) MutualInformation::estimateNmiMax; // FIXME
       case NMI_MIN:
-        return MutualInformation::estimateNmiMin;
+        return (NumericalCorrelation) MutualInformation::estimateNmiMin; // FIXME
       default:
         throw new IllegalArgumentException("Invalid correlation type: " + type);
     }
