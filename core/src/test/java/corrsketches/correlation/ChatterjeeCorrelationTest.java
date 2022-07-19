@@ -8,8 +8,7 @@ import corrsketches.statistics.Stats;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
 
-public class CharterjeeCorrelationTest {
-  static final double delta = 0.001;
+public class ChatterjeeCorrelationTest {
 
   @Test
   public void shouldComputeXiCorrelationForKnownFunctionsOfX() {

@@ -41,11 +41,11 @@ public class Stats {
     return median(x, x.length, false);
   }
 
-  public static double median(double x[], int n) {
+  public static double median(double[] x, int n) {
     return median(x, n, false);
   }
 
-  public static double median(double x[], int n, boolean inplace) {
+  public static double median(double[] x, int n, boolean inplace) {
     if (n == 1) {
       return x[0];
     }
