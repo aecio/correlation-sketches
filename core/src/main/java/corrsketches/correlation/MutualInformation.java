@@ -1,6 +1,7 @@
 package corrsketches.correlation;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static corrsketches.statistics.Entropy.entropyFromProbs;
 
 import corrsketches.Column;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -80,21 +81,7 @@ public class MutualInformation {
       }
     }
 
-    return new MI(mi, n, entropy(px), entropy(py), xlabelLength, ylabelLength);
-  }
-
-  /**
-   * Computes the entropy of the probabilities given as input in the array {@param probs}.
-   *
-   * @param probs a vector containing probabilities of the random variable X.
-   * @return the entropy of probs
-   */
-  private static double entropy(double[] probs) {
-    double e = 0.0;
-    for (double p : probs) {
-      e += p * Math.log(p);
-    }
-    return -1 * e;
+    return new MI(mi, n, entropyFromProbs(px), entropyFromProbs(py), xlabelLength, ylabelLength);
   }
 
   /** Computes the co-occurrence matrix. */
@@ -140,6 +127,10 @@ public class MutualInformation {
 
     public MI(double mi, int sampleSize) {
       this(mi, sampleSize, -1, -1, -1, -1);
+    }
+
+    public MI(double mi, int length, double ex, double ey) {
+      this(mi, length, ex, ey, -1, -1);
     }
 
     public MI(double mi, int sampleSize, double ex, double ey, int nx, int ny) {

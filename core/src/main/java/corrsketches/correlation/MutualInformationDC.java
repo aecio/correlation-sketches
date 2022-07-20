@@ -24,6 +24,10 @@ public class MutualInformationDC {
     return mi(d, c, 3, Math.exp(1));
   }
 
+  public static double mi(int[] d, double[] c, int k) {
+    return mi(d, c, k, Math.exp(1));
+  }
+
   /**
    * Computes the mutual information between the array {@param discrete} and the array {@param
    * continuous} using the estimator described in the paper: Ross, Brian C. "Mutual information
