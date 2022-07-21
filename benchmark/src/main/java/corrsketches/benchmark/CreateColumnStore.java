@@ -61,8 +61,10 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
   @Option(
       names = "--column-type",
-      description = "What data type should be considered for value columns")
-  ColumnType columnType = ColumnType.NUMERICAL;
+      description =
+          "What data types should be considered for value columns "
+              + "(you can repeat the argument for multiple data types)")
+  ColumnType[] columnTypes = new ColumnType[] {ColumnType.NUMERICAL, ColumnType.CATEGORICAL};
 
   public static void main(String[] args) {
     CliTool.run(args, new CreateColumnStore());
@@ -73,7 +75,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
     Path db = Paths.get(outputPath);
 
     ColumnStore store = createColumnStore(db, dbType);
-    System.out.println("Created DB at " + db.toString());
+    System.out.println("Created DB at " + db);
 
     List<String> allCSVs = Tables.findAllTables(inputPath);
     System.out.println("> Found  " + allCSVs.size() + " CSV files at " + inputPath);
@@ -92,7 +94,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
     Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
-      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows, columnType);
+      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows, Set.of(columnTypes));
       if (!columnPairs.hasNext()) {
         continue;
       }

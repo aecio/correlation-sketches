@@ -36,11 +36,11 @@ public class Tables {
   }
 
   public static Iterator<ColumnPair> readColumnPairs(
-      String datasetFilePath, int minRows, ColumnType columnType) {
+      String datasetFilePath, int minRows, Set<ColumnType> columnTypes) {
     try {
       Table table = readTable(datasetFilePath);
       String datasetName = Paths.get(datasetFilePath).getFileName().toString();
-      return readColumnPairs(datasetName, table, minRows, columnType);
+      return readColumnPairs(datasetName, table, minRows, columnTypes);
     } catch (Exception e) {
       System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
       e.printStackTrace(System.out);
@@ -49,7 +49,7 @@ public class Tables {
   }
 
   public static Iterator<ColumnPair> readColumnPairs(
-      String datasetName, Table df, int minRows, ColumnType valueColumnType) {
+      String datasetName, Table df, int minRows, Set<ColumnType> valueColumnTypes) {
     System.out.println("\nDataset: " + datasetName);
 
     System.out.printf("Row count: %d \n", df.rowCount());
@@ -57,26 +57,7 @@ public class Tables {
     List<CategoricalColumn<String>> joinKeyColumns = getStringColumns(df);
     System.out.println("Join key columns: " + joinKeyColumns.size());
 
-    List<Column<?>> valueColumns;
-    if (valueColumnType == ColumnType.CATEGORICAL) {
-      valueColumns =
-          df.columns().stream()
-              .filter(
-                  e ->
-                      e.type() == tech.tablesaw.api.ColumnType.STRING
-                          || e.type() == tech.tablesaw.api.ColumnType.TEXT)
-              .map(e -> (CategoricalColumn<String>) e)
-              .collect(Collectors.toList());
-      System.out.println("String columns: " + valueColumns.size());
-    } else if (valueColumnType == ColumnType.NUMERICAL) {
-      valueColumns =
-          df.columns().stream()
-              .filter(e -> e instanceof NumericColumn<?>)
-              .collect(Collectors.toList());
-      System.out.println("Numerical columns: " + valueColumns.size());
-    } else {
-      throw new IllegalStateException("Invalid table column type." + valueColumnType.toString());
-    }
+    List<Column<?>> valueColumns = getValueColumns(df, valueColumnTypes);
 
     if (df.rowCount() < minRows) {
       System.out.println("Column pairs: 0");
@@ -204,6 +185,31 @@ public class Tables {
                     || e.type() == tech.tablesaw.api.ColumnType.TEXT)
         .map(e -> (CategoricalColumn<String>) e)
         .collect(Collectors.toList());
+  }
+
+  private static List<Column<?>> getValueColumns(Table df, Set<ColumnType> types) {
+    List<Column<?>> valueColumns = new ArrayList<>();
+    if (types.contains(ColumnType.CATEGORICAL)) {
+      List<CategoricalColumn<String>> categoricalColumns =
+          df.columns().stream()
+              .filter(
+                  column ->
+                      column.type() == tech.tablesaw.api.ColumnType.STRING
+                          || column.type() == tech.tablesaw.api.ColumnType.TEXT)
+              .map(e -> (CategoricalColumn<String>) e)
+              .collect(Collectors.toList());
+      System.out.println("String columns: " + categoricalColumns.size());
+      valueColumns.addAll(categoricalColumns);
+    }
+    if (types.contains(ColumnType.NUMERICAL)) {
+      List<Column<?>> numericColumns =
+          df.columns().stream()
+              .filter(column -> column instanceof NumericColumn<?>)
+              .collect(Collectors.toList());
+      System.out.println("Numerical columns: " + numericColumns.size());
+      valueColumns.addAll(numericColumns);
+    }
+    return valueColumns;
   }
 
   static class ColumnEntry {
