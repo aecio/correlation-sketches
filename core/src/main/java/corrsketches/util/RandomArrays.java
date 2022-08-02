@@ -26,9 +26,45 @@ public class RandomArrays {
    * @return a vector with random data uniformly distributed
    */
   public static int[] randIntUniform(int length, final Random rng) {
-    int[] data = new int[length];
+    final int[] data = new int[length];
     for (int i = 0; i < data.length; i++) {
       data[i] = rng.nextInt();
+    }
+    return data;
+  }
+
+  public static double[] randDoubleStdNormal(int length) {
+    return randDoubleStdNormal(length, new Random());
+  }
+
+  public static double[] randDoubleStdNormal(int length, Random rng) {
+    final double[] data = new double[length];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = rng.nextGaussian();
+    }
+    return data;
+  }
+
+  public static double[] randDoubleUniform(int length) {
+    return randDoubleUniform(length, new Random());
+  }
+
+  public static double[] randDoubleUniform(int length, Random rng) {
+    final double[] data = new double[length];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = rng.nextDouble();
+    }
+    return data;
+  }
+
+  public static double[] randDoubleExponential(int n, double lambda) {
+    return randDoubleExponential(n, lambda, new Random());
+  }
+
+  public static double[] randDoubleExponential(int length, double lambda, Random rng) {
+    final double[] data = new double[length];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = -1 / lambda * Math.log(rng.nextDouble());
     }
     return data;
   }

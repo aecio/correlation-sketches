@@ -5,6 +5,8 @@ import static corrsketches.statistics.DifferentialEntropy.kthNearest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+import corrsketches.util.RandomArrays;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 public class DifferentialEntropyTests {
@@ -39,6 +41,34 @@ public class DifferentialEntropyTests {
           0.1365975
         };
     assertThat(DifferentialEntropy.entropy(c)).isCloseTo(1.2231987815353995, within(DELTA));
+  }
+
+  @Test
+  @RepeatedTest(10)
+  public void testKnownDistributions() {
+    // This test compares the estimated entropy with the exact entropy computed using the exact
+    // formulas for the given probability distributions. See formula at:
+    // https://en.wikipedia.org/wiki/Differential_entropy
+    double expectedEntropy;
+    double[] x;
+    int N = 10 * 1024;
+    double allowedError = 0.1;
+
+    // entropy for standard normal distribution N(0, 1): ln(var*sqrt(2*pi*e))
+    x = RandomArrays.randDoubleStdNormal(N); // mean: 0 var: 1
+    expectedEntropy = Math.log(1 * Math.sqrt(2 * Math.PI * Math.E));
+    assertThat(DifferentialEntropy.entropy(x, 3)).isCloseTo(expectedEntropy, within(allowedError));
+
+    // entropy for the exponential distribution with parameter lambda: 1 - ln(lambda)
+    final double lambda = 2;
+    x = RandomArrays.randDoubleExponential(N, lambda);
+    expectedEntropy = 1 - Math.log(lambda);
+    assertThat(DifferentialEntropy.entropy(x, 3)).isCloseTo(expectedEntropy, within(allowedError));
+
+    // entropy for uniform distribution in range [a, b] is = ln(b-a)
+    x = RandomArrays.randDoubleUniform(N); // [a, b]=[0, 1]
+    expectedEntropy = Math.log(1); //  ln(b-a) = ln(1)
+    assertThat(DifferentialEntropy.entropy(x, 3)).isCloseTo(expectedEntropy, within(allowedError));
   }
 
   @Test
