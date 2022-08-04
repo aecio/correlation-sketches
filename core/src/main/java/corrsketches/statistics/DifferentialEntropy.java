@@ -46,10 +46,14 @@ public class DifferentialEntropy {
     Arrays.sort(x);
     double[] distances = new double[x.length];
     for (int i = 0; i < x.length; i++) {
-      double kth = kthNearest(x, i, k);
-      distances[i] = abs(x[i] - kth);
+      distances[i] = distanceToKthNearest(x, i, k);
     }
     return distances;
+  }
+
+  static double distanceToKthNearest(double[] data, int target, int k) {
+    final double kthNearest = kthNearest(data, target, k);
+    return abs(data[target] - kthNearest);
   }
 
   static double kthNearest(double[] data, int target, int k) {
@@ -77,11 +81,5 @@ public class DifferentialEntropy {
       }
     }
     return data[theNeighbor];
-  }
-
-  static double distanceToKthNearest(double[] data, int target, int k) {
-    final double c = data[target];
-    final double kthNearest = kthNearest(data, target, k);
-    return Math.abs(kthNearest - c);
   }
 }
