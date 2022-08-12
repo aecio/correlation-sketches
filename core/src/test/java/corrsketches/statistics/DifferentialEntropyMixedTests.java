@@ -1,6 +1,5 @@
 package corrsketches.statistics;
 
-import static corrsketches.statistics.DifferentialEntropyMixed.kthNearestNonZero;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -143,77 +142,5 @@ public class DifferentialEntropyMixedTests {
     assertThat(Entropy.entropy(z)).isCloseTo(expectedEntropy, within(allowedError));
     assertThat(DifferentialEntropyMixed.entropy(x, 3))
         .isCloseTo(expectedEntropy, within(allowedError));
-  }
-
-  @Test
-  public void testNearestK() {
-    double[] x = new double[] {1, 2, 4, 8, 16};
-
-    // distances for targetIdx=[0]: {0, 1, 3, 7, 15}
-    int targetIdx = 0;
-    assertThat(kthNearestNonZero(x, targetIdx, 1).kthNearest).isEqualTo(2);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).kthNearest).isEqualTo(4);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).kthNearest).isEqualTo(8);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).kthNearest).isEqualTo(16);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).kthNearest).isEqualTo(16);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).kthNearest).isEqualTo(16);
-
-    assertThat(kthNearestNonZero(x, targetIdx, 1).distance).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).distance).isEqualTo(3);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).distance).isEqualTo(7);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).distance).isEqualTo(15);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).distance).isEqualTo(15);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).distance).isEqualTo(15);
-
-    // distances for targetIdx=[2]: {3, 2, 0, 4, 12}
-    targetIdx = 2;
-    assertThat(kthNearestNonZero(x, targetIdx, 1).kthNearest).isEqualTo(2);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).kthNearest).isEqualTo(8);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).kthNearest).isEqualTo(16);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).kthNearest).isEqualTo(16);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).kthNearest).isEqualTo(16);
-
-    assertThat(kthNearestNonZero(x, targetIdx, 1).distance).isEqualTo(2);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).distance).isEqualTo(3);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).distance).isEqualTo(4);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).distance).isEqualTo(12);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).distance).isEqualTo(12);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).distance).isEqualTo(12);
-  }
-
-  @Test
-  public void testNearestKMixed() {
-    double[] x = new double[] {0, 0, 0, 0, 1, 2, 4, 8, 16};
-
-    // distances to x[0]:     {0, 0, 0, 0, 1, 2, 4, 8, 16}
-    int targetIdx = 0;
-    assertThat(kthNearestNonZero(x, targetIdx, 1).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).kthNearest).isEqualTo(2);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).kthNearest).isEqualTo(4);
-
-    assertThat(kthNearestNonZero(x, targetIdx, 1).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).kthNearest).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).kthNearest).isEqualTo(2);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).kthNearest).isEqualTo(4);
-
-    assertThat(kthNearestNonZero(x, targetIdx, 1).distance).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).distance).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).distance).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).distance).isEqualTo(1);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).distance).isEqualTo(2);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).distance).isEqualTo(4);
-
-    assertThat(kthNearestNonZero(x, targetIdx, 1).k).isEqualTo(4);
-    assertThat(kthNearestNonZero(x, targetIdx, 2).k).isEqualTo(4);
-    assertThat(kthNearestNonZero(x, targetIdx, 3).k).isEqualTo(4);
-    assertThat(kthNearestNonZero(x, targetIdx, 4).k).isEqualTo(4);
-    assertThat(kthNearestNonZero(x, targetIdx, 5).k).isEqualTo(5);
-    assertThat(kthNearestNonZero(x, targetIdx, 6).k).isEqualTo(6);
   }
 }

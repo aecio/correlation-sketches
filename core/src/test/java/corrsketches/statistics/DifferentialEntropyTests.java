@@ -1,7 +1,5 @@
 package corrsketches.statistics;
 
-import static corrsketches.statistics.DifferentialEntropy.distanceToKthNearest;
-import static corrsketches.statistics.DifferentialEntropy.kthNearest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -104,42 +102,5 @@ public class DifferentialEntropyTests {
     //    assertThat(DifferentialEntropy.entropy(x, 3)).isCloseTo(expectedEntropy,
     // within(allowedError));
     assertThat(Entropy.entropy(z)).isCloseTo(expectedEntropy, within(allowedError));
-  }
-
-  @Test
-  public void testNearestK() {
-    double[] x = new double[] {1, 2, 4, 8, 16};
-
-    // distances for targetIdx=[2]: {0, 1, 3, 7, 15}
-    int targetIdx = 0;
-    assertThat(kthNearest(x, targetIdx, 1)).isEqualTo(2);
-    assertThat(kthNearest(x, targetIdx, 2)).isEqualTo(4);
-    assertThat(kthNearest(x, targetIdx, 3)).isEqualTo(8);
-    assertThat(kthNearest(x, targetIdx, 4)).isEqualTo(16);
-    assertThat(kthNearest(x, targetIdx, 5)).isEqualTo(16);
-    assertThat(kthNearest(x, targetIdx, 6)).isEqualTo(16);
-
-    assertThat(distanceToKthNearest(x, targetIdx, 1)).isEqualTo(1);
-    assertThat(distanceToKthNearest(x, targetIdx, 2)).isEqualTo(3);
-    assertThat(distanceToKthNearest(x, targetIdx, 3)).isEqualTo(7);
-    assertThat(distanceToKthNearest(x, targetIdx, 4)).isEqualTo(15);
-    assertThat(distanceToKthNearest(x, targetIdx, 5)).isEqualTo(15);
-    assertThat(distanceToKthNearest(x, targetIdx, 6)).isEqualTo(15);
-
-    // distances for targetIdx=[2]: {3, 2, 0, 4, 12}
-    targetIdx = 2;
-    assertThat(kthNearest(x, targetIdx, 1)).isEqualTo(2);
-    assertThat(kthNearest(x, targetIdx, 2)).isEqualTo(1);
-    assertThat(kthNearest(x, targetIdx, 3)).isEqualTo(8);
-    assertThat(kthNearest(x, targetIdx, 4)).isEqualTo(16);
-    assertThat(kthNearest(x, targetIdx, 5)).isEqualTo(16);
-    assertThat(kthNearest(x, targetIdx, 6)).isEqualTo(16);
-
-    assertThat(distanceToKthNearest(x, targetIdx, 1)).isEqualTo(2);
-    assertThat(distanceToKthNearest(x, targetIdx, 2)).isEqualTo(3);
-    assertThat(distanceToKthNearest(x, targetIdx, 3)).isEqualTo(4);
-    assertThat(distanceToKthNearest(x, targetIdx, 4)).isEqualTo(12);
-    assertThat(distanceToKthNearest(x, targetIdx, 5)).isEqualTo(12);
-    assertThat(distanceToKthNearest(x, targetIdx, 6)).isEqualTo(12);
   }
 }

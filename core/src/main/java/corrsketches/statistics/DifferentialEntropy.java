@@ -1,9 +1,9 @@
 package corrsketches.statistics;
 
 import static corrsketches.statistics.Stats.sum;
-import static java.lang.Math.abs;
 import static smile.math.special.Gamma.digamma;
 
+import corrsketches.statistics.NearestNeighbors1D.NearestNeighbor;
 import java.util.Arrays;
 
 /**
@@ -45,41 +45,11 @@ public class DifferentialEntropy {
     x = Arrays.copyOf(x, x.length);
     Arrays.sort(x);
     double[] distances = new double[x.length];
+    NearestNeighbor nn = new NearestNeighbor();
     for (int i = 0; i < x.length; i++) {
-      distances[i] = distanceToKthNearest(x, i, k);
+      NearestNeighbors1D.kthNearest(x, i, k, nn);
+      distances[i] = nn.distance;
     }
     return distances;
-  }
-
-  static double distanceToKthNearest(double[] data, int target, int k) {
-    final double kthNearest = kthNearest(data, target, k);
-    return abs(data[target] - kthNearest);
-  }
-
-  static double kthNearest(double[] data, int target, int k) {
-    // k must be at most the size of the input minus 1
-    k = Math.min(k, data.length - 1);
-
-    double c = data[target];
-    int left = target;
-    int right = target;
-    int theNeighbor = -1; // initial value not used, but needed to make compiler happy
-
-    for (int i = 0; i < k; i++) {
-      if (left == 0) {
-        right++;
-        theNeighbor = right;
-      } else if (right == data.length - 1) {
-        left--;
-        theNeighbor = left;
-      } else if (abs(data[left - 1] - c) < abs(data[right + 1] - c)) {
-        left--;
-        theNeighbor = left;
-      } else {
-        right++;
-        theNeighbor = right;
-      }
-    }
-    return data[theNeighbor];
   }
 }
