@@ -1,7 +1,7 @@
 package corrsketches.correlation;
 
 /** An interface for all correlation estimators implemented in this library. */
-public interface NumericalCorrelation extends Correlation {
+public interface NumericalCorrelation extends Correlation<Estimate> {
 
   /**
    * Computes correlations for numerical variables.

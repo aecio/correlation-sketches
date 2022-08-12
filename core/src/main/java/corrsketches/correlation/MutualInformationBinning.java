@@ -3,7 +3,7 @@ package corrsketches.correlation;
 import corrsketches.correlation.MutualInformation.MI;
 import corrsketches.statistics.Stats;
 
-public class MutualInformationBinning implements Correlation {
+public class MutualInformationBinning implements Correlation<MI> {
 
   public static final MutualInformationBinning INSTANCE = new MutualInformationBinning();
 

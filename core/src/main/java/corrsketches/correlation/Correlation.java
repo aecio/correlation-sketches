@@ -5,9 +5,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import corrsketches.Column;
 import corrsketches.ColumnType;
 
-public interface Correlation {
+public interface Correlation<E extends Estimate> {
 
-  default Estimate of(Column x, Column y) {
+  default E of(Column x, Column y) {
     checkArgument(x.values.length == y.values.length, "x and y must have same size");
     if (x.type == y.type) {
       // x and y have the same type
@@ -31,22 +31,22 @@ public interface Correlation {
     throw new IllegalStateException("Variable types must be either CATEGORICAL or NUMERICAL");
   }
 
-  default Estimate ofNumerical(double[] x, double[] y) {
+  default E ofNumerical(double[] x, double[] y) {
     throw new UnsupportedOperationException(
         getClass() + " does not support correlation for numerical variables");
   }
 
-  default Estimate ofCategorical(int[] x, int[] y) {
+  default E ofCategorical(int[] x, int[] y) {
     throw new UnsupportedOperationException(
         getClass() + " does not support correlation for categorical variables");
   }
 
-  default Estimate ofNumericalCategorical(final double[] y, final int[] x) {
+  default E ofNumericalCategorical(final double[] y, final int[] x) {
     throw new UnsupportedOperationException(
         getClass() + " does not support correlation for numerical-categorical variables");
   }
 
-  default Estimate ofCategoricalNumerical(final int[] x, final double[] y) {
+  default E ofCategoricalNumerical(final int[] x, final double[] y) {
     throw new UnsupportedOperationException(
         getClass() + " does not support correlation for categorical-numerical variables");
   }

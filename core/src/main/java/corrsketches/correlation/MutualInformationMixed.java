@@ -4,7 +4,7 @@ import corrsketches.correlation.MutualInformation.MI;
 import corrsketches.statistics.DifferentialEntropy;
 import corrsketches.statistics.Entropy;
 
-public class MutualInformationMixed implements Correlation {
+public class MutualInformationMixed implements Correlation<MI> {
 
   public static final MutualInformationMixed INSTANCE = new MutualInformationMixed();
 
@@ -19,7 +19,7 @@ public class MutualInformationMixed implements Correlation {
   }
 
   @Override
-  public Estimate ofCategorical(int[] x, int[] y) {
+  public MI ofCategorical(int[] x, int[] y) {
     return MutualInformation.ofCategorical(x, y);
   }
 

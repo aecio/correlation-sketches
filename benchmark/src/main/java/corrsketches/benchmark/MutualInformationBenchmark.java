@@ -115,7 +115,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   private static void estimateMutualInfoFromSketchJoin(Result result, Join join) {
-    MI mi = (MI) MutualInformationMixed.INSTANCE.of(join.x, join.y);
+    MI mi = MutualInformationMixed.INSTANCE.of(join.x, join.y);
     result.mi_est = mi.value;
     result.join_size_sketch = mi.sampleSize;
     result.nmi_sqrt_est = mi.nmiSqrt();
@@ -154,8 +154,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.xtype = join.a.type.toString();
       r.ytype = join.b.type.toString();
 
-      MI mi = (MI) MutualInformationMixed.INSTANCE.of(join.a, join.b);
-      // (MI) CorrelationType.MUTUAL_INFORMATION.get().of(join.a, join.b);
+      MI mi = MutualInformationMixed.INSTANCE.of(join.a, join.b);
       r.mi_actual = mi.value;
       r.nmi_sqrt_actual = mi.nmiSqrt();
       r.nmi_max_actual = mi.nmiMax();
