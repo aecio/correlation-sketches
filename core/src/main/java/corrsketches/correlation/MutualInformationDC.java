@@ -1,6 +1,7 @@
 package corrsketches.correlation;
 
 import static java.lang.Math.log;
+import static java.lang.Math.max;
 import static smile.math.special.Gamma.digamma;
 
 import corrsketches.util.Sorting;
@@ -21,11 +22,15 @@ import java.util.List;
 public class MutualInformationDC {
 
   public static double mi(int[] d, double[] c) {
-    return mi(d, c, 3, Math.exp(1));
+    return miNonNegative(d, c, 3, Math.E);
   }
 
   public static double mi(int[] d, double[] c, int k) {
-    return mi(d, c, k, Math.exp(1));
+    return miNonNegative(d, c, k, Math.E);
+  }
+
+  static double miNonNegative(final int[] d, final double[] c, final int k, final double base) {
+    return max(0, miRaw(d, c, k, base));
   }
 
   /**
@@ -39,7 +44,7 @@ public class MutualInformationDC {
    * @param base the base of the log
    * @return the mutual information estimate.
    */
-  public static double mi(
+  static double miRaw(
       final int[] discrete, final double[] continuous, final int k, final double base) {
 
     // Make copy to avoid mutating original data

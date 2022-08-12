@@ -26,19 +26,20 @@ public class MutualInformationDCTest {
     // Case 1
     //
     double[] c1 = new double[] {1.0, 1.0, 2.3, 2.4, 3.1, 0.5};
-    assertThat(MutualInformationDC.mi(d1, c1, k, base)).isCloseTo(0.5889, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d1, c1, k, base)).isCloseTo(0.5889, byLessThan(DELTA));
 
     double[] c2 = new double[] {1.0, 1.0, 2.3, 2.4, 3.1, 3.2};
-    assertThat(MutualInformationDC.mi(d1, c2, k, base)).isCloseTo(1.2833, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d1, c2, k, base)).isCloseTo(1.2833, byLessThan(DELTA));
 
     double[] c3 = new double[] {1.0, 1.0, 2.3, 3.4, 3.1, 0.5};
-    assertThat(MutualInformationDC.mi(d1, c3, k, base)).isCloseTo(0.2972, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d1, c3, k, base)).isCloseTo(0.2972, byLessThan(DELTA));
 
     double[] c4 = new double[] {1.0, 1.0, 2.3, 3.4, 3.1, 3.2};
-    assertThat(MutualInformationDC.mi(d1, c4, k, base)).isCloseTo(0.7833, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d1, c4, k, base)).isCloseTo(0.7833, byLessThan(DELTA));
 
     double[] c5 = new double[] {3.0, 1.0, 2.3, 3.4, 3.1, 3.2};
-    assertThat(MutualInformationDC.mi(d1, c5, k, base)).isCloseTo(-0.0083, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d1, c5, k, base)).isCloseTo(-0.0083, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d1, c5, k)).isZero();
 
     //
     // Case 2, different discrete variable
@@ -46,13 +47,14 @@ public class MutualInformationDCTest {
     int[] d2 = new int[] {1, 2, 2, 2, 3, 3};
 
     double[] c6 = new double[] {3.0, 100.0, 2.3, 3.4, 3.1, 3.2};
-    assertThat(MutualInformationDC.mi(d2, c6, k, base)).isCloseTo(0.1111, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d2, c6, k, base)).isCloseTo(0.1111, byLessThan(DELTA));
 
     double[] c7 = new double[] {3.0, 100.0, 2.3, 3.4, 3.1, 103.2};
-    assertThat(MutualInformationDC.mi(d2, c7, k, base)).isCloseTo(-0.2361, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d2, c7, k, base)).isCloseTo(-0.2361, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d2, c7, k)).isZero();
 
     double[] c8 = new double[] {3.0, 100.0, 2.3, 3.4, Double.NaN, 103.2};
-    assertThat(MutualInformationDC.mi(d2, c8, k, base)).isCloseTo(0.5139, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d2, c8, k, base)).isCloseTo(0.5139, byLessThan(DELTA));
 
     //
     // Case 3, with NaNs, +Inf, and -Inf.
@@ -60,25 +62,31 @@ public class MutualInformationDCTest {
     int[] d3 = new int[] {0, 1, 2, 2, 2, 3, 4, 5};
 
     double[] c9 = new double[] {3.0, 100.0, -2.3, -103.4, 0, 0, 0, 0};
-    assertThat(MutualInformationDC.mi(d3, c9, k, base)).isCloseTo(-0.1987, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d3, c9, k, base)).isCloseTo(-0.1987, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d3, c9, k)).isZero();
 
     double[] c10 = new double[] {0, 0, 0, 1e99, 0, 0, 0, 0};
-    assertThat(MutualInformationDC.mi(d3, c10, k, base)).isCloseTo(-0.4008, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d3, c10, k, base)).isCloseTo(-0.4008, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d3, c10, k)).isZero();
 
     double[] c11 = new double[] {0, 0, 0, 1e99, 0, Double.POSITIVE_INFINITY, 0, 0};
-    assertThat(MutualInformationDC.mi(d3, c11, k, base)).isCloseTo(-0.3383, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d3, c11, k, base)).isCloseTo(-0.3383, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d3, c11, k)).isZero();
 
     double[] c12 = new double[] {0, 0, 0, 1e99, 0, Double.POSITIVE_INFINITY, Double.NaN, 0};
-    assertThat(MutualInformationDC.mi(d3, c12, k, base)).isCloseTo(-0.2633, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d3, c12, k, base)).isCloseTo(-0.2633, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d3, c12, k)).isZero();
 
     double[] c13 = new double[] {0, -1, 0, 1e99, 0, Double.POSITIVE_INFINITY, Double.NaN, 0};
-    assertThat(MutualInformationDC.mi(d3, c13, k, base)).isCloseTo(-0.2321, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d3, c13, k, base)).isCloseTo(-0.2321, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d3, c13, k)).isZero();
 
     double[] c14 =
         new double[] {
           Double.NEGATIVE_INFINITY, -1, 0, 1e99, 0, Double.POSITIVE_INFINITY, Double.NaN, 0
         };
-    assertThat(MutualInformationDC.mi(d3, c14, k, base)).isCloseTo(-0.1279, byLessThan(DELTA));
+    assertThat(MutualInformationDC.miRaw(d3, c14, k, base)).isCloseTo(-0.1279, byLessThan(DELTA));
+    assertThat(MutualInformationDC.mi(d3, c14, k)).isZero();
   }
 
   /**
@@ -90,7 +98,7 @@ public class MutualInformationDCTest {
   @Test
   public void testSnapshotRegression() throws IOException {
     final int runs = 1000;
-    final double base = Math.exp(1);
+    final double base = Math.E;
     int seed = 123;
     Random rng = new Random(seed);
     double[] output = new double[runs];
@@ -105,7 +113,7 @@ public class MutualInformationDCTest {
         d[i] = rng.nextInt() % categories;
         c[i] = rng.nextDouble() + p * d[i];
       }
-      output[run] = MutualInformationDC.mi(d, c, k, base);
+      output[run] = MutualInformationDC.miRaw(d, c, k, base);
     }
 
     String filename = "mi-snapshot-test-data_seed-" + seed + ".txt";
