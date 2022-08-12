@@ -1,16 +1,14 @@
 package corrsketches.correlation;
 
 public enum CorrelationType {
-
-  // for numerical data
   PEARSONS,
   SPEARMANS,
   RIN,
   ROBUST_QN,
   PM1_BOOTSTRAP,
   QCR,
-  // for categorical data
   MUTUAL_INFORMATION,
+  MUTUAL_INFORMATION_BINNING,
   NMI_SQRT,
   NMI_MAX,
   NMI_MIN;
@@ -33,6 +31,8 @@ public enum CorrelationType {
         return (NumericalCorrelation) BootstrapedPearson::estimate;
       case QCR:
         return (NumericalCorrelation) QCRCorrelation::estimate;
+      case MUTUAL_INFORMATION_BINNING:
+        return MutualInformationBinning.INSTANCE;
       case MUTUAL_INFORMATION:
         return MutualInformationMixed.INSTANCE;
       case NMI_SQRT:

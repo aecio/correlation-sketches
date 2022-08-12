@@ -1,5 +1,8 @@
 package corrsketches.statistics;
 
+import static java.lang.Math.log;
+import static java.lang.Math.max;
+
 import java.util.Arrays;
 import smile.stat.distribution.GaussianDistribution;
 
@@ -232,6 +235,51 @@ public class Stats {
       sum += x[i];
     }
     return sum;
+  }
+
+  /**
+   * Bins the {@code data} using a heuristic to choose the number of categories B. The value of B is
+   * chosen to be equal to max(2, log(U)), where U denotes the number of unique values in the {@code
+   * data} vector.
+   *
+   * <p>This heuristic has been previously used in the paper: Dougherty, J., Kohavi, R. and Sahami,
+   * M., 1995. Supervised and unsupervised discretization of continuous features. In Machine
+   * learning proceedings 1995 (pp. 194-202). Morgan Kaufmann.
+   *
+   * @param data the vector to be binned
+   * @return the binned version of the vector {@code data}
+   */
+  public static int[] binEqualWidth(double[] data) {
+    double[] sorted = Arrays.copyOf(data, data.length);
+    Arrays.sort(data);
+    int unique = 1;
+    double min = sorted[0];
+    double max = sorted[0];
+    for (int i = 1; i < sorted.length; i++) {
+      if (sorted[i - 1] != sorted[i]) {
+        unique++;
+      }
+      if (sorted[i] < min) {
+        min = sorted[i];
+      }
+      if (sorted[i] > max) {
+        max = sorted[i];
+      }
+    }
+    return binEqualWidth(sorted, (int) max(2, log(unique)), min, max);
+  }
+
+  public static int[] binEqualWidth(double[] data, int bins) {
+    Extent extent = extent(data);
+    return binEqualWidth(data, bins, extent.min, extent.max);
+  }
+
+  public static int[] binEqualWidth(double[] data, int bins, double min, double max) {
+    final int[] binned = new int[data.length];
+    for (int i = 0; i < data.length; i++) {
+      binned[i] = (int) (((data[i] - min) / (max - min) * (bins - 1)) + 0.5);
+    }
+    return binned;
   }
 
   public enum TiesMethod {

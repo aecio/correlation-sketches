@@ -114,4 +114,68 @@ public class StatsTests {
     Stats.rank(r, Stats.TiesMethod.MIN);
     assertThat(r).containsExactly(1, 2, 3, 3, 5, 6);
   }
+
+  @Test
+  public void testEqualWidthBinning() {
+    double[] x;
+    int[] binned;
+
+    x = new double[] {1., 1., 2., 2., 3., 3., 4., 4.};
+    binned = Stats.binEqualWidth(x, 0);
+    assertThat(binned).containsExactly(0, 0, 0, 0, 0, 0, 0, 0);
+
+    binned = Stats.binEqualWidth(x, 2);
+    assertThat(binned).containsExactly(0, 0, 0, 0, 1, 1, 1, 1);
+
+    binned = Stats.binEqualWidth(x, 3);
+    assertThat(binned).containsExactly(0, 0, 1, 1, 1, 1, 2, 2);
+
+    binned = Stats.binEqualWidth(x, 4);
+    assertThat(binned).containsExactly(0, 0, 1, 1, 2, 2, 3, 3);
+
+    x = new double[] {1.4, 1.5, 2.4, 2.5, 3.4, 3.5, 4.4, 4.5};
+    binned = Stats.binEqualWidth(x, 2);
+    assertThat(binned).containsExactly(0, 0, 0, 0, 1, 1, 1, 1);
+
+    binned = Stats.binEqualWidth(x, 3);
+    assertThat(binned).containsExactly(0, 0, 1, 1, 1, 1, 2, 2);
+
+    binned = Stats.binEqualWidth(x, 4);
+    assertThat(binned).containsExactly(0, 0, 1, 1, 2, 2, 3, 3);
+
+    x = new double[] {1.4, 1.5, 1.4, 1.5, 4.4, 4.5, 4.4, 4.5};
+    binned = Stats.binEqualWidth(x, 2);
+    assertThat(binned).containsExactly(0, 0, 0, 0, 1, 1, 1, 1);
+
+    binned = Stats.binEqualWidth(x, 3);
+    assertThat(binned).containsExactly(0, 0, 0, 0, 2, 2, 2, 2);
+
+    binned = Stats.binEqualWidth(x, 4);
+    assertThat(binned).containsExactly(0, 0, 0, 0, 3, 3, 3, 3);
+  }
+
+  @Test
+  public void testEqualWidthBinningAutomaticBinSize() {
+    double[] x;
+    int[] binned;
+
+    x = new double[] {1., 1., 2., 2., 3., 3., 4., 4.};
+    binned = Stats.binEqualWidth(x); // max(2, log(4)) = 2
+    assertThat(Arrays.stream(binned).distinct().count()).isEqualTo(2);
+    assertThat(binned).containsExactly(0, 0, 0, 0, 1, 1, 1, 1);
+
+    x = new double[21]; // ln(21) > 3
+    for (int i = 0; i < x.length; i++) {
+      x[i] = i;
+    }
+    binned = Stats.binEqualWidth(x); // max(2, log(21)) = 3
+    assertThat(Arrays.stream(binned).distinct().count()).isEqualTo(3);
+
+    x = new double[55]; // ln(55) > 4
+    for (int i = 0; i < x.length; i++) {
+      x[i] = i;
+    }
+    binned = Stats.binEqualWidth(x); // max(2, log(55)) = 4
+    assertThat(Arrays.stream(binned).distinct().count()).isEqualTo(4);
+  }
 }
