@@ -9,6 +9,7 @@ dependencies {
     implementation libraries.fastutil
     implementation libraries.smile
     // testing
+    testImplementation libraries.slf4j_nop
     testImplementation libraries.assertj_core
     testImplementation libraries.junit_jupiter_api
     testRuntimeOnly libraries.junit_jupiter_engine
