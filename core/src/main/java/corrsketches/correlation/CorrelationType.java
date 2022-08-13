@@ -34,7 +34,7 @@ public enum CorrelationType {
       case MUTUAL_INFORMATION_BINNING:
         return MutualInformationBinning.INSTANCE;
       case MUTUAL_INFORMATION:
-        return MutualInformationMixed.INSTANCE;
+        return MutualInformationDiffEnt.INSTANCE;
       case NMI_SQRT:
         return (NumericalCorrelation) MutualInformation::estimateNmiSqrt; // FIXME
       case NMI_MAX:

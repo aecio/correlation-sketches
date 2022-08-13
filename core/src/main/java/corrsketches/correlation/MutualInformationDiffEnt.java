@@ -4,17 +4,17 @@ import corrsketches.correlation.MutualInformation.MI;
 import corrsketches.statistics.DifferentialEntropy;
 import corrsketches.statistics.Entropy;
 
-public class MutualInformationMixed implements Correlation<MI> {
+public class MutualInformationDiffEnt implements Correlation<MI> {
 
-  public static final MutualInformationMixed INSTANCE = new MutualInformationMixed();
+  public static final MutualInformationDiffEnt INSTANCE = new MutualInformationDiffEnt();
 
   private final int k;
 
-  public MutualInformationMixed() {
+  public MutualInformationDiffEnt() {
     this(3);
   }
 
-  public MutualInformationMixed(int k) {
+  public MutualInformationDiffEnt(int k) {
     this.k = k;
   }
 
