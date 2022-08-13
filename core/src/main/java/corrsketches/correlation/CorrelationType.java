@@ -7,8 +7,9 @@ public enum CorrelationType {
   ROBUST_QN,
   PM1_BOOTSTRAP,
   QCR,
-  MUTUAL_INFORMATION,
+  MUTUAL_INFORMATION_DIFF_ENT,
   MUTUAL_INFORMATION_BINNING,
+  MUTUAL_INFORMATION_DIFF_ENT_MIXED,
   NMI_SQRT,
   NMI_MAX,
   NMI_MIN;
@@ -33,8 +34,10 @@ public enum CorrelationType {
         return (NumericalCorrelation) QCRCorrelation::estimate;
       case MUTUAL_INFORMATION_BINNING:
         return MutualInformationBinning.INSTANCE;
-      case MUTUAL_INFORMATION:
+      case MUTUAL_INFORMATION_DIFF_ENT:
         return MutualInformationDiffEnt.INSTANCE;
+      case MUTUAL_INFORMATION_DIFF_ENT_MIXED:
+        return MutualInformationDiffEntMixed.INSTANCE;
       case NMI_SQRT:
         return (NumericalCorrelation) MutualInformation::estimateNmiSqrt; // FIXME
       case NMI_MAX:

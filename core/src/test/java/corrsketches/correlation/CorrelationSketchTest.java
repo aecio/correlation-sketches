@@ -3,7 +3,6 @@ package corrsketches.correlation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.byLessThan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import corrsketches.*;
 import corrsketches.CorrelationSketch.Builder;
@@ -365,7 +364,7 @@ public class CorrelationSketchTest {
     Column c2 = Column.categorical(1, 2, 2, 1, 2, 3, 2, 3, 2, 2);
 
     final Builder builder =
-        CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);
+        CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION_DIFF_ENT);
 
     CorrelationSketch qsk = builder.build(pk, q);
     CorrelationSketch c0sk = builder.build(fk, c0);
@@ -394,24 +393,19 @@ public class CorrelationSketchTest {
     Column yn = Column.numerical(1, 2, 2, 3, 2, 3, 2, 3, 1, 2);
 
     final Builder builder =
-        CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);
+        CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION_DIFF_ENT);
 
     CorrelationSketch xnsk = builder.build(pk, xn);
     CorrelationSketch xcsk = builder.build(pk, xc);
     CorrelationSketch ycsk = builder.build(fk, yc);
     CorrelationSketch ynsk = builder.build(fk, yn);
 
-    double delta = 0.00001;
+    double delta = 0.00000000001;
 
     assertThat(xcsk.correlationTo(ycsk).value).isCloseTo(1.0296530140645737, byLessThan(delta));
     assertThat(xcsk.correlationTo(ynsk).value).isCloseTo(0.027301587301587604, byLessThan(delta));
 
     assertThat(xnsk.correlationTo(ycsk).value).isCloseTo(1.1373015873015877, byLessThan(delta));
-    try {
-      assertThat(xnsk.correlationTo(ynsk).value).isCloseTo(1.0296530140645737, byLessThan(delta));
-      fail(); // should fail for now, as numerical-numerical is not implemented.
-    } catch (UnsupportedOperationException e) {
-      // this is the expected for now
-    }
+    assertThat(xnsk.correlationTo(ynsk).value).isCloseTo(0.9964674245622457, byLessThan(delta));
   }
 }

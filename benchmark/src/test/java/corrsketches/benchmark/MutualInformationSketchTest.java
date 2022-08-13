@@ -36,7 +36,8 @@ public class MutualInformationSketchTest {
     Column c1 = Column.categorical(1, 2, 2, 3, 2, 3, 2, 3, 1, 2);
     Column c2 = Column.categorical(1, 2, 2, 1, 2, 3, 2, 3, 2, 2);
 
-    Builder builder = CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);
+    Builder builder =
+        CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION_DIFF_ENT);
 
     CorrelationSketch qsk = builder.build(pk, q);
     CorrelationSketch c0sk = builder.build(fk, c0);
@@ -66,7 +67,7 @@ public class MutualInformationSketchTest {
         CorrelationSketch.builder()
             .sketchType(SketchType.KMV, 6)
             .aggregateFunction(AggregateFunction.MOST_FREQUENT)
-            .estimator(CorrelationType.MUTUAL_INFORMATION);
+            .estimator(CorrelationType.MUTUAL_INFORMATION_DIFF_ENT);
 
     CorrelationSketch xsk = builder.build(pk, x);
     CorrelationSketch ysk = builder.build(fk, y);
