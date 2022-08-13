@@ -1,8 +1,7 @@
 package corrsketches.benchmark;
 
 import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.byLessThan;
+import static org.assertj.core.api.Assertions.*;
 
 import corrsketches.Column;
 import corrsketches.ColumnType;
@@ -133,4 +132,70 @@ public class MutualInformationSketchTest {
     double delta = 0.1;
     assertThat(xsk.correlationTo(ysk).value).isCloseTo(0.1808106406067122, byLessThan(delta));
   }
+
+  //  @Test
+  //  public void testMutualInformationForMixedVariables() {
+  //    // ground-truth values computed using scikit-learn mutual_info_classif
+  //    List<String> pk = asList("a", "b", "c", "d", "e", "f");
+  //    Column x1 = Column.numerical(1, 2, 4, 8, 16, 32);
+  //    Column x2 = Column.numerical(2, 3, 4, 8, 16, 32);
+  //
+  //    List<String> fk = asList("a", "b", "c", "d", "e", "f");
+  //    Column y = Column.categorical(1, 1, 2, 2, 3, 3);
+  //
+  //    Builder builder = CorrelationSketch.builder().estimator(CorrelationType.MUTUAL_INFORMATION);
+  //
+  //    CorrelationSketch x1sk = builder.build(pk, x1);
+  //    CorrelationSketch x2sk = builder.build(pk, x2);
+  //    CorrelationSketch ysk = builder.build(fk, y);
+  //    //    CorrelationSketch c1sk = builder.build(fk, c1);
+  //    //    CorrelationSketch c2sk = builder.build(fk, c2);
+  //
+  //    double delta = 0.00001;
+  //    //
+  //    int n = 10;
+  //    double[] z1 = new double[n];
+  //    double[] z2 = new double[n];
+  //    for (int i = 0; i < n; i++) {
+  //      z1[i] = ysk.correlationTo(x1sk).value;
+  //      z2[i] = ysk.correlationTo(x2sk).value;
+  //    }
+  //    System.out.println(Arrays.toString(z1));
+  //
+  //    assertThat(Stats.mean(z1)).isCloseTo(0.58933333, byLessThan(delta));
+  //    assertThat(Stats.mean(z2)).isCloseTo(0.39361111, byLessThan(delta));
+  //    //    assertThat(ysk.correlationTo(x2sk).value).isCloseTo(0.39361111, byLessThan(delta));
+  //    //
+  //    //    assertThat(DifferentialEntropy.entropy(q)).isEqualTo(3.218266805508045,
+  // within(DELTA));
+  //    //
+  //    ////    double[] a = new double[] {1, 2, 4, 8, 16};
+  //    //    assertThat(DifferentialEntropy.entropy(a)).isEqualTo(3.218266805508045,
+  // within(DELTA));
+  //    //
+  //    //    double[] b = new double[] {1, 2, 1, 2, 1.2};
+  //    //    assertThat(DifferentialEntropy.entropy(b)).isCloseTo(1.2318518036304367,
+  // within(DELTA));
+  //    //
+  //    //    double[] c =
+  //    //        new double[] {
+  //    //          -0.59152691,
+  //    //          -0.21027888,
+  //    //          1.40407995,
+  //    //          -0.53021491,
+  //    //          0.58272939,
+  //    //          -0.23601182,
+  //    //          -1.19971974,
+  //    //          -1.50147482,
+  //    //          0.25556115,
+  //    //          -0.06472547,
+  //    //          -0.56735615,
+  //    //          -0.38815229,
+  //    //          -1.10666078,
+  //    //          -0.26985764,
+  //    //          0.1365975
+  //    //        };
+  //    //    assertThat(DifferentialEntropy.entropy(c)).isCloseTo(1.2231987815353995,
+  // within(DELTA));
+  //  }
 }

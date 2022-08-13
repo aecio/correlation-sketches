@@ -72,75 +72,75 @@ public class DifferentialEntropyMixedTests {
         .isCloseTo(expectedEntropy, within(allowedError));
   }
 
-  @Test
-  //  @RepeatedTest(10)
-  public void testKnownMixtureOfDistributions() {
-    // This test compares the estimated entropy with the exact entropy computed using the exact
-    // formulas for the given probability distributions. See formula at:
-    // https://en.wikipedia.org/wiki/Differential_entropy
-    double expectedEntropy;
-    double[] x;
-    int N = 10 * 1024;
-    //    int N = 4;
-    double allowedError = 0.1;
-
-    //    // entropy for standard normal distribution N(0, 1): ln(var*sqrt(2*pi*e))
-    //    x = RandomArrays.randDoubleStdNormal(N); // mean: 0 var: 1
-    //    expectedEntropy = Math.log(1 * Math.sqrt(2 * Math.PI * Math.E));
-    //    assertThat(DifferentialEntropyMixed.entropy(x, 3)).isCloseTo(expectedEntropy,
-    // within(allowedError));
-
-    // entropy for the exponential distribution with parameter lambda: 1 - ln(lambda)
-    //    final double lambda = 2;
-    //    x = RandomArrays.randDoubleExponential(N, lambda);
-    //    expectedEntropy = 1 - Math.log(lambda);
-    //    assertThat(DifferentialEntropyMixed.entropy(x, 3)).isCloseTo(expectedEntropy,
-    // within(allowedError));
-
-    // entropy for uniform distribution in range [a, b] is = ln(b-a)
-    x = RandomArrays.randDoubleRademacher(N); // [a, b]=[0, 1]
-    int[] z = new int[x.length];
-    for (int i = 0; i < z.length; i++) {
-      z[i] = (int) x[i];
-    }
-    expectedEntropy = Math.log(2); //  ln(b-a) = ln(1)
-    assertThat(Entropy.entropy(z)).isCloseTo(expectedEntropy, within(allowedError));
-
-    //    Random rng = new Random(7);
-    //    for (int i = 0; i < x.length; i++) {
-    //      x[i] += rng.nextGaussian() * 1e-15;
-    //    }
-    //    assertThat(DifferentialEntropyMixed.entropy(x, 3)).isCloseTo(expectedEntropy,
-    // within(allowedError));
-
-    double[] q = new double[2 * N];
-    System.arraycopy(RandomArrays.randDoubleUniform(N + N), 0, q, 0, N + N);
-    System.arraycopy(RandomArrays.randDoubleRademacher(N), 0, q, N, N);
-    //    System.out.println("q = " + Arrays.toString(q));
-    expectedEntropy =
-        (Math.log(1)
-            + // uniform [0,1]: ln(b-a) = ln(1)
-            0 // Math.log(2) // discrete n=2: ln(n) = ln(2)
-        );
-    assertThat(DifferentialEntropyMixed.entropy(q, 3))
-        .isCloseTo(expectedEntropy, within(allowedError));
-
-    x = RandomArrays.randDoubleUniform(N); // [a, b]=[0, 1]
-    z = new int[x.length];
-    for (int i = 0; i < z.length; i++) {
-      if (x[i] < 1d / 4d) {
-        z[i] = -1;
-      } else if (x[i] < 2d / 4d) {
-        z[i] = 0;
-      } else if (x[i] < 3d / 4d) {
-        z[i] = 2;
-      } else {
-        z[i] = 1;
-      }
-    }
-    expectedEntropy = Math.log(4); //  ln(b-a) = ln(1)
-    assertThat(Entropy.entropy(z)).isCloseTo(expectedEntropy, within(allowedError));
-    assertThat(DifferentialEntropyMixed.entropy(x, 3))
-        .isCloseTo(expectedEntropy, within(allowedError));
-  }
+  //  @Test
+  //  //  @RepeatedTest(10)
+  //  public void testKnownMixtureOfDistributions() {
+  //    // This test compares the estimated entropy with the exact entropy computed using the exact
+  //    // formulas for the given probability distributions. See formula at:
+  //    // https://en.wikipedia.org/wiki/Differential_entropy
+  //    double expectedEntropy;
+  //    double[] x;
+  //    int N = 10 * 1024;
+  //    //    int N = 4;
+  //    double allowedError = 0.1;
+  //
+  //    //    // entropy for standard normal distribution N(0, 1): ln(var*sqrt(2*pi*e))
+  //    //    x = RandomArrays.randDoubleStdNormal(N); // mean: 0 var: 1
+  //    //    expectedEntropy = Math.log(1 * Math.sqrt(2 * Math.PI * Math.E));
+  //    //    assertThat(DifferentialEntropyMixed.entropy(x, 3)).isCloseTo(expectedEntropy,
+  //    // within(allowedError));
+  //
+  //    // entropy for the exponential distribution with parameter lambda: 1 - ln(lambda)
+  //    //    final double lambda = 2;
+  //    //    x = RandomArrays.randDoubleExponential(N, lambda);
+  //    //    expectedEntropy = 1 - Math.log(lambda);
+  //    //    assertThat(DifferentialEntropyMixed.entropy(x, 3)).isCloseTo(expectedEntropy,
+  //    // within(allowedError));
+  //
+  //    // entropy for uniform distribution in range [a, b] is = ln(b-a)
+  //    x = RandomArrays.randDoubleRademacher(N); // [a, b]=[0, 1]
+  //    int[] z = new int[x.length];
+  //    for (int i = 0; i < z.length; i++) {
+  //      z[i] = (int) x[i];
+  //    }
+  //    expectedEntropy = Math.log(2); //  ln(b-a) = ln(1)
+  //    assertThat(Entropy.entropy(z)).isCloseTo(expectedEntropy, within(allowedError));
+  //
+  //    //    Random rng = new Random(7);
+  //    //    for (int i = 0; i < x.length; i++) {
+  //    //      x[i] += rng.nextGaussian() * 1e-15;
+  //    //    }
+  //    //    assertThat(DifferentialEntropyMixed.entropy(x, 3)).isCloseTo(expectedEntropy,
+  //    // within(allowedError));
+  //
+  //    double[] q = new double[2 * N];
+  //    System.arraycopy(RandomArrays.randDoubleUniform(N + N), 0, q, 0, N + N);
+  //    System.arraycopy(RandomArrays.randDoubleRademacher(N), 0, q, N, N);
+  //    //    System.out.println("q = " + Arrays.toString(q));
+  //    expectedEntropy =
+  //        (Math.log(1)
+  //            + // uniform [0,1]: ln(b-a) = ln(1)
+  //            0 // Math.log(2) // discrete n=2: ln(n) = ln(2)
+  //        );
+  //    assertThat(DifferentialEntropyMixed.entropy(q, 3))
+  //        .isCloseTo(expectedEntropy, within(allowedError));
+  //
+  //    x = RandomArrays.randDoubleUniform(N); // [a, b]=[0, 1]
+  //    z = new int[x.length];
+  //    for (int i = 0; i < z.length; i++) {
+  //      if (x[i] < 1d / 4d) {
+  //        z[i] = -1;
+  //      } else if (x[i] < 2d / 4d) {
+  //        z[i] = 0;
+  //      } else if (x[i] < 3d / 4d) {
+  //        z[i] = 2;
+  //      } else {
+  //        z[i] = 1;
+  //      }
+  //    }
+  //    expectedEntropy = Math.log(4); //  ln(b-a) = ln(1)
+  //    assertThat(Entropy.entropy(z)).isCloseTo(expectedEntropy, within(allowedError));
+  //    assertThat(DifferentialEntropyMixed.entropy(x, 3))
+  //        .isCloseTo(expectedEntropy, within(allowedError));
+  //  }
 }

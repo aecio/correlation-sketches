@@ -25,6 +25,7 @@ public class MutualInformationDiffEnt implements Correlation<MI> {
 
   @Override
   public MI ofCategoricalNumerical(int[] x, double[] y) {
+    // y = Stats.addRandomNoise(y);
     final double ex = Entropy.entropy(x);
     final double ey = DifferentialEntropy.entropy(y, k);
     final double mi = MutualInformationDC.mi(x, y, k);
@@ -33,6 +34,7 @@ public class MutualInformationDiffEnt implements Correlation<MI> {
 
   @Override
   public MI ofNumericalCategorical(double[] x, int[] y) {
+    // x = Stats.addRandomNoise(x);
     final double ex = DifferentialEntropy.entropy(x, k);
     final double ey = Entropy.entropy(y);
     final double mi = MutualInformationDC.mi(y, x, k);

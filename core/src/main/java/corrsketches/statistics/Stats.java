@@ -4,6 +4,7 @@ import static java.lang.Math.log;
 import static java.lang.Math.max;
 
 import java.util.Arrays;
+import java.util.Random;
 import smile.stat.distribution.GaussianDistribution;
 
 public class Stats {
@@ -280,6 +281,25 @@ public class Stats {
       binned[i] = (int) (((data[i] - min) / (max - min) * (bins - 1)) + 0.5);
     }
     return binned;
+  }
+
+  public static double[] addRandomNoise(double[] x) {
+    return addRandomNoise(x, new Random());
+  }
+
+  public static double[] addRandomNoise(double[] x, long seed) {
+    return addRandomNoise(x, new Random(seed));
+  }
+
+  public static double[] addRandomNoise(double[] x, Random rng) {
+    final double TINY = 1e-20;
+    final double mean = mean(x);
+    //    final double mean = 1;
+    double[] xn = Arrays.copyOf(x, x.length);
+    for (int i = 0; i < xn.length; i++) {
+      xn[i] = xn[i] + TINY * mean * rng.nextGaussian();
+    }
+    return xn;
   }
 
   public enum TiesMethod {
