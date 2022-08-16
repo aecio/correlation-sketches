@@ -4,13 +4,21 @@ import static java.lang.Math.abs;
 
 public class NearestNeighbors1D {
 
-  static int countPointsInRange(double[] data, double min, double max) {
+  public static int countPointsInRange(double[] data, double min, double max) {
     return (int) Math.floor(findPoint(data, max) - findPoint(data, min));
   }
 
-  static double findPoint(double[] c, double target) {
+  public static int countPointsInRange(double[] data, int dataEnd, double min, double max) {
+    return (int) Math.floor(findPoint(data, dataEnd, max) - findPoint(data, dataEnd, min));
+  }
+
+  public static double findPoint(double[] c, double target) {
+    return findPoint(c, c.length, target);
+  }
+
+  public static double findPoint(double[] c, int cEnd, double target) {
     int left = 1;
-    int right = c.length;
+    int right = cEnd;
 
     if (target < c[left - 1]) {
       return 0.5;
@@ -46,9 +54,13 @@ public class NearestNeighbors1D {
     return nn;
   }
 
-  public static void kthNearest(double[] data, final int target, int k, NearestNeighbor nn) {
+  public static void kthNearest(double[] data, int target, int k, NearestNeighbor nn) {
+    kthNearest(data, data.length, target, k, nn);
+  }
+
+  public static void kthNearest(double[] data, int dataEnd, int target, int k, NearestNeighbor nn) {
     // k must be at most the size of the input minus 1
-    final int maxK = data.length - 1;
+    final int maxK = dataEnd - 1;
     int localK = Math.min(k, maxK);
     double c = data[target];
 
@@ -60,7 +72,7 @@ public class NearestNeighbors1D {
       if (left == 0) {
         right++;
         theNeighbor = right;
-      } else if (right == data.length - 1) {
+      } else if (right == dataEnd - 1) {
         left--;
         theNeighbor = left;
       } else if (abs(data[left - 1] - c) < abs(data[right + 1] - c)) {
@@ -84,9 +96,14 @@ public class NearestNeighbors1D {
     return nn;
   }
 
-  public static void kthNearestNonZero(double[] data, final int target, int k, NearestNeighbor nn) {
+  public static void kthNearestNonZero(double[] data, int target, int k, NearestNeighbor nn) {
+    kthNearestNonZero(data, data.length, target, k, nn);
+  }
+
+  public static void kthNearestNonZero(
+      double[] data, int dataEnd, int target, int k, NearestNeighbor nn) {
     // k must be at most the size of the input minus 1
-    final int maxK = data.length - 1;
+    final int maxK = dataEnd - 1;
     int localK = Math.min(k, maxK);
 
     double c = data[target];
@@ -98,7 +115,7 @@ public class NearestNeighbors1D {
       if (left == 0) {
         right++;
         theNeighbor = right;
-      } else if (right == data.length - 1) {
+      } else if (right == dataEnd - 1) {
         left--;
         theNeighbor = left;
       } else if (abs(data[left - 1] - c) < abs(data[right + 1] - c)) {
@@ -135,11 +152,11 @@ public class NearestNeighbors1D {
     nn.left = (theNeighbor == left);
   }
 
-  static class NearestNeighbor {
+  public static class NearestNeighbor {
 
-    int k;
-    double kthNearest;
-    double distance;
-    boolean left;
+    public int k;
+    public double kthNearest;
+    public double distance;
+    public boolean left;
   }
 }

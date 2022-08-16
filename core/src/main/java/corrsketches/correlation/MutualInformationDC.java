@@ -4,6 +4,8 @@ import static java.lang.Math.log;
 import static java.lang.Math.max;
 import static smile.math.special.Gamma.digamma;
 
+import corrsketches.statistics.NearestNeighbors1D;
+import corrsketches.statistics.NearestNeighbors1D.NearestNeighbor;
 import corrsketches.util.Sorting;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -22,124 +24,107 @@ import java.util.List;
 public class MutualInformationDC {
 
   public static double mi(int[] d, double[] c) {
-    return miNonNegative(d, c, 3, Math.E);
+    return miNonNegative(d, c, 3);
   }
 
   public static double mi(int[] d, double[] c, int k) {
-    return miNonNegative(d, c, k, Math.E);
+    return miNonNegative(d, c, k);
   }
 
   static double miNonNegative(final int[] d, final double[] c, final int k, final double base) {
-    return max(0, miRaw(d, c, k, base));
+    return miNonNegative(d, c, k) / log(base);
+  }
+
+  static double miNonNegative(final int[] d, final double[] c, final int k) {
+    return max(0, miRaw(d, c, k));
+  }
+
+  static double miRaw(
+      final int[] discrete, final double[] continuous, final int k, final double base) {
+    return miRaw(discrete, continuous, k) / log(base);
   }
 
   /**
-   * Computes the mutual information between the array {@param discrete} and the array {@param
+   * Computes the mutual information between the array {@code discrete} and the array {@code
    * continuous} using the estimator described in the paper: Ross, Brian C. "Mutual information
    * between discrete and continuous data sets." PloS one 9, no. 2 (2014): e87357.
    *
    * @param discrete a vector of discrete values represented as integers
    * @param continuous a vector of continuous variables
    * @param k the number k-nearest neighbors
-   * @param base the base of the log
    * @return the mutual information estimate.
    */
-  static double miRaw(
-      final int[] discrete, final double[] continuous, final int k, final double base) {
+  static double miRaw(final int[] discrete, final double[] continuous, final int k) {
 
     // Make copy to avoid mutating original data
     final int[] d = Arrays.copyOf(discrete, discrete.length);
     final double[] c = Arrays.copyOf(continuous, continuous.length);
 
     // Sort the data by the continuous variable 'c'
-    sort(d, c);
+    sort(c, d);
 
-    //
-    // Bin the continuous data 'c' according to the discrete symbols 'd'
-    //
-    List<DoubleArrayList> c_split = binContinuousData(d, c);
+    // Group the continuous data 'c' according to the discrete symbols in 'd'
+    List<DoubleArrayList> c_split = groupContinuousByCategories(d, c);
     final int num_d_symbols = c_split.size();
 
     //
     // Compute the neighbor statistic for each data pair (c, d)
     // using the binned c_split list
     //
-    double m_tot = 0;
-    double av_psi_Nd = 0;
-    double psi_ks = 0;
-
+    double psi_m_sum = 0;
+    double psi_Nd_avg = 0;
+    double psi_k_avg = 0;
     final int N = d.length;
-
+    final NearestNeighbor nn = new NearestNeighbor();
     for (final DoubleArrayList split : c_split) {
       int one_k = Math.min(k, split.size() - 1);
       if (one_k > 0) {
-        for (int pivot = 1; pivot <= split.size(); pivot++) {
+        for (int i = 0; i < split.size(); i++) {
           // find the radius of our volume using only those samples with
           // the particular value of the discrete symbol 'd'
-          int leftNeighbor = pivot;
-          int rightNeighbor = pivot;
-          int theNeighbor = -1; // initial value not used, but needed to make compiler happy
+          NearestNeighbors1D.kthNearest(split.elements(), split.size(), i, one_k, nn);
 
-          double one_c = split.getDouble(pivot - 1);
-
-          for (int ck = 1; ck <= one_k; ck++) {
-            if (leftNeighbor == 1) {
-              rightNeighbor = rightNeighbor + 1;
-              theNeighbor = rightNeighbor;
-            } else if (rightNeighbor == split.size()) {
-              leftNeighbor = leftNeighbor - 1;
-              theNeighbor = leftNeighbor;
-            } else if (Math.abs(split.getDouble(leftNeighbor - 1 - 1) - one_c)
-                < Math.abs(split.getDouble(rightNeighbor + 1 - 1) - one_c)) {
-              leftNeighbor = leftNeighbor - 1;
-              theNeighbor = leftNeighbor;
-            } else {
-              rightNeighbor = rightNeighbor + 1;
-              theNeighbor = rightNeighbor;
-            }
-          }
-          double distance_to_neighbor = Math.abs(split.getDouble(theNeighbor - 1) - one_c);
-
-          //
           // count the number of total samples within our volume using all samples
-          // (all values of 'd')
-          //
-          double m;
-          if (theNeighbor == leftNeighbor) {
-            final double target = split.getDouble(leftNeighbor - 1);
-            m = Math.floor(findPoint(c, one_c + distance_to_neighbor) - findPoint(c, target));
+          // (all values of 'c')
+          final double one_c = split.getDouble(i);
+          final double min;
+          final double max;
+          if (nn.left) {
+            min = nn.kthNearest;
+            max = one_c + nn.distance;
           } else {
-            final double target = split.getDouble(rightNeighbor - 1);
-            m = Math.floor(findPoint(c, target) - findPoint(c, one_c - distance_to_neighbor));
+            min = one_c - nn.distance;
+            max = nn.kthNearest;
           }
+          double m = NearestNeighbors1D.countPointsInRange(c, c.length, min, max);
           if (m < one_k) {
             m = one_k;
           }
 
-          m_tot = m_tot + digamma(m);
+          psi_m_sum += digamma(m);
         }
       } else {
-        m_tot = m_tot + digamma(num_d_symbols * 2);
+        psi_m_sum += digamma(num_d_symbols * 2);
       }
 
       final double p_d = split.size() / (double) N;
-      av_psi_Nd += p_d * digamma(p_d * N);
-      psi_ks += p_d * digamma(Math.max(one_k, 1));
+      psi_Nd_avg += p_d * digamma(p_d * N);
+      psi_k_avg += p_d * digamma(Math.max(one_k, 1));
     }
 
     // In the comments below, <> indicates average, and
     // psi is the digamma function described in the paper
     return (digamma(N) // psi(N)
-            - av_psi_Nd // < psi(N_x) >
-            + psi_ks // < psi(k) >
-            - (m_tot / (double) N) // < psi(m) >
-        )
-        / log(base);
+        - psi_Nd_avg // < psi(N_x) >
+        + psi_k_avg // < psi(k) >
+        - (psi_m_sum / (double) N) // < psi(m) >
+    );
   }
 
   /**
-   * Groups the continuous values in array {@param c} according to the discrete values in {@param d}
-   * that they are paired with.
+   * Groups the continuous values in array {@code c} according to the discrete values in {@code d}
+   * that they are paired with. This method assumes that the input is ordered by the continuous
+   * variable {@code c}, and also returns the numerical splits sorted.
    *
    * @param d an array containing discrete values
    * @param c an array containing continuous values
@@ -148,7 +133,7 @@ public class MutualInformationDC {
    *     doubles are the list of continuous values associated with the discrete value represented by
    *     the index of the outer list.
    */
-  private static List<DoubleArrayList> binContinuousData(int[] d, double[] c) {
+  private static List<DoubleArrayList> groupContinuousByCategories(int[] d, double[] c) {
     List<DoubleArrayList> cSplit = new ArrayList<>();
     IntArrayList firstSymbol = new IntArrayList();
     int numSymbols = 0;
@@ -179,40 +164,7 @@ public class MutualInformationDC {
     return cSplit;
   }
 
-  /** findpt() finds the data point whose value for the continuous variable is closest to 'c'. */
-  static double findPoint(double[] c, double target) {
-    int left = 1;
-    int right = c.length;
-
-    if (target < c[left - 1]) {
-      return 0.5;
-    } else if (target > c[right - 1]) {
-      return right + 0.5;
-    }
-
-    double pt = -1;
-    while (left != right) {
-      pt = (left + right) / 2;
-      if (c[(int) pt - 1] < target) {
-        left = (int) pt;
-      } else {
-        right = (int) pt;
-      }
-      if (left + 1 == right) {
-        if (c[left - 1] == target) {
-          pt = left;
-        } else if (c[right - 1] == target) {
-          pt = right;
-        } else {
-          pt = (right + left) / 2d;
-        }
-        break;
-      }
-    }
-    return pt;
-  }
-
-  private static void sort(int[] d, double[] c) {
+  private static void sort(double[] c, int[] d) {
     Sorting.sort(
         new Sorting.Sortable() {
           @Override
