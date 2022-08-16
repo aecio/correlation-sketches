@@ -32,17 +32,13 @@ import smile.sort.HeapSelect;
 public class KDTree {
 
   /** The set of points being indexed in the KD-tree. */
-  private double[][] keys;
+  private final double[][] keys;
   /** The root node of the KD-Tree. */
-  private Node root;
+  private final Node root;
   /** The index of each node. */
-  private int[] index;
+  private final int[] index;
   /** The default distance metric used to query the points. */
   private final Distance distance;
-
-  public KDTree(double[][] key) {
-    this(key, Distance.EUCLIDEAN);
-  }
 
   /**
    * Constructor.
@@ -335,7 +331,7 @@ public class KDTree {
   }
 
   /** The root in the KD-tree. */
-  class Node {
+  static class Node {
 
     /** Number of dataset stored in this node. */
     int count;
