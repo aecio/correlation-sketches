@@ -1,7 +1,6 @@
 package corrsketches.benchmark;
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
-import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
@@ -139,12 +138,6 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
       // correlation is defined only for vectors of length at least two
       if (join.a.values.length < MINIMUM_INTERSECTION) {
-        continue;
-      }
-
-      // FIXME: Remove this when numerical-numerical MI is implemented
-      if (columnA.columnValueType == ColumnType.NUMERICAL
-          && columnB.columnValueType == ColumnType.NUMERICAL) {
         continue;
       }
 
