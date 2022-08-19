@@ -12,7 +12,7 @@ import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.MutualInformation.MI;
-import corrsketches.correlation.MutualInformationDiffEnt;
+import corrsketches.correlation.MutualInformationDiffEntMixed;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -114,7 +114,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   private static void estimateMutualInfoFromSketchJoin(Result result, Join join) {
-    MI mi = MutualInformationDiffEnt.INSTANCE.of(join.x, join.y);
+    MI mi = MutualInformationDiffEntMixed.INSTANCE.of(join.x, join.y);
     result.mi_est = mi.value;
     result.join_size_sketch = mi.sampleSize;
     result.nmi_sqrt_est = mi.nmiSqrt();
@@ -147,7 +147,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.xtype = join.a.type.toString();
       r.ytype = join.b.type.toString();
 
-      MI mi = MutualInformationDiffEnt.INSTANCE.of(join.a, join.b);
+      MI mi = MutualInformationDiffEntMixed.INSTANCE.of(join.a, join.b);
       r.mi_actual = mi.value;
       r.nmi_sqrt_actual = mi.nmiSqrt();
       r.nmi_max_actual = mi.nmiMax();
