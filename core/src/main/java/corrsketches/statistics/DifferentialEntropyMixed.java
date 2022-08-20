@@ -45,6 +45,11 @@ public class DifferentialEntropyMixed {
     double[] distances = new double[x.length];
     for (int i = 0; i < x.length; i++) {
       kthNearestNonZero(x, i, k, nn);
+      if (nn.distance == 0.0) {
+        // if the returned distance is zero, then all points are equal
+        // and the result will be -Infinity since log(0) = -Infinity.
+        return Double.NEGATIVE_INFINITY;
+      }
       distances[i] = log(nn.distance) - digamma(nn.k);
     }
     return digamma(N) + LOG_CD + (1 / N) * sum(distances);

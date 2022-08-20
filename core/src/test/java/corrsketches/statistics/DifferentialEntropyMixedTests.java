@@ -14,13 +14,13 @@ public class DifferentialEntropyMixedTests {
   @Test
   public void testDifferentialEntropyKL() {
 
-    double[] a = new double[] {1, 2, 4, 8, 16};
-    assertThat(DifferentialEntropyMixed.entropy(a)).isEqualTo(3.218266805508045, within(DELTA));
+    double[] x = new double[] {1, 2, 4, 8, 16};
+    assertThat(DifferentialEntropyMixed.entropy(x)).isEqualTo(3.218266805508045, within(DELTA));
 
-    double[] b = new double[] {1, 2, 1, 2, 1.2};
-    assertThat(DifferentialEntropyMixed.entropy(b)).isCloseTo(1.2318518036304367, within(DELTA));
+    x = new double[] {1, 2, 1, 2, 1.2};
+    assertThat(DifferentialEntropyMixed.entropy(x)).isCloseTo(1.2318518036304367, within(DELTA));
 
-    double[] c =
+    x =
         new double[] {
           -0.59152691,
           -0.21027888,
@@ -38,10 +38,17 @@ public class DifferentialEntropyMixedTests {
           -0.26985764,
           0.1365975
         };
-    assertThat(DifferentialEntropyMixed.entropy(c)).isCloseTo(1.2231987815353995, within(DELTA));
+    assertThat(DifferentialEntropyMixed.entropy(x)).isCloseTo(1.2231987815353995, within(DELTA));
+
+    x = new double[] {1, 1};
+    assertThat(DifferentialEntropyMixed.entropy(x))
+        .isEqualTo(Double.NEGATIVE_INFINITY, within(DELTA));
+
+    x = new double[] {1, 1, 1, 1, 1, 1, 1};
+    assertThat(DifferentialEntropyMixed.entropy(x))
+        .isEqualTo(Double.NEGATIVE_INFINITY, within(DELTA));
   }
 
-  @Test
   @RepeatedTest(10)
   public void testKnownDistributions() {
     // This test compares the estimated entropy with the exact entropy computed using the exact

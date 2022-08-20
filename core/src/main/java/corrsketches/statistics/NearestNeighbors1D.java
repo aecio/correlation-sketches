@@ -128,7 +128,7 @@ public class NearestNeighbors1D {
     }
     double distance = abs(data[theNeighbor] - c);
     if (distance == 0) {
-      while (localK <= maxK && distance == 0) {
+      while (localK < maxK && distance == 0) {
         if (left == 0) {
           right++;
           theNeighbor = right;
