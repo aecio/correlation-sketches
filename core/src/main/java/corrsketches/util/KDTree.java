@@ -274,7 +274,12 @@ public class KDTree {
       throw new IllegalArgumentException("Value of k must be at least 1, but got: " + k);
     }
     if (k > keys.length) {
-      throw new IllegalArgumentException("Neighbor array length is larger than the dataset size");
+      throw new IllegalArgumentException(
+          "Number of nearest neighbors (k="
+              + k
+              + ") cannot be greater than the dataset size (n="
+              + keys.length
+              + ")");
     }
 
     Neighbor neighbor = new Neighbor(null, 0, Double.MAX_VALUE);

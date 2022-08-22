@@ -80,4 +80,24 @@ public class MutualInformationMixedKSGTest {
     assertThat(MutualInformationMixedKSG.mi(x, y, k))
         .isCloseTo(0.05083250392732497, byLessThan(DELTA));
   }
+
+  @Test
+  public void shouldNotFailWhenKParamIsLargerThanDataLength() {
+    // the estimator should work for vectors with different sizes n
+    for (int n = 2; n < 10; n++) {
+      // x and y data will have the form [0, 1, ..., n-1]
+      double[] x = new double[n];
+      double[] y = new double[n];
+      for (int i = 0; i < n; i++) {
+        x[i] = i;
+        y[i] = i;
+      }
+
+      // compute mi for k in range k .. n+1
+      for (int k = 1; k < n + 1; k++) {
+        final double mi = MutualInformationMixedKSG.mi(x, y, k);
+        assertThat(mi).isFinite();
+      }
+    }
+  }
 }

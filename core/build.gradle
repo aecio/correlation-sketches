@@ -12,5 +12,6 @@ dependencies {
     testImplementation libraries.slf4j_nop
     testImplementation libraries.assertj_core
     testImplementation libraries.junit_jupiter_api
+    testImplementation libraries.junit_jupiter_params
     testRuntimeOnly libraries.junit_jupiter_engine
 }

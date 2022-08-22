@@ -33,15 +33,16 @@ public class MutualInformationMixedKSG {
    * @param k the number k-nearest neighbors
    * @return the mutual information estimate.
    */
-  public static double mi(final double[] x, final double[] y, final int k) {
+  public static double mi(final double[] x, final double[] y, int k) {
     if (x.length != y.length) {
       throw new IllegalArgumentException("Arrays x and y must have the same length.");
     }
-
     final int N = x.length;
     final double[][] xy = new double[N][2];
     final double[][] x1 = new double[N][1];
     final double[][] y1 = new double[N][1];
+
+    k = Math.min(k, x.length - 1); // k cannot exceed the vector size -1
 
     for (int i = 0; i < N; i++) {
       xy[i][0] = x[i];
