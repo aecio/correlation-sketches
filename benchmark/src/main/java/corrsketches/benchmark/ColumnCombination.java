@@ -18,10 +18,10 @@ public class ColumnCombination {
     this.y = y;
   }
 
-  public static Set<ColumnCombination> createColumnCombinations(
+  public static List<ColumnCombination> createColumnCombinations(
       Set<Set<String>> allColumns, Boolean intraDatasetCombinations, int maxColumnsSamples) {
 
-    Set<ColumnCombination> result = new HashSet<>();
+    List<ColumnCombination> result = new ArrayList<>();
 
     if (intraDatasetCombinations) {
       for (Set<String> c : allColumns) {

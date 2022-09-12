@@ -12,14 +12,13 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -65,6 +64,14 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       description = "The maximum number of columns to consider for creating combinations.")
   private int maxSamples = 5000;
 
+  @Option(names = "--total-tasks", description = "The to number of tasks to split the computation.")
+  private int totalTasks = -1;
+
+  @Option(
+      names = "--task-id",
+      description = "The id of this task, a number in the range [0, <total-tasks> - 1]")
+  private int taskId = -1;
+
   @Option(
       names = "--cpu-cores",
       description = "Number of CPU core to use. Default is to use all cores available.")
@@ -79,6 +86,11 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
   @Override
   public void execute() throws Exception {
+    if (totalTasks > 0 && taskId < 0) {
+      System.out.printf("taskId=[%d] must be a number from 0 to %d (total-tasks)\n", totalTasks);
+      System.exit(1);
+    }
+
     List<SketchParams> sketchParamsList = SketchParams.parse(this.sketchParams);
     System.out.println("> SketchParams: " + this.sketchParams);
 
@@ -96,16 +108,22 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
         "> Found  " + columnSets.size() + " column pair sets in DB stored at " + inputPath);
 
     System.out.println("\n> Computing column statistics for all column combinations...");
-    Set<ColumnCombination> combinations =
+    List<ColumnCombination> combinations =
         ColumnCombination.createColumnCombinations(
             columnSets, intraDatasetCombinations, maxSamples);
 
     String baseInputPath = Paths.get(inputPath).getFileName().toString();
-    String filename =
-        String.format(
-            "%s_bench-type=%s_sketch-params=%s.csv",
-            baseInputPath, benchmarkType.toString(), sketchParams.toLowerCase());
-
+    String filename;
+    if (totalTasks <= 0) {
+      filename =
+          String.format(
+              "%s_bench-type=%s_sketch-params=%s.csv",
+              baseInputPath, benchmarkType.toString(), sketchParams.toLowerCase());
+    } else {
+      filename = String.format(
+              "%s_bench-type=%s_sketch-params=%s_task-id=%d_total_tasks=%d.csv",
+              baseInputPath, benchmarkType.toString(), sketchParams.toLowerCase(), taskId, totalTasks);
+    }
     Files.createDirectories(Paths.get(outputPath));
     FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
 
@@ -123,7 +141,20 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
     resultsFile.write(bench.csvHeader() + "\n");
 
-    System.out.println("Number of combinations: " + combinations.size());
+    System.out.println("Total number of column combinations: " + combinations.size());
+    final Stream<ColumnCombination> stream;
+    if (totalTasks > 1) {
+      List<ColumnCombination> thisTaskCombinations =
+          IntStream.range(0, combinations.size())
+              .filter(i -> i % totalTasks == taskId)
+              .mapToObj(combinations::get)
+              .collect(Collectors.toList());
+      System.out.println("Column combinations for this task: " + thisTaskCombinations.size());
+      stream = thisTaskCombinations.stream();
+    } else {
+      stream = combinations.stream();
+    }
+
     final AtomicInteger processed = new AtomicInteger(0);
     final int total = combinations.size();
 
@@ -134,7 +165,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     List<AggregateFunction> finalAggregations = aggregations;
     Runnable task =
         () ->
-            combinations.stream()
+            stream
                 .parallel()
                 .map(
                     (ColumnCombination columnPair) -> {
