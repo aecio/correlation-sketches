@@ -120,9 +120,14 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
               "%s_bench-type=%s_sketch-params=%s.csv",
               baseInputPath, benchmarkType.toString(), sketchParams.toLowerCase());
     } else {
-      filename = String.format(
+      filename =
+          String.format(
               "%s_bench-type=%s_sketch-params=%s_task-id=%d_total_tasks=%d.csv",
-              baseInputPath, benchmarkType.toString(), sketchParams.toLowerCase(), taskId, totalTasks);
+              baseInputPath,
+              benchmarkType.toString(),
+              sketchParams.toLowerCase(),
+              taskId,
+              totalTasks);
     }
     Files.createDirectories(Paths.get(outputPath));
     FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
