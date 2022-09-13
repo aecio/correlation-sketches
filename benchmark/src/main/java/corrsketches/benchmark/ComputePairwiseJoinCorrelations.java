@@ -143,6 +143,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
     System.out.println("Total number of column combinations: " + combinations.size());
     final Stream<ColumnCombination> stream;
+    final int total;
     if (totalTasks > 1) {
       List<ColumnCombination> thisTaskCombinations =
           IntStream.range(0, combinations.size())
@@ -151,12 +152,13 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
               .collect(Collectors.toList());
       System.out.println("Column combinations for this task: " + thisTaskCombinations.size());
       stream = thisTaskCombinations.stream();
+      total = thisTaskCombinations.size();
     } else {
       stream = combinations.stream();
+      total = combinations.size();
     }
 
     final AtomicInteger processed = new AtomicInteger(0);
-    final int total = combinations.size();
 
     Cache<String, ColumnPair> cache = CacheBuilder.newBuilder().softValues().build();
 
