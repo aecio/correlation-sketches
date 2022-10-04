@@ -4,7 +4,7 @@ import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
+import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.BootstrapedPearson;
 import corrsketches.correlation.PearsonCorrelation;

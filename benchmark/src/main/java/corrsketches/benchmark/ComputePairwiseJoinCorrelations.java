@@ -2,9 +2,9 @@ package corrsketches.benchmark;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import corrsketches.SketchType;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
+import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.CliTool;
 import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.FileWriter;
@@ -139,7 +139,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       bench = new CorrelationStatsBenchmark();
     } else if (benchmarkType == BenchmarkType.MI) {
       aggregations = Arrays.asList(AggregateFunction.MOST_FREQUENT);
-      bench = new MutualInformationBenchmark();
+      bench = new MutualInformationBenchmark(true);
     } else {
       throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
     }
@@ -179,7 +179,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
                       ColumnPair x = getColumnPair(cache, columnStore, columnPair.x);
                       ColumnPair y = getColumnPair(cache, columnStore, columnPair.y);
                       List<String> results = bench.run(x, y, sketchParamsList, finalAggregations);
-                      return toCSV(processed, total, results);
+                      reportProgress(processed, total);
+                      return toCSV(results);
                     })
                 .forEach(writeCSV(resultsFile));
     forkJoinPool.submit(task).get();
@@ -190,7 +191,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }
 
-  private List<AggregateFunction> parseAggregations(String functions) {
+  static List<AggregateFunction> parseAggregations(String functions) {
     if (functions == null || functions.isEmpty()) {
       System.out.println("No aggregate functions configured. Using default: FIRST");
       return Collections.singletonList(AggregateFunction.FIRST);
@@ -210,15 +211,17 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     return aggregateFunctions;
   }
 
-  private String toCSV(AtomicInteger processed, double total, List<String> results) {
+  static void reportProgress(AtomicInteger processed, int total) {
     int current = processed.incrementAndGet();
     if (current % 1000 == 0) {
-      double percent = 100 * current / total;
+      double percent = 100 * current / (double) total;
       synchronized (System.out) {
         System.out.printf("Progress: %.3f%%\n", percent);
       }
     }
+  }
 
+  protected static String toCSV(List<String> results) {
     if (results == null || results.isEmpty()) {
       return "";
     } else {
@@ -230,17 +233,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     }
   }
 
-  private ColumnPair getColumnPair(
-      Cache<String, ColumnPair> cache, StringObjectKVDB<ColumnPair> db, String key) {
-    ColumnPair cp = cache.getIfPresent(key);
-    if (cp == null) {
-      cp = db.get(key);
-      cache.put(key, cp);
-    }
-    return cp;
-  }
-
-  private Consumer<String> writeCSV(FileWriter file) {
+  protected static Consumer<String> writeCSV(FileWriter file) {
     return (String line) -> {
       if (!line.isEmpty()) {
         synchronized (file) {
@@ -255,42 +248,14 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     };
   }
 
-  public static class SketchParams {
-
-    public final SketchType type;
-    public final double budget;
-
-    public SketchParams(SketchType type, double budget) {
-      this.type = type;
-      this.budget = budget;
+  private ColumnPair getColumnPair(
+          Cache<String, ColumnPair> cache, StringObjectKVDB<ColumnPair> db, String key) {
+    ColumnPair cp = cache.getIfPresent(key);
+    if (cp == null) {
+      cp = db.get(key);
+      cache.put(key, cp);
     }
-
-    public static List<SketchParams> parse(String params) {
-      String[] values = params.split(",");
-      List<SketchParams> result = new ArrayList<>();
-      for (String value : values) {
-        result.add(parseValue(value.trim()));
-      }
-      if (result.isEmpty()) {
-        throw new IllegalArgumentException(
-            String.format("[%s] does not have any valid sketch parameters", params));
-      }
-      return result;
-    }
-
-    public static SketchParams parseValue(String params) {
-      String[] values = params.split(":");
-      if (values.length == 2) {
-        return new SketchParams(
-            SketchType.valueOf(values[0].trim()), Double.parseDouble(values[1].trim()));
-      } else {
-        throw new IllegalArgumentException(String.format("[%s] is not a valid parameter", params));
-      }
-    }
-
-    @Override
-    public String toString() {
-      return type.toString() + ":" + budget;
-    }
+    return cp;
   }
+
 }

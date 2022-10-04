@@ -8,7 +8,7 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
-import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
+import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.MutualInformation.MI;
@@ -17,13 +17,29 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
   public static final int MINIMUM_INTERSECTION = 3; // minimum sample size for correlation is 2
+  private boolean isSyntheticBivNormal;
+  private final Pattern corrPattern;
 
-  public MutualInformationBenchmark() {
+  public MutualInformationBenchmark(boolean isSyntheticBivNormal) {
     super(Result.class);
+    this.isSyntheticBivNormal = isSyntheticBivNormal;
+    this.corrPattern =  isSyntheticBivNormal ? Pattern.compile("_r=([-]?\\d{1}\\.\\d{2})_") : null;
+  }
+
+  float extractCorrelation(String datasetId) {
+    System.out.println(corrPattern.toString());
+    Matcher matcher = corrPattern.matcher(datasetId);
+    if (!matcher.find()) {
+      throw new IllegalStateException("Couldn't extract true correlation from dataset ID: " + datasetId + ". Is this really a synthetic bivariate normal dataset?");
+    }
+    String corr = matcher.group(1);
+    return Float.parseFloat(corr);
   }
 
   public List<String> run(
@@ -32,15 +48,22 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       List<SketchParams> sketchParams,
       List<AggregateFunction> functions) {
 
-    List<Result> groundTruthResults = computeFullJoinStatistics(x, y, functions);
+    Result result = new Result();
+
+    if (corrPattern != null) {
+      float correlation = extractCorrelation(x.datasetId);
+      System.out.println(x.datasetId + "  "  + correlation);
+      result.true_corr = correlation;
+    }
+
+    List<Result> groundTruthResults = computeFullJoinStatistics(x, y, functions, result);
 
     List<String> results = new ArrayList<>();
-    for (Result result : groundTruthResults) {
+    for (Result r : groundTruthResults) {
       // we don't need to report column pairs that have no intersection at all
-      if (Double.isFinite(result.interxy_actual) && result.interxy_actual >= 2) {
+      if (Double.isFinite(r.interxy_actual) && r.interxy_actual >= 2) {
         for (SketchParams params : sketchParams) {
-          var r = computeSketchStatistics(result.clone(), x, y, params, result.aggregate);
-          results.add(toCsvLine(r));
+          results.add(toCsvLine(computeSketchStatistics(r.clone(), x, y, params, r.aggregate)));
         }
       }
     }
@@ -49,9 +72,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   private static List<Result> computeFullJoinStatistics(
-      ColumnPair x, ColumnPair y, List<AggregateFunction> functions) {
-
-    Result result = new Result();
+      ColumnPair x, ColumnPair y, List<AggregateFunction> functions, Result result) {
 
     HashSet<String> xKeys = new HashSet<>(x.keyValues);
     HashSet<String> yKeys = new HashSet<>(y.keyValues);
@@ -199,6 +220,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public String parameters;
     public String columnId;
     public AggregateFunction aggregate;
+
+    public float true_corr;
 
     @JsonUnwrapped public JoinStats join_stats;
 

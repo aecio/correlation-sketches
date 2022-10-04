@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.benchmark.ComputePairwiseJoinCorrelations.SketchParams;
+import corrsketches.benchmark.params.SketchParams;
 import java.util.List;
 
 public interface Benchmark {
