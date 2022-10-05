@@ -139,7 +139,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       bench = new CorrelationStatsBenchmark();
     } else if (benchmarkType == BenchmarkType.MI) {
       aggregations = Arrays.asList(AggregateFunction.MOST_FREQUENT);
-      bench = new MutualInformationBenchmark(true);
+      bench = new MutualInformationBenchmark();
     } else {
       throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
     }
@@ -249,7 +249,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
   }
 
   private ColumnPair getColumnPair(
-          Cache<String, ColumnPair> cache, StringObjectKVDB<ColumnPair> db, String key) {
+      Cache<String, ColumnPair> cache, StringObjectKVDB<ColumnPair> db, String key) {
     ColumnPair cp = cache.getIfPresent(key);
     if (cp == null) {
       cp = db.get(key);
@@ -257,5 +257,4 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     }
     return cp;
   }
-
 }

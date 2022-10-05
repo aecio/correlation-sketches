@@ -8,8 +8,8 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
-import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
+import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.MutualInformation.MI;
 import corrsketches.correlation.MutualInformationDiffEntMixed;
@@ -20,7 +20,7 @@ import java.util.List;
 //import java.util.regex.Matcher;
 //import java.util.regex.Pattern;
 
-public class MutualInformationBenchmark extends BaseBenchmark<Result> {
+public class SynthMutualInformationBenchmark extends BaseBenchmark<Result> {
 
   public static final int MINIMUM_INTERSECTION = 3; // minimum sample size for correlation is 2
 //  private boolean isSyntheticBivNormal;
@@ -32,7 +32,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 //    this.corrPattern =  isSyntheticBivNormal ? Pattern.compile("_r=([-]?\\d{1}\\.\\d{2})_") : null;
 //  }
 
-  public MutualInformationBenchmark() {
+  public SynthMutualInformationBenchmark() {
     super(Result.class);
   }
 
@@ -48,7 +48,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
   @Override
   public List<Result> run(
-      Colu
+      SyntheticMutualInfoBenchmark.ColumnCombination
       ColumnPair x,
       ColumnPair y,
       List<SketchParams> sketchParams,
