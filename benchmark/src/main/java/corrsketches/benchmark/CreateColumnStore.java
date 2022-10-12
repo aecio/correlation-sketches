@@ -147,7 +147,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
     return Paths.get(outputPath, "column-metadata.txt");
   }
 
-  static ColumnStoreMetadata readMetadata(String outputPath) throws IOException {
+  public static ColumnStoreMetadata readMetadata(String outputPath) throws IOException {
 
     List<String> lines = Files.readAllLines(getMetadataFilePath(outputPath));
 
@@ -315,8 +315,8 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
   public static class ColumnStoreMetadata {
 
-    final DBType dbType;
-    final Set<Set<String>> columnSets;
+    public final DBType dbType;
+    public final Set<Set<String>> columnSets;
 
     public ColumnStoreMetadata(DBType dbType, Set<Set<String>> columnSets) {
       this.columnSets = columnSets;

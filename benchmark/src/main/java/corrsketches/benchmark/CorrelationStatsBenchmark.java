@@ -6,6 +6,7 @@ import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
 import corrsketches.benchmark.PerfResult.ComputingTime;
+import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.BootstrapedPearson;
@@ -30,11 +31,10 @@ public class CorrelationStatsBenchmark implements Benchmark {
 
   @Override
   public List<String> run(
-      ColumnPair x,
-      ColumnPair y,
+      ColumnCombination combination,
       List<SketchParams> sketchParams,
       List<AggregateFunction> functions) {
-    return computeStatistics(x, y, sketchParams, functions);
+    return computeStatistics(combination.getX(), combination.getY(), sketchParams, functions);
   }
 
   @Override

@@ -8,7 +8,8 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
-import corrsketches.benchmark.MutualInformationBenchmark.Result;
+import corrsketches.benchmark.SyntheticMutualInformationBenchmark.Result;
+import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.MutualInformation.MI;
@@ -17,51 +18,25 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-//import java.util.regex.Matcher;
-//import java.util.regex.Pattern;
 
-public class SynthMutualInformationBenchmark extends BaseBenchmark<Result> {
+public class SyntheticMutualInformationBenchmark extends BaseBenchmark<Result> {
 
   public static final int MINIMUM_INTERSECTION = 3; // minimum sample size for correlation is 2
-//  private boolean isSyntheticBivNormal;
-//  private final Pattern corrPattern;
 
-//  public MutualInformationBenchmark(boolean isSyntheticBivNormal) {
-//    super(Result.class);
-//    this.isSyntheticBivNormal = isSyntheticBivNormal;
-//    this.corrPattern =  isSyntheticBivNormal ? Pattern.compile("_r=([-]?\\d{1}\\.\\d{2})_") : null;
-//  }
-
-  public SynthMutualInformationBenchmark() {
+  public SyntheticMutualInformationBenchmark() {
     super(Result.class);
   }
 
-//  float extractCorrelation(String datasetId) {
-//    System.out.println(corrPattern.toString());
-//    Matcher matcher = corrPattern.matcher(datasetId);
-//    if (!matcher.find()) {
-//      throw new IllegalStateException("Couldn't extract true correlation from dataset ID: " + datasetId + ". Is this really a synthetic bivariate normal dataset?");
-//    }
-//    String corr = matcher.group(1);
-//    return Float.parseFloat(corr);
-//  }
-
-  @Override
-  public List<Result> run(
-      SyntheticMutualInfoBenchmark.ColumnCombination
-      ColumnPair x,
-      ColumnPair y,
+  //  @Override
+  public List<String> run(
+      ColumnCombination combination,
       List<SketchParams> sketchParams,
       List<AggregateFunction> functions) {
 
+    ColumnPair x = combination.getX();
+    ColumnPair y = combination.getY();
+
     Result result = new Result();
-
-//      if (corrPattern != null) {
-//        float correlation = extractCorrelation(x.datasetId);
-//        System.out.println(x.datasetId + "  "  + correlation);
-//        result.true_corr = correlation;
-//      }
-
     List<Result> groundTruthResults = computeFullJoinStatistics(x, y, functions, result);
 
     List<String> results = new ArrayList<>();

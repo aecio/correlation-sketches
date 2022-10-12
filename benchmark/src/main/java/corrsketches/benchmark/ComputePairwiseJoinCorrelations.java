@@ -1,12 +1,10 @@
 package corrsketches.benchmark;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
+import corrsketches.benchmark.datasource.DBSource;
+import corrsketches.benchmark.datasource.DBSource.DBColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.CliTool;
-import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Serializable;
@@ -97,41 +95,32 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     List<AggregateFunction> aggregations = parseAggregations(this.aggregateFunctions);
     System.out.println("> Using aggregate functions: " + aggregations);
 
-    ColumnStoreMetadata storeMetadata = CreateColumnStore.readMetadata(inputPath);
-
-    final boolean readonly = true;
-    StringObjectKVDB<ColumnPair> columnStore =
-        CreateColumnStore.KVColumnStore.create(inputPath, storeMetadata.dbType, readonly);
-
-    Set<Set<String>> columnSets = storeMetadata.columnSets;
-    System.out.println(
-        "> Found  " + columnSets.size() + " column pair sets in DB stored at " + inputPath);
-
+    // Set up data source
     System.out.println("\n> Computing column statistics for all column combinations...");
-    List<ColumnCombination> combinations =
-        ColumnCombination.createColumnCombinations(
-            columnSets, intraDatasetCombinations, maxSamples);
+    DBSource dbsource = new DBSource(inputPath);
+    List<DBColumnCombination> combinations =
+        dbsource.createColumnCombinations(intraDatasetCombinations, maxSamples);
 
-    String baseInputPath = Paths.get(inputPath).getFileName().toString();
+    // Initialize the output filename
+    String datasetName = Paths.get(inputPath).getFileName().toString();
     String filename;
     if (totalTasks <= 0) {
       filename =
           String.format(
               "%s_bench-type=%s_sketch-params=%s.csv",
-              baseInputPath, benchmarkType.toString(), sketchParams.toLowerCase());
+              datasetName, benchmarkType.toString(), sketchParams.toLowerCase());
     } else {
       filename =
           String.format(
               "%s_bench-type=%s_sketch-params=%s_task-id=%d_total_tasks=%d.csv",
-              baseInputPath,
+              datasetName,
               benchmarkType.toString(),
               sketchParams.toLowerCase(),
               taskId,
               totalTasks);
     }
-    Files.createDirectories(Paths.get(outputPath));
-    FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
 
+    // Set up the benchmark type
     final Benchmark bench;
     if (benchmarkType == BenchmarkType.CORR_PERF) {
       bench = new CorrelationPerformanceBenchmark();
@@ -144,30 +133,27 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
     }
 
+    // Initialize CSV output file and start writing headers
+    Files.createDirectories(Paths.get(outputPath));
+    FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
     resultsFile.write(bench.csvHeader() + "\n");
 
+    // If necessary, filter combinations leaving only the ones that should be computed by this task
     System.out.println("Total number of column combinations: " + combinations.size());
-    final Stream<ColumnCombination> stream;
-    final int total;
     if (totalTasks > 1) {
-      List<ColumnCombination> thisTaskCombinations =
+      combinations =
           IntStream.range(0, combinations.size())
               .filter(i -> i % totalTasks == taskId)
               .mapToObj(combinations::get)
               .collect(Collectors.toList());
-      System.out.println("Column combinations for this task: " + thisTaskCombinations.size());
-      stream = thisTaskCombinations.stream();
-      total = thisTaskCombinations.size();
-    } else {
-      stream = combinations.stream();
-      total = combinations.size();
+      System.out.println("Column combinations for this task: " + combinations.size());
     }
 
+    final Stream<DBColumnCombination> stream = combinations.stream();
+    final int total = combinations.size();
     final AtomicInteger processed = new AtomicInteger(0);
+    final int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
 
-    Cache<String, ColumnPair> cache = CacheBuilder.newBuilder().softValues().build();
-
-    int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
     List<AggregateFunction> finalAggregations = aggregations;
     Runnable task =
@@ -175,10 +161,9 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
             stream
                 .parallel()
                 .map(
-                    (ColumnCombination columnPair) -> {
-                      ColumnPair x = getColumnPair(cache, columnStore, columnPair.x);
-                      ColumnPair y = getColumnPair(cache, columnStore, columnPair.y);
-                      List<String> results = bench.run(x, y, sketchParamsList, finalAggregations);
+                    (DBColumnCombination columnPair) -> {
+                      List<String> results =
+                          bench.run(columnPair, sketchParamsList, finalAggregations);
                       reportProgress(processed, total);
                       return toCSV(results);
                     })
@@ -186,7 +171,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     forkJoinPool.submit(task).get();
 
     resultsFile.close();
-    columnStore.close();
+    dbsource.close();
 
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }
@@ -246,15 +231,5 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
         }
       }
     };
-  }
-
-  private ColumnPair getColumnPair(
-      Cache<String, ColumnPair> cache, StringObjectKVDB<ColumnPair> db, String key) {
-    ColumnPair cp = cache.getIfPresent(key);
-    if (cp == null) {
-      cp = db.get(key);
-      cache.put(key, cp);
-    }
-    return cp;
   }
 }

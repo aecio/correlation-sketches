@@ -8,7 +8,8 @@ import picocli.CommandLine.Command;
       ComputePairwiseJoinCorrelations.class,
       CreateColumnStore.class,
       ComputeBudget.class,
-      IndexCorrelationBenchmark.class
+      IndexCorrelationBenchmark.class,
+      SyntheticPairwiseMutualInfoBenchmark.class,
     })
 public class Main {
 

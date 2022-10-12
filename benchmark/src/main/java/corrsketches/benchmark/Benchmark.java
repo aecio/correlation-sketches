@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import corrsketches.aggregations.AggregateFunction;
+import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
 import java.util.List;
 
@@ -13,8 +14,7 @@ public interface Benchmark {
   String csvHeader();
 
   List<String> run(
-      ColumnPair x,
-      ColumnPair y,
+      ColumnCombination combination,
       List<SketchParams> sketchParams,
       List<AggregateFunction> functions);
 
@@ -43,6 +43,18 @@ public interface Benchmark {
         return csvWriter.writeValueAsString(result);
       } catch (JsonProcessingException e) {
         throw new IllegalArgumentException("Failed to serialize result to CSV line");
+      }
+    }
+
+    public String toCsvLines(List<T> results) {
+      if (results == null || results.isEmpty()) {
+        return "";
+      } else {
+        StringBuilder builder = new StringBuilder();
+        for (T result : results) {
+          builder.append(toCsvLine(result));
+        }
+        return builder.toString();
       }
     }
   }

@@ -30,7 +30,7 @@ dependencies {
     implementation libraries.picocli
     annotationProcessor libraries.picocli_codegen
     // logging
-    implementation libraries.slf4j_nop
+//    implementation libraries.slf4j_nop
     implementation libraries.slf4j_log4j // required by tablesaw-parquet
     // testing
     testImplementation libraries.assertj_core

@@ -24,6 +24,10 @@ public class Column {
     return of(values, ColumnType.CATEGORICAL);
   }
 
+  public static Column categorical(int... values) {
+    return of(castToDoubleArray(values), ColumnType.CATEGORICAL);
+  }
+
   @Override
   public String toString() {
     return "Column{" + "values=" + Arrays.toString(values) + ", type=" + type + '}';
@@ -33,10 +37,18 @@ public class Column {
     return castToIntArray(values);
   }
 
-  static int[] castToIntArray(double[] x) {
+  public static int[] castToIntArray(double[] x) {
     int[] xi = new int[x.length];
     for (int i = 0; i < x.length; i++) {
       xi[i] = (int) x[i];
+    }
+    return xi;
+  }
+
+  public static double[] castToDoubleArray(int[] x) {
+    double[] xi = new double[x.length];
+    for (int i = 0; i < x.length; i++) {
+      xi[i] = x[i];
     }
     return xi;
   }

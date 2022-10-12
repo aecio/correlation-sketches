@@ -22,6 +22,7 @@ import corrsketches.util.KDTree.Neighbor;
 public class MutualInformationMixedKSG {
 
   public static double mi(double[] x, double[] y) {
+    // FIXME: ensure MI is always non-negative!
     return mi(x, y, 3);
   }
 
