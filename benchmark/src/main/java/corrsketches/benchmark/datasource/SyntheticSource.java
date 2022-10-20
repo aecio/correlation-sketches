@@ -1,21 +1,24 @@
 package corrsketches.benchmark.datasource;
 
-import static java.lang.Math.log;
-import static java.lang.Math.max;
-
 import corrsketches.Column;
 import corrsketches.ColumnType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.statistics.Stats;
 import corrsketches.util.RandomArrays;
+import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
+import org.apache.commons.math3.distribution.ZipfDistribution;
+import org.apache.commons.math3.random.JDKRandomGenerator;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.Well19937c;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
-import org.apache.commons.math3.random.JDKRandomGenerator;
-import org.apache.commons.math3.random.RandomGenerator;
+
+import static java.lang.Math.log;
+import static java.lang.Math.max;
 
 public class SyntheticSource {
 
@@ -39,14 +42,13 @@ public class SyntheticSource {
   }
 
   private static Pair generateColumns(int maxRows, int seed, float rho, PairType pairType) {
-    RandomGenerator rng = new JDKRandomGenerator(seed);
+//    RandomGenerator rng = new JDKRandomGenerator(seed);
+    RandomGenerator rng = new Well19937c(seed);
+    KeyDistribution distribution = KeyDistribution.ZIPF_1;
+    String[]  K = generateRandomKeys(maxRows, distribution, rng);
     double[][] sampled = sampleBivariateNormal(maxRows, rho, rng);
     double[] X = sampled[0];
     double[] Y = sampled[1];
-    String[] K = new String[maxRows];
-    for (int j = 0; j < maxRows; j++) {
-      K[j] = String.valueOf(rng.nextLong());
-    }
 
     String datasetId = "sbn_r=" + rho + "_type=" + pairType;
     String keyName = "K" + seed;
@@ -75,6 +77,56 @@ public class SyntheticSource {
     ColumnPair ycp = new ColumnPair(datasetId, keyName, keyValues, columnNameY, typeY, Y);
 
     return new Pair(xcp, ycp);
+  }
+
+  private static String[] generateRandomKeys(int length, KeyDistribution distribution, RandomGenerator rng) {
+    final int[] randomIds;
+    if (distribution == KeyDistribution.UNIFORM) {
+      randomIds = randIntUniform(length, rng);
+    } else if (distribution == KeyDistribution.ZIPF_1) {
+      randomIds = randIntZipf(length, 1, rng);
+    } else {
+      throw new UnsupportedOperationException();
+    }
+    String[] K = new String[length];
+    for (int i = 0; i < length; i++) {
+      K[i] = String.valueOf(randomIds[i]);
+    }
+    return K;
+  }
+
+
+  /**
+   * Generates an array of size {@code length} with random values that follow a uniform
+   * distribution.
+   *
+   * @param length the size of the output vector
+   * @param rng the random number generator
+   * @return a vector with random data uniformly distributed
+   */
+  public static int[] randIntUniform(int length, final RandomGenerator rng) {
+    final int[] data = new int[length];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = rng.nextInt();
+    }
+    return data;
+  }
+
+  /**
+   * Generates an array of size {@code length} with random values that follow a Zip
+   * distribution.
+   *
+   * @param length the size of the output vector
+   * @param rng the random number generator
+   * @return a Zipfian random vector
+   */
+  public static int[] randIntZipf(int length, double exponent, final RandomGenerator rng) {
+    ZipfDistribution zipfd = new ZipfDistribution(rng, length, exponent);
+    int[] samples = new int[length];
+    for (int i = 0; i < length; i++) {
+      samples[i] = zipfd.sample();
+    }
+    return samples;
   }
 
   /**
@@ -146,9 +198,9 @@ public class SyntheticSource {
   public static class SyntheticColumnCombination implements ColumnCombination {
 
     private final int MAX_ROWS = 10000;
+    private final PairType pairType;
     public final float correlation;
     public final int seed;
-    private PairType pairType;
 
     private Pair pair;
 
