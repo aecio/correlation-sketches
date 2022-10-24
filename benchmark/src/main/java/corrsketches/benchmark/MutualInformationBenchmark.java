@@ -41,6 +41,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
     if (combination instanceof SyntheticColumnCombination) {
       result.true_corr = ((SyntheticColumnCombination) combination).correlation;
+      result.key_dist =
+          ((SyntheticColumnCombination) combination).pairTypeParams.keyDistribution.toString();
     }
 
     List<Result> groundTruthResults = computeFullJoinStatistics(x, y, functions, result);
@@ -209,6 +211,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public AggregateFunction aggregate;
 
     public float true_corr = Float.NaN;
+    public String key_dist;
 
     @JsonUnwrapped public JoinStats join_stats;
 

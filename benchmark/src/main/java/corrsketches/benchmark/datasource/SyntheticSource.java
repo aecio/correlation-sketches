@@ -1,24 +1,23 @@
 package corrsketches.benchmark.datasource;
 
+import static java.lang.Math.log;
+import static java.lang.Math.max;
+
 import corrsketches.Column;
 import corrsketches.ColumnType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.statistics.Stats;
 import corrsketches.util.RandomArrays;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
 import org.apache.commons.math3.distribution.ZipfDistribution;
 import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-
-import static java.lang.Math.log;
-import static java.lang.Math.max;
 
 public class SyntheticSource {
 
@@ -34,57 +33,65 @@ public class SyntheticSource {
     for (int i = 0; i < numberOfColumns; i++) {
       float rho = Math.round(corrs[i] * 1000.0) / 1000f;
       // float jc = Math.round(jcs[i] * 100.0) / 100f;
-      combinations.add(new SyntheticColumnCombination(rho, rng.nextInt(), PairType.NUMERICAL));
-      combinations.add(new SyntheticColumnCombination(rho, rng.nextInt(), PairType.DISCRETE));
-      combinations.add(new SyntheticColumnCombination(rho, rng.nextInt(), PairType.MIXED));
+
+      for (var dataPairType : Arrays.asList(PairDataType.values())) {
+        for (var keyDist : KeyDistribution.values()) {
+          combinations.add(
+              new SyntheticColumnCombination(
+                  rho, rng.nextInt(), new PairTypeParams(keyDist, dataPairType)));
+        }
+      }
     }
     return combinations;
   }
 
-  private static Pair generateColumns(int maxRows, int seed, float rho, PairType pairType) {
-//    RandomGenerator rng = new JDKRandomGenerator(seed);
+  private static Pair generateColumns(int maxRows, int seed, float rho, PairTypeParams params) {
+    // RandomGenerator rng = new JDKRandomGenerator(seed);
     RandomGenerator rng = new Well19937c(seed);
-    KeyDistribution distribution = KeyDistribution.ZIPF_1;
-    String[]  K = generateRandomKeys(maxRows, distribution, rng);
+    String[] K = generateRandomKeys(maxRows, params.keyDistribution, rng);
     double[][] sampled = sampleBivariateNormal(maxRows, rho, rng);
     double[] X = sampled[0];
     double[] Y = sampled[1];
 
-    String datasetId = "sbn_r=" + rho + "_type=" + pairType;
+    String datasetId =
+        "sbn_r="
+            + rho
+            + "_xtype="
+            + params.typeX
+            + "_ytype="
+            + params.typeY
+            + "_keydist="
+            + params.keyDistribution;
+    ;
     String keyName = "K" + seed;
     List<String> keyValues = Arrays.asList(K);
     String columnNameX = "X" + seed;
     String columnNameY = "Y" + seed;
 
-    final ColumnType typeX;
-    final ColumnType typeY;
     final int numberOfBins = (int) max(2, log(maxRows));
-    if (pairType == PairType.DISCRETE) {
-      typeX = ColumnType.CATEGORICAL;
-      typeY = ColumnType.CATEGORICAL;
-      X = Column.castToDoubleArray(Stats.binEqualWidth(X, numberOfBins));
-      Y = Column.castToDoubleArray(Stats.binEqualWidth(Y, numberOfBins));
-    } else if (pairType == PairType.NUMERICAL) {
-      typeX = ColumnType.NUMERICAL;
-      typeY = ColumnType.NUMERICAL;
-    } else {
-      typeX = ColumnType.CATEGORICAL;
-      typeY = ColumnType.NUMERICAL;
+
+    if (params.typeX == ColumnType.CATEGORICAL) {
       X = Column.castToDoubleArray(Stats.binEqualWidth(X, numberOfBins));
     }
+    if (params.typeY == ColumnType.CATEGORICAL) {
+      Y = Column.castToDoubleArray(Stats.binEqualWidth(Y, numberOfBins));
+    }
 
-    ColumnPair xcp = new ColumnPair(datasetId, keyName, keyValues, columnNameX, typeX, X);
-    ColumnPair ycp = new ColumnPair(datasetId, keyName, keyValues, columnNameY, typeY, Y);
+    ColumnPair xcp = new ColumnPair(datasetId, keyName, keyValues, columnNameX, params.typeX, X);
+    ColumnPair ycp = new ColumnPair(datasetId, keyName, keyValues, columnNameY, params.typeY, Y);
 
     return new Pair(xcp, ycp);
   }
 
-  private static String[] generateRandomKeys(int length, KeyDistribution distribution, RandomGenerator rng) {
+  private static String[] generateRandomKeys(
+      int length, KeyDistribution distribution, RandomGenerator rng) {
     final int[] randomIds;
     if (distribution == KeyDistribution.UNIFORM) {
       randomIds = randIntUniform(length, rng);
     } else if (distribution == KeyDistribution.ZIPF_1) {
       randomIds = randIntZipf(length, 1, rng);
+    } else if (distribution == KeyDistribution.ZIPF_1_5) {
+      randomIds = randIntZipf(length, 1.5, rng);
     } else {
       throw new UnsupportedOperationException();
     }
@@ -94,7 +101,6 @@ public class SyntheticSource {
     }
     return K;
   }
-
 
   /**
    * Generates an array of size {@code length} with random values that follow a uniform
@@ -113,8 +119,7 @@ public class SyntheticSource {
   }
 
   /**
-   * Generates an array of size {@code length} with random values that follow a Zip
-   * distribution.
+   * Generates an array of size {@code length} with random values that follow a Zip distribution.
    *
    * @param length the size of the output vector
    * @param rng the random number generator
@@ -178,10 +183,37 @@ public class SyntheticSource {
     return transposed;
   }
 
-  private enum PairType {
+  public static class PairTypeParams {
+
+    public final KeyDistribution keyDistribution;
+    public final ColumnType typeX;
+    public final ColumnType typeY;
+
+    public PairTypeParams(KeyDistribution keyDistribution, PairDataType pairType) {
+      this.keyDistribution = keyDistribution;
+      if (pairType == PairDataType.DISCRETE) {
+        typeX = ColumnType.CATEGORICAL;
+        typeY = ColumnType.CATEGORICAL;
+      } else if (pairType == PairDataType.NUMERICAL) {
+        typeX = ColumnType.NUMERICAL;
+        typeY = ColumnType.NUMERICAL;
+      } else {
+        typeX = ColumnType.CATEGORICAL;
+        typeY = ColumnType.NUMERICAL;
+      }
+    }
+  }
+
+  private enum PairDataType {
     NUMERICAL,
     DISCRETE,
     MIXED
+  }
+
+  public enum KeyDistribution {
+    UNIFORM,
+    ZIPF_1,
+    ZIPF_1_5
   }
 
   private static class Pair {
@@ -198,28 +230,28 @@ public class SyntheticSource {
   public static class SyntheticColumnCombination implements ColumnCombination {
 
     private final int MAX_ROWS = 10000;
-    private final PairType pairType;
+    public final PairTypeParams pairTypeParams;
     public final float correlation;
     public final int seed;
 
     private Pair pair;
 
-    public SyntheticColumnCombination(float correlation, int seed, PairType pairType) {
+    public SyntheticColumnCombination(float correlation, int seed, PairTypeParams pairTypeParams) {
       this.correlation = correlation;
       this.seed = seed;
-      this.pairType = pairType;
+      this.pairTypeParams = pairTypeParams;
     }
 
     public ColumnPair getX() {
       if (this.pair == null) {
-        this.pair = generateColumns(MAX_ROWS, seed, correlation, pairType);
+        this.pair = generateColumns(MAX_ROWS, seed, correlation, pairTypeParams);
       }
       return pair.x;
     }
 
     public ColumnPair getY() {
       if (this.pair == null) {
-        this.pair = generateColumns(MAX_ROWS, seed, correlation, pairType);
+        this.pair = generateColumns(MAX_ROWS, seed, correlation, pairTypeParams);
       }
       return pair.y;
     }

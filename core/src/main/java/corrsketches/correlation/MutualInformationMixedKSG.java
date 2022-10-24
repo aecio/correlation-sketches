@@ -22,7 +22,6 @@ import corrsketches.util.KDTree.Neighbor;
 public class MutualInformationMixedKSG {
 
   public static double mi(double[] x, double[] y) {
-    // FIXME: ensure MI is always non-negative!
     return mi(x, y, 3);
   }
 
@@ -35,6 +34,18 @@ public class MutualInformationMixedKSG {
    * @return the mutual information estimate.
    */
   public static double mi(final double[] x, final double[] y, int k) {
+    return Math.max(0, miRaw(x,y,k));
+  }
+
+  /**
+   * Computes the mutual information between the array {@param x} and the array {@param y}.
+   *
+   * @param x a vector of x variables
+   * @param y a vector of y variables
+   * @param k the number k-nearest neighbors
+   * @return the mutual information estimate.
+   */
+  static double miRaw(final double[] x, final double[] y, int k) {
     if (x.length != y.length) {
       throw new IllegalArgumentException("Arrays x and y must have the same length.");
     }
