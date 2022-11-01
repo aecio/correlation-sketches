@@ -1,4 +1,4 @@
-package corrsketches.benchmark.utils;
+package corrsketches.sampling;
 
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
@@ -10,14 +10,14 @@ import java.util.Random;
  * the total number of desired samples, all items are stored. Otherwise, a random sample of size
  * numSamples is stored.
  */
-public class Sampler<T> {
+public class ReservoirSampler<T> implements Sampler<T> {
 
   private final Random random;
   private final int numSamples;
   private final List<T> reservoir;
   int numItemsSeen = 0;
 
-  public Sampler(int numSamples) {
+  public ReservoirSampler(int numSamples) {
     this.numSamples = numSamples;
     this.reservoir = new ArrayList<>(numSamples);
     this.random = new Random(0);
@@ -28,7 +28,9 @@ public class Sampler<T> {
    * the total number of desired samples, all combinations are kept. Otherwise, a random sample of
    * size numSamples is returned.
    */
+  @Override
   public void sample(T item) {
+    System.out.println("RSampler.sample():  item = " + item);
     if (reservoir.size() < numSamples) {
       // when the reservoir not full, just append
       reservoir.add(item);
@@ -42,6 +44,7 @@ public class Sampler<T> {
     numItemsSeen++;
   }
 
+  @Override
   public List<T> getSamples() {
     return ImmutableList.copyOf(reservoir);
   }

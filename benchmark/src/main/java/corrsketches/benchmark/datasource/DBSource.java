@@ -7,7 +7,7 @@ import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.CreateColumnStore;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.pairwise.ColumnCombination;
-import corrsketches.benchmark.utils.Sampler;
+import corrsketches.sampling.ReservoirSampler;
 import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,7 +47,7 @@ public class DBSource {
       }
     } else {
       // If there are more columns than maxColumnsSamples, create a sample of size maxColumnsSamples
-      Sampler<String> sampler = new Sampler<>(maxColumnsSamples);
+      ReservoirSampler<String> sampler = new ReservoirSampler<>(maxColumnsSamples);
       for (Set<String> c : storeMetadata.columnSets) {
         for (String s : c) {
           sampler.sample(s);

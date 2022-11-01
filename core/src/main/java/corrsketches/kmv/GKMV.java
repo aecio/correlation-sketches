@@ -1,5 +1,7 @@
 package corrsketches.kmv;
 
+import corrsketches.sampling.BernoulliSampler;
+import corrsketches.sampling.Sampler;
 import corrsketches.util.Hashes;
 import java.util.HashSet;
 import java.util.TreeSet;
@@ -16,6 +18,7 @@ public class GKMV extends AbstractMinValueSketch<GKMV> {
   public GKMV(Builder builder) {
     super(builder);
     this.maxT = builder.threshold;
+    // TODO: maxT = sqrt(builder.threshold) ?
   }
 
   public static Builder builder() {
@@ -27,11 +30,12 @@ public class GKMV extends AbstractMinValueSketch<GKMV> {
   public void update(int hash, double value) {
     double hu = Hashes.grm(hash);
     if (hu <= maxT) {
-      final ValueHash minValue = createOrUpdateValueHash(hash, value, hu);
+      final ValueHash minValue = createOrUpdateValueHash(hash, value, hu, new BernoulliSampler<>(maxT));
       kMinValues.add(minValue);
       if (hu > kthValue) {
         kthValue = hu;
       }
+      // TODO: Where to sample entries?
     }
   }
 
@@ -106,5 +110,6 @@ public class GKMV extends AbstractMinValueSketch<GKMV> {
     public GKMV build() {
       return new GKMV(this);
     }
+
   }
 }

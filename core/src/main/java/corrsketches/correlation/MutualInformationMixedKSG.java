@@ -34,7 +34,7 @@ public class MutualInformationMixedKSG {
    * @return the mutual information estimate.
    */
   public static double mi(final double[] x, final double[] y, int k) {
-    return Math.max(0, miRaw(x,y,k));
+    return Math.max(0, miRaw(x, y, k));
   }
 
   /**

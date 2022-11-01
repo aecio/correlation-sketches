@@ -1,6 +1,7 @@
 package corrsketches.kmv;
 
 import corrsketches.aggregations.AggregateFunction;
+import corrsketches.sampling.ReservoirSampler;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
@@ -36,20 +37,77 @@ public class KMV extends AbstractMinValueSketch<KMV> {
   /** Updates the KMV synopsis with the given hashed key */
   @Override
   public void update(int hash, double value) {
+    System.out.println("update(hash = " + hash + ", value = " + value + ")");
     final double hu = Hashes.grm(hash);
     if (kMinValues.size() < maxK) {
-      ValueHash vh = createOrUpdateValueHash(hash, value, hu);
+      System.out.printf("--> kMinValues.size() < maxK ::: %d < %d\n", kMinValues.size(), maxK);
+      ValueHash vh = createOrUpdateValueHash(hash, value, hu, new ReservoirSampler<>(maxK));
       kMinValues.add(vh);
-      if (hu > kthValue) {
-        kthValue = hu;
+//      if (hu > kthValue) {
+//        kthValue = hu;
+//      }
+      kthValue = 1d;
+      kMinItems++;
+    } else if (hu <= kthValue) {
+      // if the key associated with hu has been seen, we need to update existing values;
+      // otherwise, we need to create a new entry and evict the largest key to make room it
+      System.out.printf("--> hu < kthValue  ::: %.4f < %.4f\n", hu, kthValue);
+
+      ValueHash vh = valueHashMap.get(hash);
+      if (vh == null && hu < kthValue) {
+        // This is a new unit hash we need to create a new node. Given that there will be
+        // more than k minimum values, we need to evict an existing one from the heap later.
+        vh = new ValueHash(hash, hu, value, function, new ReservoirSampler<>(maxK));
+        valueHashMap.put(hash, vh);
+        kMinValues.add(vh);
+
+        // Evict the greatest of the min value
+        ValueHash toBeRemoved = kMinValues.last();
+        kMinValues.remove(toBeRemoved);
+        valueHashMap.remove(toBeRemoved.keyHash);
+        kthValue = kMinValues.last().unitHash;
+        System.out.println("adding k=" + vh.keyHash + ", evicting k=" + toBeRemoved.keyHash + " count=" + toBeRemoved.count);
+
+        // Update item counter of this key
+        // Subtract the number of items of the removed ValueHash from the total number of
+        // items contained in the universe sampling set (items smaller than the kth min value)
+        kMinItems -= toBeRemoved.count;
+      } else {
+        vh.update(value);
       }
-    } else if (hu < kthValue) {
-      ValueHash vh = createOrUpdateValueHash(hash, value, hu);
-      kMinValues.add(vh);
-      ValueHash toBeRemoved = kMinValues.last();
-      kMinValues.remove(toBeRemoved);
-      valueHashMap.remove(toBeRemoved.keyHash);
-      kthValue = kMinValues.last().unitHash;
+      kMinItems++;
+      //END
+
+      System.out.printf("k[%d] count = %d\n", vh.keyHash, vh.count);
+
+      // TODO:
+      //  (1) User reservoir sampling to select some items;
+      //  (2) remove items form the sample whenever we remove a value hash from the k-min values
+      //      (issue: how to make sure probabilities are uniform?)
+
+      // update BS
+
+      // update
+    }
+    seenItems++;
+
+    System.out.println();
+    System.out.println("kMin size = " + kMinValues.size());
+    System.out.println("seenItems = " + seenItems);
+    System.out.println("kMinItems = " + kMinItems);
+    System.out.println("    ratio = " + kMinItems/(double)seenItems);
+    System.out.println("__");
+  }
+
+  class T3 {
+    int key;
+    double value;
+    double unitHash;
+
+    T3(int key, double unitHash, double value) {
+      this.key = key;
+      this.unitHash = unitHash;
+      this.value = value;
     }
   }
 

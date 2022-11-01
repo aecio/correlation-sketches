@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 public enum AggregateFunction {
   FIRST(new SingletonAggregator(FirstAggregator::new)),
@@ -15,7 +16,8 @@ public enum AggregateFunction {
   SUM(new SingletonAggregator(SumNumberAggregator::new)),
   MEAN(Mean::new),
   COUNT(Count::new),
-  MOST_FREQUENT(MostFrequent::new);
+  MOST_FREQUENT(MostFrequent::new),
+  SAMPLER(BernoulliSampler::new);
 
   private final AggregatorProvider provider;
 
@@ -204,6 +206,31 @@ public enum AggregateFunction {
         }
       }
       return maxItem;
+    }
+  }
+
+  private static class BernoulliSampler implements BatchAggregator, SameTypeAggregator {
+
+    private Random rng = new Random(1234);
+    private DoubleArrayList sample = new DoubleArrayList();
+    private double q; // the probability of including an item in the sample
+
+    @Override
+    public double update(double previous, double current) {
+      q = 0.1;
+      if (rng.nextDouble() < q) {
+        sample.add(current);
+      }
+      return 0;
+    }
+
+    @Override
+    public double aggregatedValue() {
+      return 0;
+    }
+
+    public DoubleArrayList samples() {
+      return sample;
     }
   }
 }

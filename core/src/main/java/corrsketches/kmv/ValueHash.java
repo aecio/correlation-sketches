@@ -3,6 +3,8 @@ package corrsketches.kmv;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.aggregations.AggregateFunction.Aggregator;
 import corrsketches.aggregations.AggregateFunction.BatchAggregator;
+import corrsketches.sampling.ReservoirSampler;
+import corrsketches.sampling.Sampler;
 import java.util.Comparator;
 
 public class ValueHash {
@@ -14,15 +16,36 @@ public class ValueHash {
   public final double unitHash;
   private double value;
 
-  public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function) {
+  Sampler<Double> sampler;
+  int count; // the number of items associate with this join key
+
+//  public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function) {
+//    this(keyHash, unitHash, value, function, 256);
+//  }
+
+  public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function, Sampler<Double> sampler) {
     this.keyHash = keyHash;
     this.unitHash = unitHash;
     this.aggregator = function.get();
     this.value = aggregator.first(value);
+    this.sampler = sampler;
+    this.count = 1;
+    sampler.sample(value);
   }
 
   public void update(double value) {
+    System.out.println("VH.update(): value = " + value);
     this.value = this.aggregator.update(this.value, value);
+    this.sampler.sample(value);
+    this.count++;
+  }
+
+  public int count() {
+    return this.count;
+  }
+
+  public Sampler<Double> sampler() {
+    return this.sampler;
   }
 
   public double value() {

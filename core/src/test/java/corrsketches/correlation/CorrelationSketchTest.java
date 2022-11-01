@@ -168,6 +168,53 @@ public class CorrelationSketchTest {
     assertEquals(1.0, estimateImmutable.value);
   }
 
+//  @Test
+//  public void shouldSample() {
+//    int k = 128;
+//    AdaptiveReservoirSampler sampler = new AdaptiveReservoirSampler(k);
+//    sampler.setMinUnitHash(0.5);
+//
+//    sampler()
+//  }
+
+  @Test
+  public void shouldCreateImmutableSketchForLeftJoin() {
+//    List<String> xkeys = Arrays.asList("a", "a", "a", "b", "b", "c");
+    int[] xkeys = new int[]{1, 1, 1, 1, 2, 2, 2, 3, 3, 4};
+    Column xvalues = Column.numerical(1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0);
+
+//    List<String> ykeys = Arrays.asList("a", "a", "a", "b", "b", "c");
+    int[] ykeys = new int[]{1, 1, 1, 2, 2, 3};
+    Column yvalues = Column.numerical(1.0, 1.0, 1.0, 2.0, 2.0, 3.0);
+
+    final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, 3);
+
+    CorrelationSketch xs =
+        builder.aggregateFunction(AggregateFunction.SAMPLER).build(xkeys, xvalues);
+    System.out.println("----");
+    CorrelationSketch ys = builder.aggregateFunction(AggregateFunction.MEAN).build(ykeys, yvalues);
+
+    final ImmutableCorrelationSketch xsi = xs.toImmutable();
+    System.out.println("====");
+    final ImmutableCorrelationSketch ysi = ys.toImmutable();
+    System.out.println("====");
+
+
+    assertThat(xsi.getValues().length).isGreaterThan(3);
+    assertThat(ysi.getValues().length).isEqualTo(3);
+
+    final Estimate estimate = xs.correlationTo(ys);
+    final Estimate estimateImmutable = xsi.correlationTo(ysi);
+    final Join intersection = xsi.join(ysi);
+
+    System.out.println(intersection);
+    //    assertEquals(3, estimate.sampleSize);
+    //    assertEquals(intersection.keys.length, estimate.sampleSize);
+    //    assertEquals(estimate.sampleSize, estimateImmutable.sampleSize);
+    //    assertEquals(estimate.value, estimateImmutable.value);
+    //    assertEquals(1.0, estimateImmutable.value);
+  }
+
   @Test
   public void sketchAggregationShouldHaveCorrectType1() {
     List<String> xkeys = Arrays.asList("a", "a", "a", "b", "b", "c");
