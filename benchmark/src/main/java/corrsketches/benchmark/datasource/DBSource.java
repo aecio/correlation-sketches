@@ -7,7 +7,7 @@ import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.CreateColumnStore;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.pairwise.ColumnCombination;
-import corrsketches.sampling.ReservoirSampler;
+import corrsketches.benchmark.utils.ReservoirSampler;
 import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.IOException;
 import java.util.ArrayList;

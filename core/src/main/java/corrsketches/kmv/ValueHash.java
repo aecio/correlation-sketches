@@ -2,9 +2,7 @@ package corrsketches.kmv;
 
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.aggregations.AggregateFunction.Aggregator;
-import corrsketches.aggregations.AggregateFunction.BatchAggregator;
-import corrsketches.sampling.ReservoirSampler;
-import corrsketches.sampling.Sampler;
+import corrsketches.sampling.DoubleSampler;
 import java.util.Comparator;
 
 public class ValueHash {
@@ -14,29 +12,34 @@ public class ValueHash {
   public final Aggregator aggregator;
   public final int keyHash;
   public final double unitHash;
-  private double value;
 
-  Sampler<Double> sampler;
+  DoubleSampler sampler;
   int count; // the number of items associate with this join key
 
-//  public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function) {
-//    this(keyHash, unitHash, value, function, 256);
-//  }
-
-  public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function, Sampler<Double> sampler) {
+  public ValueHash(
+      int keyHash,
+      double unitHash,
+      double value,
+      AggregateFunction function,
+      DoubleSampler sampler) {
     this.keyHash = keyHash;
     this.unitHash = unitHash;
     this.aggregator = function.get();
-    this.value = aggregator.first(value);
+    if (aggregator != null) {
+      this.aggregator.first(value);
+    }
     this.sampler = sampler;
     this.count = 1;
     sampler.sample(value);
   }
 
   public void update(double value) {
-    System.out.println("VH.update(): value = " + value);
-    this.value = this.aggregator.update(this.value, value);
-    this.sampler.sample(value);
+    if (this.aggregator != null) {
+      this.aggregator.update(value);
+    }
+    if (this.sampler != null) {
+      this.sampler.sample(value);
+    }
     this.count++;
   }
 
@@ -44,15 +47,12 @@ public class ValueHash {
     return this.count;
   }
 
-  public Sampler<Double> sampler() {
+  public DoubleSampler sampler() {
     return this.sampler;
   }
 
   public double value() {
-    if (aggregator instanceof BatchAggregator) {
-      return ((BatchAggregator) aggregator).aggregatedValue();
-    }
-    return value;
+    return aggregator.aggregatedValue();
   }
 
   @Override
@@ -67,7 +67,15 @@ public class ValueHash {
 
   @Override
   public String toString() {
-    return "ValueHash{keyHash=" + keyHash + ", unitHash=" + unitHash + ", value=" + value + '}';
+    return "ValueHash{keyHash="
+        + keyHash
+        + ", unitHash="
+        + unitHash
+        + ", aggregator="
+        + aggregator
+        + ", sampler: "
+        + sampler
+        + '}';
   }
 
   private static class UnitHashComparatorAscending implements Comparator<ValueHash> {

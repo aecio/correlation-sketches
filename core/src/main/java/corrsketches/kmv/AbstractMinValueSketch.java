@@ -1,9 +1,7 @@
 package corrsketches.kmv;
 
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.kmv.KMV.Builder;
-import corrsketches.sampling.ReservoirSampler;
-import corrsketches.sampling.Sampler;
+import corrsketches.sampling.DoubleSampler;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.HashSet;
@@ -15,8 +13,8 @@ public abstract class AbstractMinValueSketch<T> {
   protected final TreeSet<ValueHash> kMinValues;
   protected final Int2ObjectOpenHashMap<ValueHash> valueHashMap;
   protected final AggregateFunction function;
+  protected final DoubleSampler sampler;
   protected double kthValue = Double.MIN_VALUE;
-  protected Sampler sampler;
   protected int kMinItems;
   protected int seenItems;
 
@@ -31,17 +29,8 @@ public abstract class AbstractMinValueSketch<T> {
     }
   }
 
-  public AbstractMinValueSketch(int expectedSize, AggregateFunction function) {
-    this.function = function;
-    this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
-    if (expectedSize < 1) {
-      this.valueHashMap = new Int2ObjectOpenHashMap<>();
-    } else {
-      this.valueHashMap = new Int2ObjectOpenHashMap<>(expectedSize + 1);
-    }
-  }
-
-  protected ValueHash createOrUpdateValueHash(int hash, double value, double hu, Sampler<Double> sampler) {
+  protected ValueHash createOrUpdateValueHash(
+      int hash, double value, double hu, DoubleSampler sampler) {
     ValueHash vh = valueHashMap.get(hash);
     if (vh == null) {
       vh = new ValueHash(hash, hu, value, function, sampler);
@@ -136,7 +125,7 @@ public abstract class AbstractMinValueSketch<T> {
   public abstract static class Builder<T extends AbstractMinValueSketch<T>> {
 
     protected AggregateFunction aggregateFunction = AggregateFunction.FIRST;
-    protected Sampler sampler = null;
+    protected DoubleSampler sampler = null;
 
     protected int expectedSize() {
       return -1;
@@ -150,11 +139,11 @@ public abstract class AbstractMinValueSketch<T> {
     /** Creates an empty min-values sketch. */
     public abstract T build();
 
-    public Sampler sampler() {
+    public DoubleSampler sampler() {
       return sampler;
     }
 
-    public Builder sampler(Sampler sampler) {
+    public Builder sampler(DoubleSampler sampler) {
       this.sampler = sampler;
       return this;
     }

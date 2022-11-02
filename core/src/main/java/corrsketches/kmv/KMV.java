@@ -1,7 +1,6 @@
 package corrsketches.kmv;
 
-import corrsketches.aggregations.AggregateFunction;
-import corrsketches.sampling.ReservoirSampler;
+import corrsketches.sampling.DoubleReservoirSampler;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
@@ -15,15 +14,6 @@ public class KMV extends AbstractMinValueSketch<KMV> {
 
   public static final int DEFAULT_K = 256;
   private final int maxK;
-
-  @Deprecated
-  public KMV(int k, AggregateFunction function) {
-    super(k, function);
-    if (k < 1) {
-      throw new IllegalArgumentException("Minimum k size is 1, but larger is recommended.");
-    }
-    this.maxK = k;
-  }
 
   public KMV(Builder builder) {
     super(builder);
@@ -41,11 +31,11 @@ public class KMV extends AbstractMinValueSketch<KMV> {
     final double hu = Hashes.grm(hash);
     if (kMinValues.size() < maxK) {
       System.out.printf("--> kMinValues.size() < maxK ::: %d < %d\n", kMinValues.size(), maxK);
-      ValueHash vh = createOrUpdateValueHash(hash, value, hu, new ReservoirSampler<>(maxK));
+      ValueHash vh = createOrUpdateValueHash(hash, value, hu, new DoubleReservoirSampler(maxK));
       kMinValues.add(vh);
-//      if (hu > kthValue) {
-//        kthValue = hu;
-//      }
+      //      if (hu > kthValue) {
+      //        kthValue = hu;
+      //      }
       kthValue = 1d;
       kMinItems++;
     } else if (hu <= kthValue) {
@@ -57,7 +47,7 @@ public class KMV extends AbstractMinValueSketch<KMV> {
       if (vh == null && hu < kthValue) {
         // This is a new unit hash we need to create a new node. Given that there will be
         // more than k minimum values, we need to evict an existing one from the heap later.
-        vh = new ValueHash(hash, hu, value, function, new ReservoirSampler<>(maxK));
+        vh = new ValueHash(hash, hu, value, function, new DoubleReservoirSampler(maxK));
         valueHashMap.put(hash, vh);
         kMinValues.add(vh);
 
@@ -66,7 +56,13 @@ public class KMV extends AbstractMinValueSketch<KMV> {
         kMinValues.remove(toBeRemoved);
         valueHashMap.remove(toBeRemoved.keyHash);
         kthValue = kMinValues.last().unitHash;
-        System.out.println("adding k=" + vh.keyHash + ", evicting k=" + toBeRemoved.keyHash + " count=" + toBeRemoved.count);
+        System.out.println(
+            "adding k="
+                + vh.keyHash
+                + ", evicting k="
+                + toBeRemoved.keyHash
+                + " count="
+                + toBeRemoved.count);
 
         // Update item counter of this key
         // Subtract the number of items of the removed ValueHash from the total number of
@@ -76,7 +72,7 @@ public class KMV extends AbstractMinValueSketch<KMV> {
         vh.update(value);
       }
       kMinItems++;
-      //END
+      // END
 
       System.out.printf("k[%d] count = %d\n", vh.keyHash, vh.count);
 
@@ -95,7 +91,7 @@ public class KMV extends AbstractMinValueSketch<KMV> {
     System.out.println("kMin size = " + kMinValues.size());
     System.out.println("seenItems = " + seenItems);
     System.out.println("kMinItems = " + kMinItems);
-    System.out.println("    ratio = " + kMinItems/(double)seenItems);
+    System.out.println("    ratio = " + kMinItems / (double) seenItems);
     System.out.println("__");
   }
 

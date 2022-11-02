@@ -9,7 +9,7 @@ import corrsketches.kmv.GKMV;
 import corrsketches.kmv.KMV;
 import corrsketches.kmv.ValueHash;
 import corrsketches.sampling.BernoulliSampler;
-import corrsketches.sampling.ReservoirSampler;
+import corrsketches.sampling.DoubleReservoirSampler;
 import corrsketches.util.QuickSort;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -49,7 +49,7 @@ public class CorrelationSketch {
         int kmin = (int) builder.budget;
         kmvBuilder.maxSize(kmin);
         if (builder.aggregateFunction == AggregateFunction.SAMPLER) {
-          kmvBuilder.sampler(new ReservoirSampler<>(kmin));
+          kmvBuilder.sampler(new DoubleReservoirSampler(kmin));
         }
       } else {
         GKMV.Builder gkmvBuilder = new GKMV.Builder();
@@ -223,18 +223,19 @@ public class CorrelationSketch {
           int j = yidx;
           while (i < this.keys.length && this.keys[i] == this.keys[xidx]) {
             j = yidx;
-//            System.out.println("i = " + i);
-//            System.out.println("j = " + j);
+            //            System.out.println("i = " + i);
+            //            System.out.println("j = " + j);
             while (j < other.keys.length && other.keys[j] == other.keys[yidx]) {
-              System.out.printf("-> i=%d, j=%d L[i]=%d R[j]=%d\n", i, j, this.keys[i], other.keys[j]);
+              System.out.printf(
+                  "-> i=%d, j=%d L[i]=%d R[j]=%d\n", i, j, this.keys[i], other.keys[j]);
               k.add(this.keys[i]);
               x.add(this.values[i]);
               y.add(other.values[j]);
               j++;
-//              System.out.println("j = " + j);
+              //              System.out.println("j = " + j);
             }
             i++;
-//            System.out.println("i = " + i);
+            //            System.out.println("i = " + i);
           }
           xidx = i;
           yidx = j;
@@ -249,7 +250,6 @@ public class CorrelationSketch {
     /**
      * Joins the tables assuming that the keys of both sketches are unique (primary-keys) and
      * pre-sorted in increasing order.
-     *
      */
     public Join joinOneToOne(ImmutableCorrelationSketch other) {
       final int capacity = Math.max(this.keys.length, other.keys.length);
@@ -296,7 +296,14 @@ public class CorrelationSketch {
 
       @Override
       public String toString() {
-        return "Join{\n" + "  keys=" + Arrays.toString(keys) + ",\n  x=" + x + ",\n  y=" + y + "\n}";
+        return "Join{\n"
+            + "  keys="
+            + Arrays.toString(keys)
+            + ",\n  x="
+            + x
+            + ",\n  y="
+            + y
+            + "\n}";
       }
     }
   }
@@ -306,7 +313,7 @@ public class CorrelationSketch {
   }
 
   public ColumnType getOutputType() {
-    return this.minValueSketch.aggregateFunction().get().getOutputType(valuesType);
+    return isAggregateSketch() ? this.minValueSketch.aggregateFunction().get().getOutputType(valuesType) : valuesType;
   }
 
   public static class Builder {

@@ -1,6 +1,7 @@
-package corrsketches.sampling;
+package corrsketches.benchmark.utils;
 
 import com.google.common.collect.ImmutableList;
+import corrsketches.sampling.Sampler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -30,7 +31,6 @@ public class ReservoirSampler<T> implements Sampler<T> {
    */
   @Override
   public void sample(T item) {
-    System.out.println("RSampler.sample():  item = " + item);
     if (reservoir.size() < numSamples) {
       // when the reservoir not full, just append
       reservoir.add(item);
