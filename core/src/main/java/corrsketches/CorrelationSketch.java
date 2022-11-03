@@ -8,8 +8,7 @@ import corrsketches.kmv.AbstractMinValueSketch;
 import corrsketches.kmv.GKMV;
 import corrsketches.kmv.KMV;
 import corrsketches.kmv.ValueHash;
-import corrsketches.sampling.BernoulliSampler;
-import corrsketches.sampling.DoubleReservoirSampler;
+import corrsketches.sampling.Samplers;
 import corrsketches.util.QuickSort;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -48,18 +47,21 @@ public class CorrelationSketch {
         sketchBuilder = kmvBuilder;
         int kmin = (int) builder.budget;
         kmvBuilder.maxSize(kmin);
-        if (builder.aggregateFunction == AggregateFunction.SAMPLER) {
-          kmvBuilder.sampler(new DoubleReservoirSampler(kmin));
+        if (builder.aggregateFunction == AggregateFunction.NONE) {
+          kmvBuilder.aggregate(Samplers.reservoir(kmin));
+        } else {
+          sketchBuilder.aggregate(builder.aggregateFunction);
         }
       } else {
         GKMV.Builder gkmvBuilder = new GKMV.Builder();
         sketchBuilder = gkmvBuilder;
         gkmvBuilder.threshold(builder.budget);
-        if (builder.aggregateFunction == AggregateFunction.SAMPLER) {
-          gkmvBuilder.sampler(new BernoulliSampler(builder.budget));
+        if (builder.aggregateFunction == AggregateFunction.NONE) {
+          gkmvBuilder.aggregate(Samplers.bernoulli(builder.budget));
+        } else {
+          sketchBuilder.aggregate(builder.aggregateFunction);
         }
       }
-      sketchBuilder.aggregate(builder.aggregateFunction);
       this.minValueSketch = sketchBuilder.build();
     }
   }
@@ -144,41 +146,44 @@ public class CorrelationSketch {
     public ImmutableCorrelationSketch(CorrelationSketch cs) {
       this.valuesType = cs.getOutputType();
       this.correlation = cs.estimator;
-      this.isAggregate = cs.isAggregateSketch();
-      final TreeSet<ValueHash> thisKMinValues = cs.getKMinValues();
-      if (this.isAggregate) {
-        // each key is associated with only one value
-        int size = thisKMinValues.size();
-        this.keys = new int[size];
-        this.values = new double[size];
-        int i = 0;
-        for (ValueHash vh : thisKMinValues) {
-          keys[i] = vh.keyHash;
-          values[i] = vh.value();
-          i++;
-        }
-      } else {
-        System.out.println("IS AGG!!!");
-        // each key is associated with multiple sampled values
-        IntArrayList keyList = new IntArrayList();
-        DoubleArrayList valuesList = new DoubleArrayList();
-        for (ValueHash vh : thisKMinValues) {
-          // FIXME: the number of samples for each key must be proportional to the probability
-          //   of each key in the full table, e.g.:
-          //   double prob = vh.count() / cs.getSeenItems();
-          int key = vh.keyHash;
-          for (double value : vh.sampler().getSamples()) {
-            System.out.println("key = " + key + "  value = " + value);
-            keyList.add(key);
-            valuesList.add(value);
-          }
-        }
-        this.keys = keyList.toIntArray();
-        this.values = valuesList.toDoubleArray();
-      }
+      AbstractMinValueSketch.Samples samples = cs.minValueSketch.getSamples();
+      this.keys = samples.keys;
+      this.values = samples.values;
+      this.isAggregate = samples.uniqueKeys;
+      //      this.isAggregate = cs.isAggregateSketch();
+      //      final TreeSet<ValueHash> thisKMinValues = cs.getKMinValues();
+      //      if (this.isAggregate) {
+      //        // each key is associated with only one value
+      //        int size = thisKMinValues.size();
+      //        this.keys = new int[size];
+      //        this.values = new double[size];
+      //        int i = 0;
+      //        for (ValueHash vh : thisKMinValues) {
+      //          keys[i] = vh.keyHash;
+      //          values[i] = vh.value();
+      //          i++;
+      //        }
+      //      } else {
+      //        // each key is associated with multiple sampled values
+      //        IntArrayList keyList = new IntArrayList();
+      //        DoubleArrayList valuesList = new DoubleArrayList();
+      //        for (ValueHash vh : thisKMinValues) {
+      //          // FIXME: the number of samples for each key must be proportional to the
+      // probability
+      //          //   of each key in the full table, e.g.:
+      //          //   double prob = vh.count() / cs.getSeenItems();
+      //          int key = vh.keyHash;
+      //          for (double value : vh.sampler().getSamples()) {
+      //            keyList.add(key);
+      //            valuesList.add(value);
+      //          }
+      //        }
+      //        this.keys = keyList.toIntArray();
+      //        this.values = valuesList.toDoubleArray();
+      //      }
       QuickSort.sort(keys, values);
-      System.out.println("keyList = " + Arrays.toString(keys));
-      System.out.println("valList = " + Arrays.toString(values));
+      //      System.out.println("keyList = " + Arrays.toString(keys));
+      //      System.out.println("valList = " + Arrays.toString(values));
     }
 
     public int[] getKeys() {
@@ -205,37 +210,36 @@ public class CorrelationSketch {
       return this.innerJoin(other);
     }
 
+    /**
+     * Computes inner join between the two tables assuming that the keys of both sketches are
+     * pre-sorted in increasing order.
+     */
     public Join innerJoin(ImmutableCorrelationSketch other) {
-      final int capacity = Math.max(this.keys.length, other.keys.length);
-      IntArrayList k = new IntArrayList(capacity);
-      DoubleArrayList x = new DoubleArrayList(capacity);
-      DoubleArrayList y = new DoubleArrayList(capacity);
+      final int initialCapacity = Math.max(this.keys.length, other.keys.length);
+      IntArrayList k = new IntArrayList(initialCapacity);
+      DoubleArrayList x = new DoubleArrayList(initialCapacity);
+      DoubleArrayList y = new DoubleArrayList(initialCapacity);
       int xidx = 0;
       int yidx = 0;
+      int i, j;
       while (xidx < this.keys.length && yidx < other.keys.length) {
         if (this.keys[xidx] < other.keys[yidx]) {
           xidx++;
         } else if (this.keys[xidx] > other.keys[yidx]) {
           yidx++;
         } else {
-          // keys are equal, iterate over all possible pair of keys
-          int i = xidx;
-          int j = yidx;
+          // keys are equal, iterate over all pairs of indexes containing this key
+          i = xidx;
+          j = yidx;
           while (i < this.keys.length && this.keys[i] == this.keys[xidx]) {
             j = yidx;
-            //            System.out.println("i = " + i);
-            //            System.out.println("j = " + j);
             while (j < other.keys.length && other.keys[j] == other.keys[yidx]) {
-              System.out.printf(
-                  "-> i=%d, j=%d L[i]=%d R[j]=%d\n", i, j, this.keys[i], other.keys[j]);
               k.add(this.keys[i]);
               x.add(this.values[i]);
               y.add(other.values[j]);
               j++;
-              //              System.out.println("j = " + j);
             }
             i++;
-            //            System.out.println("i = " + i);
           }
           xidx = i;
           yidx = j;
@@ -309,11 +313,12 @@ public class CorrelationSketch {
   }
 
   private boolean isAggregateSketch() {
-    return this.minValueSketch.aggregateFunction() != AggregateFunction.SAMPLER;
+    //    return this.minValueSketch.aggregateFunction() != AggregateFunction.SAMPLER;
+    return this.minValueSketch.isAggregate();
   }
 
   public ColumnType getOutputType() {
-    return isAggregateSketch() ? this.minValueSketch.aggregateFunction().get().getOutputType(valuesType) : valuesType;
+    return this.minValueSketch.aggregatorProvider().create().getOutputType(valuesType);
   }
 
   public static class Builder {

@@ -2,26 +2,31 @@ package corrsketches.aggregations;
 
 import corrsketches.ColumnType;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import java.util.Arrays;
 import java.util.List;
 
 public enum AggregateFunction {
-  FIRST(new SingletonAggregator(FirstAggregator::new)),
-  LAST(new SingletonAggregator(LastAggregator::new)),
-  MAX(new SingletonAggregator(MaxNumberAggregator::new)),
-  MIN(new SingletonAggregator(MinNumberAggregator::new)),
-  SUM(new SingletonAggregator(SumNumberAggregator::new)),
+  FIRST(FirstAggregator::new),
+  LAST(LastAggregator::new),
+  MAX(MaxNumberAggregator::new),
+  MIN(MinNumberAggregator::new),
+  SUM(SumNumberAggregator::new),
   MEAN(Mean::new),
   COUNT(Count::new),
   MOST_FREQUENT(MostFrequent::new),
-  SAMPLER(() -> null);
+  NONE(null);
 
   private final AggregatorProvider provider;
 
   AggregateFunction(AggregatorProvider provider) {
     this.provider = provider;
+  }
+
+  public AggregatorProvider getProvider() {
+    return provider;
   }
 
   public Aggregator get() {
@@ -41,7 +46,7 @@ public enum AggregateFunction {
   }
 
   public double aggregate(double[] x, int length) {
-    final Aggregator fn = provider.get();
+    final RepeatedValueHandler fn = provider.get();
     fn.first(x[0]);
     for (int i = 1; i < length; i++) {
       fn.update(x[i]);
@@ -49,36 +54,27 @@ public enum AggregateFunction {
     return fn.aggregatedValue();
   }
 
-  /** Creates an instance of an aggregator interface. */
-  private interface AggregatorProvider {
+  interface AggregatorProvider extends RepeatedValueHandlerProvider {
+
+    default RepeatedValueHandler create() {
+      return get();
+    }
+
     Aggregator get();
   }
 
-  /**
-   * An aggregator provider for stateless aggregators that always returns the same aggregator
-   * instance.
-   */
-  static class SingletonAggregator implements AggregatorProvider {
-    private final Aggregator aggregator;
+  /** Common interface for all double number aggregators. */
+  public interface Aggregator extends RepeatedValueHandler {
 
-    SingletonAggregator(AggregatorProvider aggregatorProvider) {
-      this.aggregator = aggregatorProvider.get();
+    @Override
+    default boolean isAggregator() {
+      return true;
     }
 
     @Override
-    public Aggregator get() {
-      return aggregator;
+    default DoubleList values() {
+      return DoubleList.of(aggregatedValue());
     }
-  }
-
-  /** Common interface for all double number aggregators. */
-  public interface Aggregator {
-
-    void first(double value);
-
-    void update(double current);
-
-    double aggregatedValue();
 
     ColumnType getOutputType(ColumnType columnValueType);
   }
@@ -165,16 +161,21 @@ public enum AggregateFunction {
 
   private static class Count extends NumberAggregator {
 
-    double previous;
+    int count = 0;
 
     @Override
     public void first(double value) {
-      previous = 1;
+      this.count++;
     }
 
     @Override
     public void update(double current) {
-      this.previous++;
+      this.count++;
+    }
+
+    @Override
+    public double aggregatedValue() {
+      return this.count;
     }
   }
 

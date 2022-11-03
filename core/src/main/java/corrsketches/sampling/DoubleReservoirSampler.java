@@ -18,7 +18,7 @@ public class DoubleReservoirSampler implements DoubleSampler {
   }
 
   @Override
-  public void sample(double item) {
+  public void update(double item) {
     if (reservoir.size() < numSamples) {
       // when the reservoir not full, just append
       reservoir.add(item);
@@ -33,7 +33,7 @@ public class DoubleReservoirSampler implements DoubleSampler {
   }
 
   @Override
-  public DoubleList getSamples() {
+  public DoubleList values() {
     return reservoir;
   }
 }

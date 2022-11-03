@@ -168,18 +168,25 @@ public class CorrelationSketchTest {
     assertEquals(1.0, estimateImmutable.value);
   }
 
-  //  @Test
-  //  public void shouldSample() {
-  //    int k = 128;
-  //    AdaptiveReservoirSampler sampler = new AdaptiveReservoirSampler(k);
-  //    sampler.setMinUnitHash(0.5);
-  //
-  //    sampler()
-  //  }
+  @Test
+  public void shouldBeAbleToSampleItems() {
+    int[] xkeys = new int[] {1, 1, 1, 1, 2, 2, 2, 3, 3, 4};
+    Column xvalues = Column.numerical(1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0);
+
+    //    List<String> ykeys = Arrays.asList("a", "a", "a", "b", "b", "c");
+
+    final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, xkeys.length);
+
+    CorrelationSketch xs = builder.aggregateFunction(AggregateFunction.NONE).build(xkeys, xvalues);
+
+    final ImmutableCorrelationSketch xsi = xs.toImmutable();
+    //      assertThat(xsi.isA).isEqualTo(xkeys.length);
+    //      assertThat(xsi.getValues().length).isGreaterThan(3);
+    assertThat(xsi.getValues().length).isEqualTo(xkeys.length);
+  }
 
   @Test
   public void shouldCreateImmutableSketchForLeftJoin() {
-    //    List<String> xkeys = Arrays.asList("a", "a", "a", "b", "b", "c");
     int[] xkeys = new int[] {1, 1, 1, 1, 2, 2, 2, 3, 3, 4};
     Column xvalues = Column.numerical(1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0);
 
@@ -187,10 +194,9 @@ public class CorrelationSketchTest {
     int[] ykeys = new int[] {1, 1, 1, 2, 2, 3};
     Column yvalues = Column.numerical(1.0, 1.0, 1.0, 2.0, 2.0, 3.0);
 
-    final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, 3);
+    final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, 4);
 
-    CorrelationSketch xs =
-        builder.aggregateFunction(AggregateFunction.SAMPLER).build(xkeys, xvalues);
+    CorrelationSketch xs = builder.aggregateFunction(AggregateFunction.NONE).build(xkeys, xvalues);
     System.out.println("----");
     CorrelationSketch ys = builder.aggregateFunction(AggregateFunction.MEAN).build(ykeys, yvalues);
 

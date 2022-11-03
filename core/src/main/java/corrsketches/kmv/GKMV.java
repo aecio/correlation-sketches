@@ -1,7 +1,10 @@
 package corrsketches.kmv;
 
-import corrsketches.sampling.BernoulliSampler;
+import corrsketches.kmv.AbstractMinValueSketch.Samples;
 import corrsketches.util.Hashes;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.HashSet;
 import java.util.TreeSet;
 
@@ -29,14 +32,61 @@ public class GKMV extends AbstractMinValueSketch<GKMV> {
   public void update(int hash, double value) {
     double hu = Hashes.grm(hash);
     if (hu <= maxT) {
-      final ValueHash minValue =
-          createOrUpdateValueHash(hash, value, hu, new BernoulliSampler(maxT));
+      final ValueHash minValue = createOrUpdateValueHash(hash, value, hu);
       kMinValues.add(minValue);
       if (hu > kthValue) {
         kthValue = hu;
       }
-      // TODO: Where to sample entries?
     }
+  }
+
+  @Override
+  public AbstractMinValueSketch<GKMV>.Samples getSamples() {
+    boolean uniqueKeys = isAggregate();
+    final int[] keys;
+    double[] values;
+    if (uniqueKeys) {
+      // each key is associated with only one value
+      int size = kMinValues.size();
+      keys = new int[size];
+      values = new double[size];
+      int i = 0;
+      for (ValueHash vh : kMinValues) {
+        keys[i] = vh.keyHash;
+        values[i] = vh.value();
+        i++;
+      }
+    } else {
+      // each key is associated with multiple sampled values
+      IntArrayList keyList = new IntArrayList();
+      DoubleArrayList valuesList = new DoubleArrayList();
+      for (ValueHash vh : kMinValues) {
+        // compute how many samples should be used from each sampler
+        //        final double prob = vh.count() / (double) seenItems;
+        //        final int n = (int) Math.floor(prob * maxK);
+        //        System.out.println("prob = " + prob);
+        //        System.out.println("n = " + n);
+
+        int key = vh.keyHash;
+        DoubleList aggregatorValues = vh.aggregator.values();
+
+        final int n = aggregatorValues.size();
+
+        for (int i = 0; i < n; i++) {
+          keyList.add(key);
+          valuesList.add(aggregatorValues.getDouble(i));
+        }
+        // FIXME: the number of samples for each key must be proportional to the probability
+        //   of each key in the full table, e.g.:
+        //        for (double value : vh.aggregator.values()) {
+        //          keyList.add(key);
+        //          valuesList.add(value);
+        //        }
+      }
+      keys = keyList.toIntArray();
+      values = valuesList.toDoubleArray();
+    }
+    return new Samples(keys, values, uniqueKeys);
   }
 
   /** Estimates the size of union of the given GKMV synopsis */

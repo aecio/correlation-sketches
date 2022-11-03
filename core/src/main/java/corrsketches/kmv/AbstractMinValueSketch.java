@@ -1,7 +1,8 @@
 package corrsketches.kmv;
 
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.sampling.DoubleSampler;
+import corrsketches.aggregations.RepeatedValueHandlerProvider;
+import corrsketches.sampling.SamplerProvider;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.HashSet;
@@ -12,15 +13,13 @@ public abstract class AbstractMinValueSketch<T> {
 
   protected final TreeSet<ValueHash> kMinValues;
   protected final Int2ObjectOpenHashMap<ValueHash> valueHashMap;
-  protected final AggregateFunction function;
-  protected final DoubleSampler sampler;
+  protected final RepeatedValueHandlerProvider aggregatorProvider;
   protected double kthValue = Double.MIN_VALUE;
   protected int kMinItems;
   protected int seenItems;
 
   public AbstractMinValueSketch(Builder<?> builder) {
-    this.function = builder.aggregateFunction;
-    this.sampler = builder.sampler();
+    this.aggregatorProvider = builder.aggregateFunction;
     this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
     if (builder.expectedSize() < 1) {
       this.valueHashMap = new Int2ObjectOpenHashMap<>();
@@ -29,11 +28,10 @@ public abstract class AbstractMinValueSketch<T> {
     }
   }
 
-  protected ValueHash createOrUpdateValueHash(
-      int hash, double value, double hu, DoubleSampler sampler) {
+  protected ValueHash createOrUpdateValueHash(int hash, double value, double hu) {
     ValueHash vh = valueHashMap.get(hash);
     if (vh == null) {
-      vh = new ValueHash(hash, hu, value, function, sampler);
+      vh = new ValueHash(hash, hu, value, aggregatorProvider.create());
       valueHashMap.put(hash, vh);
     } else {
       vh.update(value);
@@ -118,35 +116,49 @@ public abstract class AbstractMinValueSketch<T> {
     return intersection.size();
   }
 
-  public AggregateFunction aggregateFunction() {
-    return function;
+  public RepeatedValueHandlerProvider aggregatorProvider() {
+    return aggregatorProvider;
+  }
+
+  public boolean isAggregate() {
+    return aggregatorProvider.create().isAggregator();
+  }
+
+  public abstract Samples getSamples();
+
+  public class Samples {
+    public int[] keys;
+    public double[] values;
+    public boolean uniqueKeys;
+
+    public Samples(int[] keys, double[] values, boolean uniqueKeys) {
+      this.keys = keys;
+      this.values = values;
+      this.uniqueKeys = uniqueKeys;
+    }
   }
 
   public abstract static class Builder<T extends AbstractMinValueSketch<T>> {
 
-    protected AggregateFunction aggregateFunction = AggregateFunction.FIRST;
-    protected DoubleSampler sampler = null;
+    protected RepeatedValueHandlerProvider aggregateFunction =
+        AggregateFunction.FIRST.getProvider();
 
     protected int expectedSize() {
       return -1;
     }
 
     public Builder<T> aggregate(AggregateFunction aggregateFunction) {
-      this.aggregateFunction = aggregateFunction;
+      this.aggregateFunction = aggregateFunction.getProvider();
+      return this;
+    }
+
+    public Builder<T> aggregate(SamplerProvider sampler) {
+      this.aggregateFunction = sampler;
       return this;
     }
 
     /** Creates an empty min-values sketch. */
     public abstract T build();
-
-    public DoubleSampler sampler() {
-      return sampler;
-    }
-
-    public Builder sampler(DoubleSampler sampler) {
-      this.sampler = sampler;
-      return this;
-    }
 
     /**
      * Creates a min-values sketch using the given key values and their associated numeric values.

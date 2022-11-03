@@ -2,7 +2,6 @@ package corrsketches.aggregations;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.Collections;
 import java.util.List;
@@ -11,12 +10,12 @@ import org.junit.jupiter.api.Test;
 class DoubleAggregationsTest {
 
   @Test
-  public void shouldReuseAggregateFunctionInstance() {
-    assertSame(AggregateFunction.FIRST.get(), AggregateFunction.FIRST.get());
-    assertSame(AggregateFunction.LAST.get(), AggregateFunction.LAST.get());
-    assertSame(AggregateFunction.MAX.get(), AggregateFunction.MAX.get());
-    assertSame(AggregateFunction.MIN.get(), AggregateFunction.MIN.get());
-    assertSame(AggregateFunction.SUM.get(), AggregateFunction.SUM.get());
+  public void shouldNotReuseAggregateFunctionInstance() {
+    assertNotSame(AggregateFunction.FIRST.get(), AggregateFunction.FIRST.get());
+    assertNotSame(AggregateFunction.LAST.get(), AggregateFunction.LAST.get());
+    assertNotSame(AggregateFunction.MAX.get(), AggregateFunction.MAX.get());
+    assertNotSame(AggregateFunction.MIN.get(), AggregateFunction.MIN.get());
+    assertNotSame(AggregateFunction.SUM.get(), AggregateFunction.SUM.get());
     assertNotSame(AggregateFunction.MEAN.get(), AggregateFunction.MEAN.get());
     assertNotSame(AggregateFunction.COUNT.get(), AggregateFunction.COUNT.get());
     assertNotSame(AggregateFunction.MOST_FREQUENT.get(), AggregateFunction.MOST_FREQUENT.get());

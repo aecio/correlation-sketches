@@ -1,10 +1,34 @@
 package corrsketches.sampling;
 
+import corrsketches.ColumnType;
+import corrsketches.aggregations.RepeatedValueHandler;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 
-public interface DoubleSampler {
+public interface DoubleSampler extends RepeatedValueHandler {
 
-  void sample(double item);
+  @Override
+  default void first(double value) {
+    this.update(value);
+  }
 
-  DoubleList getSamples();
+  @Override
+  void update(double current);
+
+  @Override
+  default boolean isAggregator() {
+    return false;
+  }
+
+  @Override
+  default double aggregatedValue() {
+    throw new UnsupportedOperationException("Sampler does not support value aggregation.");
+  }
+
+  @Override
+  DoubleList values();
+
+  @Override
+  default ColumnType getOutputType(ColumnType columnValueType) {
+    return columnValueType;
+  }
 }

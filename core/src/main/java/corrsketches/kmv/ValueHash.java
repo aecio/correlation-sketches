@@ -1,45 +1,33 @@
 package corrsketches.kmv;
 
-import corrsketches.aggregations.AggregateFunction;
-import corrsketches.aggregations.AggregateFunction.Aggregator;
-import corrsketches.sampling.DoubleSampler;
+import corrsketches.aggregations.RepeatedValueHandler;
 import java.util.Comparator;
 
 public class ValueHash {
 
   public static final Comparator<ValueHash> COMPARATOR_ASC = new UnitHashComparatorAscending();
 
-  public final Aggregator aggregator;
+  public final RepeatedValueHandler aggregator;
   public final int keyHash;
   public final double unitHash;
 
-  DoubleSampler sampler;
+  //  DoubleSampler sampler;
   int count; // the number of items associate with this join key
 
-  public ValueHash(
-      int keyHash,
-      double unitHash,
-      double value,
-      AggregateFunction function,
-      DoubleSampler sampler) {
+  public ValueHash(int keyHash, double unitHash, double value, RepeatedValueHandler function) {
     this.keyHash = keyHash;
     this.unitHash = unitHash;
-    this.aggregator = function.get();
-    if (aggregator != null) {
-      this.aggregator.first(value);
-    }
-    this.sampler = sampler;
+    this.aggregator = function;
+    //    if (aggregator != null) {
+    this.aggregator.first(value);
+    //    }
     this.count = 1;
-    sampler.sample(value);
   }
 
   public void update(double value) {
-    if (this.aggregator != null) {
-      this.aggregator.update(value);
-    }
-    if (this.sampler != null) {
-      this.sampler.sample(value);
-    }
+    //    if (aggregator != null) {
+    this.aggregator.update(value);
+    //    }
     this.count++;
   }
 
@@ -47,9 +35,9 @@ public class ValueHash {
     return this.count;
   }
 
-  public DoubleSampler sampler() {
-    return this.sampler;
-  }
+  //  public DoubleSampler sampler() {
+  //    return this.sampler;
+  //  }
 
   public double value() {
     return aggregator.aggregatedValue();
@@ -73,8 +61,6 @@ public class ValueHash {
         + unitHash
         + ", aggregator="
         + aggregator
-        + ", sampler: "
-        + sampler
         + '}';
   }
 

@@ -20,14 +20,14 @@ public class BernoulliSampler implements DoubleSampler {
   }
 
   @Override
-  public void sample(double item) {
+  public void update(double item) {
     if (rng.nextDouble() <= prob) {
       samples.add(item);
     }
   }
 
   @Override
-  public DoubleList getSamples() {
+  public DoubleList values() {
     return samples;
   }
 }
