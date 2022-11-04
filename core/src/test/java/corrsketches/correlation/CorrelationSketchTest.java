@@ -169,55 +169,108 @@ public class CorrelationSketchTest {
   }
 
   @Test
-  public void shouldBeAbleToSampleItems() {
-    int[] xkeys = new int[] {1, 1, 1, 1, 2, 2, 2, 3, 3, 4};
-    Column xvalues = Column.numerical(1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0);
+  public void shouldBeAbleToSampleRepeatedItems() {
+    int[] xkeys = new int[] {1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4};
+    Column xvalues = Column.numerical(1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0);
+    Builder builder = CorrelationSketch.builder();
+    int budget;
 
-    //    List<String> ykeys = Arrays.asList("a", "a", "a", "b", "b", "c");
+    // When a key is repeats frequently and no aggregation function is used, we expect that the
+    // repeated key appear multiple times in the sketch. Their frequency in the sketch must be
+    // proportional to their frequency in the original data.
+    budget = xkeys.length;
+    ImmutableCorrelationSketch xsi =
+        builder
+            .sketchType(SketchType.KMV, budget)
+            .aggregateFunction(AggregateFunction.NONE)
+            .build(xkeys, xvalues)
+            .toImmutable();
+    assertThat(xsi.getValues().length).isEqualTo(budget);
+    assertThat(Arrays.stream(xsi.getKeys()).filter((it) -> it == 1).count()).isGreaterThan(1);
+    assertThat(Arrays.stream(xsi.getKeys()).filter((it) -> it == 4).count()).isEqualTo(1);
 
-    final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, xkeys.length);
-
-    CorrelationSketch xs = builder.aggregateFunction(AggregateFunction.NONE).build(xkeys, xvalues);
-
-    final ImmutableCorrelationSketch xsi = xs.toImmutable();
-    //      assertThat(xsi.isA).isEqualTo(xkeys.length);
-    //      assertThat(xsi.getValues().length).isGreaterThan(3);
-    assertThat(xsi.getValues().length).isEqualTo(xkeys.length);
+    // We also require that the sketch must keep at least one entry of each unique key. Thus,
+    // when the budget is equal to the number of distinct items, we expect that each key will be
+    // present at least once in the sketch.
+    budget = (int) Arrays.stream(xkeys).distinct().count();
+    xsi =
+        builder
+            .aggregateFunction(AggregateFunction.NONE)
+            .sketchType(SketchType.KMV, budget)
+            .build(xkeys, xvalues)
+            .toImmutable();
+    assertThat(xsi.getValues().length).isGreaterThanOrEqualTo(budget);
+    assertThat(xsi.getKeys().length).isGreaterThanOrEqualTo(budget);
+    assertThat(xsi.getKeys().length).isGreaterThanOrEqualTo(budget);
+    assertThat(Arrays.stream(xsi.getKeys()).distinct().toArray())
+        .containsOnlyOnce(Arrays.stream(xkeys).distinct().toArray());
   }
 
   @Test
-  public void shouldCreateImmutableSketchForLeftJoin() {
-    int[] xkeys = new int[] {1, 1, 1, 1, 2, 2, 2, 3, 3, 4};
-    Column xvalues = Column.numerical(1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0);
+  public void shouldBeAbleToSampleRepeatedItemsAccordingToItsProbability() {
+    int[] xkeys = new int[] {1, 1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7};
+    Column xvalues =
+        Column.numerical(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0);
+    Builder builder = CorrelationSketch.builder();
+    int budget;
 
-    //    List<String> ykeys = Arrays.asList("a", "a", "a", "b", "b", "c");
-    int[] ykeys = new int[] {1, 1, 1, 2, 2, 3};
-    Column yvalues = Column.numerical(1.0, 1.0, 1.0, 2.0, 2.0, 3.0);
+    // When a key is repeats frequently and no aggregation function is used, we expect that the
+    // repeated key appear multiple times in the sketch. Their frequency in the sketch must be
+    // proportional to their frequency in the original data.
+    budget = 4;
+    ImmutableCorrelationSketch xsi =
+        builder
+            .sketchType(SketchType.KMV, budget)
+            .aggregateFunction(AggregateFunction.NONE)
+            .build(xkeys, xvalues)
+            .toImmutable();
+    System.out.println("xsi = " + Arrays.toString(xsi.getKeys()));
+    System.out.println("xkeys.length = " + xkeys.length);
+    System.out.println(
+        "prob = " + Arrays.stream(xkeys).filter((it) -> it == 1).count() / (double) xkeys.length);
 
-    final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, 4);
+    // each key must be included at least once
+    assertThat(Arrays.stream(xsi.getKeys()).filter((it) -> it == 4).count()).isEqualTo(1);
+    // the probability of key 1 in the data is p≈0.538 and p*budget≈0.538*4 > 2, so the sketch
+    // must contain more than one entry for the key 1.
+    assertThat(Arrays.stream(xsi.getKeys()).filter((it) -> it == 1).count()).isEqualTo(2);
+    // some items have high probability, so sketch must exceed the budget to accommodate such items
+    assertThat(xsi.getValues().length).isGreaterThanOrEqualTo(budget);
+  }
 
-    CorrelationSketch xs = builder.aggregateFunction(AggregateFunction.NONE).build(xkeys, xvalues);
-    System.out.println("----");
-    CorrelationSketch ys = builder.aggregateFunction(AggregateFunction.MEAN).build(ykeys, yvalues);
+  @Test
+  public void shouldCorrelationOverInnerJoinInSketchesWithRepeatedKeys() {
+    int[] xkeys = new int[] {1, 1, 1, 1, 1, 1, 2, 2, 3, 4, 5, 6};
+    Column xvalues = Column.numerical(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 3.0, 4.0, 5, 6);
 
-    final ImmutableCorrelationSketch xsi = xs.toImmutable();
-    System.out.println("====");
-    final ImmutableCorrelationSketch ysi = ys.toImmutable();
-    System.out.println("====");
+    final int budget = 5;
+    final Builder builder = CorrelationSketch.builder().sketchType(SketchType.KMV, budget);
+    CorrelationSketch lsk = builder.aggregateFunction(AggregateFunction.NONE).build(xkeys, xvalues);
+    CorrelationSketch rsk = builder.aggregateFunction(AggregateFunction.MEAN).build(xkeys, xvalues);
 
-    assertThat(xsi.getValues().length).isGreaterThan(3);
-    assertThat(ysi.getValues().length).isEqualTo(3);
+    final ImmutableCorrelationSketch ilsk = lsk.toImmutable();
+    final ImmutableCorrelationSketch irsk = rsk.toImmutable();
 
-    final Estimate estimate = xs.correlationTo(ys);
-    final Estimate estimateImmutable = xsi.correlationTo(ysi);
-    final Join intersection = xsi.join(ysi);
+    assertThat(ilsk.getValues().length).isGreaterThan(budget);
+    assertThat(irsk.getValues().length).isEqualTo(budget);
 
-    System.out.println(intersection);
-    //    assertEquals(3, estimate.sampleSize);
-    //    assertEquals(intersection.keys.length, estimate.sampleSize);
-    //    assertEquals(estimate.sampleSize, estimateImmutable.sampleSize);
-    //    assertEquals(estimate.value, estimateImmutable.value);
-    //    assertEquals(1.0, estimateImmutable.value);
+    final long countOfItem1inL = Arrays.stream(ilsk.getKeys()).filter(it -> it == 1).count();
+    assertThat(countOfItem1inL).isGreaterThan(1);
+
+    final long countOfItem1inR = Arrays.stream(irsk.getKeys()).filter(it -> it == 1).count();
+    assertThat(countOfItem1inR).isEqualTo(1);
+
+    final Join join = ilsk.join(irsk);
+    final long countOfItem1inJoin = Arrays.stream(join.keys).filter(it -> it == 1).count();
+    assertThat(countOfItem1inJoin).isEqualTo(countOfItem1inL * countOfItem1inR);
+
+    final Estimate estimate = lsk.correlationTo(rsk, CorrelationType.PEARSONS.get());
+    assertThat(estimate.value).isEqualTo(1.0);
+    assertThat(estimate.sampleSize).isEqualTo(join.keys.length);
+
+    final Estimate estimateImmutable = ilsk.correlationTo(irsk);
+    assertThat(estimateImmutable.value).isEqualTo(estimate.value);
+    assertThat(estimateImmutable.sampleSize).isEqualTo(estimate.sampleSize);
   }
 
   @Test

@@ -77,6 +77,7 @@ public class SyntheticMutualInformationBenchmark extends BaseBenchmark<Result> {
 
   public static CorrelationSketch createCorrelationSketch(
       ColumnPair cp, SketchParams sketchParams, AggregateFunction function) {
+    System.out.println("function = " + function);
     return CorrelationSketch.builder()
         .aggregateFunction(function)
         .sketchType(sketchParams.type, sketchParams.budget)
@@ -91,7 +92,7 @@ public class SyntheticMutualInformationBenchmark extends BaseBenchmark<Result> {
       AggregateFunction function) {
 
     // create correlation sketches for the data
-    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, function);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, AggregateFunction.NONE);
     CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, function);
 
     ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();

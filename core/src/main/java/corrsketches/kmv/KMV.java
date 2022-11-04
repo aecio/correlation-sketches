@@ -28,25 +28,24 @@ public class KMV extends AbstractMinValueSketch<KMV> {
   /** Updates the KMV synopsis with the given hashed key */
   @Override
   public void update(int hash, double value) {
-    //    System.out.println("update(hash = " + hash + ", value = " + value + ")");
     final double hu = Hashes.grm(hash);
     if (kMinValues.size() < maxK) {
-      //      System.out.printf("--> kMinValues.size() < maxK ::: %d < %d\n", kMinValues.size(),
-      // maxK);
+
       ValueHash vh = createOrUpdateValueHash(hash, value, hu);
       kMinValues.add(vh);
-      //      if (hu > kthValue) {
-      //        kthValue = hu;
-      //      }
+      // if (hu > kthValue) {
+      //   kthValue = hu;
+      // }
       kthValue = 1d;
       kMinItems++;
     } else if (hu <= kthValue) {
       // if the key associated with hu has been seen, we need to update existing values;
       // otherwise, we need to create a new entry and evict the largest key to make room it
-      //      System.out.printf("--> hu < kthValue  ::: %.4f < %.4f\n", hu, kthValue);
-
       ValueHash vh = valueHashMap.get(hash);
-      if (vh == null && hu < kthValue) {
+      if (vh != null) {
+        // the incoming key is already present in the sketch, just need to update it
+        vh.update(value);
+      } else if (hu < kthValue) {
         // This is a new unit hash we need to create a new node. Given that there will be
         // more than k minimum values, we need to evict an existing one from the heap later.
         vh = new ValueHash(hash, hu, value, aggregatorProvider.create());
@@ -58,43 +57,21 @@ public class KMV extends AbstractMinValueSketch<KMV> {
         kMinValues.remove(toBeRemoved);
         valueHashMap.remove(toBeRemoved.keyHash);
         kthValue = kMinValues.last().unitHash;
-        //        System.out.println(
-        //            "adding k="
-        //                + vh.keyHash
-        //                + ", evicting k="
-        //                + toBeRemoved.keyHash
-        //                + " count="
-        //                + toBeRemoved.count);
 
         // Update item counter of this key
         // Subtract the number of items of the removed ValueHash from the total number of
         // items contained in the universe sampling set (items smaller than the kth min value)
         kMinItems -= toBeRemoved.count;
-      } else {
-        vh.update(value);
       }
       kMinItems++;
-      // END
-
-      //      System.out.printf("k[%d] count = %d\n", vh.keyHash, vh.count);
-
-      // TODO:
-      //  (1) User reservoir sampling to select some items;
-      //  (2) remove items form the sample whenever we remove a value hash from the k-min values
-      //      (issue: how to make sure probabilities are uniform?)
-
-      // update BS
-
-      // update
     }
     seenItems++;
-
-    //    System.out.println();
-    //    System.out.println("kMin size = " + kMinValues.size());
-    //    System.out.println("seenItems = " + seenItems);
-    //    System.out.println("kMinItems = " + kMinItems);
-    //    System.out.println("    ratio = " + kMinItems / (double) seenItems);
-    //    System.out.println("__");
+    // System.out.println();
+    // System.out.println("kMin size = " + kMinValues.size());
+    // System.out.println("seenItems = " + seenItems);
+    // System.out.println("kMinItems = " + kMinItems);
+    // System.out.println("    ratio = " + kMinItems / (double) seenItems);
+    // System.out.println("__");
   }
 
   @Override
@@ -118,29 +95,31 @@ public class KMV extends AbstractMinValueSketch<KMV> {
       IntArrayList keyList = new IntArrayList();
       DoubleArrayList valuesList = new DoubleArrayList();
       for (ValueHash vh : kMinValues) {
+        // TODO:
+        //  1. Compute probability within the kMinValues or whole data (seenItems)?
+        //  2. Analyze if n can be greater than the number of entries in sampler for each key
+        //  (i.e., vh.aggregator.values()), and provide bounds for its max size and for \sum_i(n)
+        //  where i is each key in the sketch.
+
         // compute how many samples should be used from each sampler
-        final double prob = vh.count() / (double) kMinItems;
+        // final double prob = vh.count() / (double) kMinItems;
+        final double prob = vh.count() / (double) seenItems;
         final int n = (int) Math.max(1, Math.floor(prob * maxK));
-        int key = vh.keyHash;
+        final int key = vh.keyHash;
         DoubleList aggregatorValues = vh.aggregator.values();
-        System.out.println("------");
-        System.out.println("key = " + key);
-        System.out.println("seenItems = " + seenItems);
-        System.out.println("count = " + vh.count());
-        System.out.println("kMinItems = " + kMinItems);
-        System.out.println("prob = " + prob);
-        System.out.println("maxK = " + maxK);
-        System.out.println("n = " + n);
+        //         System.out.printf("prob[%d] = %.4f\n", key, prob);
+        // System.out.println("------");
+        // System.out.println("key = " + key);
+        // System.out.println("seenItems = " + seenItems);
+        // System.out.println("count = " + vh.count());
+        // System.out.println("kMinItems = " + kMinItems);
+        // System.out.println("prob = " + prob);
+        // System.out.println("maxK = " + maxK);
+        // System.out.println("n = " + n);
         for (int i = 0; i < n; i++) {
           keyList.add(key);
           valuesList.add(aggregatorValues.getDouble(i));
         }
-        // FIXME: the number of samples for each key must be proportional to the probability
-        //   of each key in the full table, e.g.:
-        //        for (double value : vh.aggregator.values()) {
-        //          keyList.add(key);
-        //          valuesList.add(value);
-        //        }
       }
       keys = keyList.toIntArray();
       values = valuesList.toDoubleArray();

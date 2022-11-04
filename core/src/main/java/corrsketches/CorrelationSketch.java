@@ -133,7 +133,7 @@ public class CorrelationSketch {
     final int[] keys; // sorted in ascending order
     final double[] values; // values associated with the keys
     final ColumnType valuesType; // the data type of values variable
-    private boolean isAggregate;
+    private boolean uniqueKeys;
 
     public ImmutableCorrelationSketch(
         int[] keys, double[] values, ColumnType valuesType, Correlation correlation) {
@@ -149,41 +149,8 @@ public class CorrelationSketch {
       AbstractMinValueSketch.Samples samples = cs.minValueSketch.getSamples();
       this.keys = samples.keys;
       this.values = samples.values;
-      this.isAggregate = samples.uniqueKeys;
-      //      this.isAggregate = cs.isAggregateSketch();
-      //      final TreeSet<ValueHash> thisKMinValues = cs.getKMinValues();
-      //      if (this.isAggregate) {
-      //        // each key is associated with only one value
-      //        int size = thisKMinValues.size();
-      //        this.keys = new int[size];
-      //        this.values = new double[size];
-      //        int i = 0;
-      //        for (ValueHash vh : thisKMinValues) {
-      //          keys[i] = vh.keyHash;
-      //          values[i] = vh.value();
-      //          i++;
-      //        }
-      //      } else {
-      //        // each key is associated with multiple sampled values
-      //        IntArrayList keyList = new IntArrayList();
-      //        DoubleArrayList valuesList = new DoubleArrayList();
-      //        for (ValueHash vh : thisKMinValues) {
-      //          // FIXME: the number of samples for each key must be proportional to the
-      // probability
-      //          //   of each key in the full table, e.g.:
-      //          //   double prob = vh.count() / cs.getSeenItems();
-      //          int key = vh.keyHash;
-      //          for (double value : vh.sampler().getSamples()) {
-      //            keyList.add(key);
-      //            valuesList.add(value);
-      //          }
-      //        }
-      //        this.keys = keyList.toIntArray();
-      //        this.values = valuesList.toDoubleArray();
-      //      }
+      this.uniqueKeys = samples.uniqueKeys;
       QuickSort.sort(keys, values);
-      //      System.out.println("keyList = " + Arrays.toString(keys));
-      //      System.out.println("valList = " + Arrays.toString(values));
     }
 
     public int[] getKeys() {
@@ -204,7 +171,7 @@ public class CorrelationSketch {
     }
 
     public Join join(ImmutableCorrelationSketch other) {
-      if (this.isAggregate && other.isAggregate) {
+      if (this.uniqueKeys && other.uniqueKeys) {
         return joinOneToOne(other);
       }
       return this.innerJoin(other);

@@ -99,7 +99,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       AggregateFunction function) {
 
     // create correlation sketches for the data
-    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, function);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, AggregateFunction.NONE);
     CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, function);
 
     ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
