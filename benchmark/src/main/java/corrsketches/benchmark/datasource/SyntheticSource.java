@@ -7,6 +7,7 @@ import corrsketches.Column;
 import corrsketches.ColumnType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.pairwise.ColumnCombination;
+import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
 import corrsketches.statistics.Stats;
 import corrsketches.util.RandomArrays;
 import java.util.ArrayList;
@@ -15,15 +16,10 @@ import java.util.List;
 import java.util.Random;
 import org.apache.commons.math3.distribution.MultivariateNormalDistribution;
 import org.apache.commons.math3.distribution.ZipfDistribution;
-import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
 
 public class SyntheticSource {
-
-  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns) {
-    return createColumnCombinations(numberOfColumns, new Random(1234));
-  }
 
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
     double[] corrs = RandomArrays.randDoubleUniform(numberOfColumns, rng);
@@ -34,10 +30,10 @@ public class SyntheticSource {
       float rho = Math.round(corrs[i] * 1000.0) / 1000f;
       // float jc = Math.round(jcs[i] * 100.0) / 100f;
 
-      for (var dataPairType : Arrays.asList(PairDataType.values())) {
+      for (var dataPairType : PairDataType.values()) {
         for (var keyDist : KeyDistribution.values()) {
           combinations.add(
-              new SyntheticColumnCombination(
+              new BivariateNormalColumnCombination(
                   rho, rng.nextInt(), new PairTypeParams(keyDist, dataPairType)));
         }
       }
@@ -62,7 +58,7 @@ public class SyntheticSource {
             + params.typeY
             + "_keydist="
             + params.keyDistribution;
-    ;
+
     String keyName = "K" + seed;
     List<String> keyValues = Arrays.asList(K);
     String columnNameX = "X" + seed;
@@ -161,10 +157,6 @@ public class SyntheticSource {
     return transposeMatrix(mnd.sample(sampleSize));
   }
 
-  private static double[][] sampleBivariateNormal(int sampleSize, double correlation, int seed) {
-    return sampleBivariateNormal(sampleSize, correlation, new JDKRandomGenerator(seed));
-  }
-
   /**
    * Transposes a matrix.
    *
@@ -227,7 +219,7 @@ public class SyntheticSource {
     }
   }
 
-  public static class SyntheticColumnCombination implements ColumnCombination {
+  public static class BivariateNormalColumnCombination implements SyntheticColumnCombination {
 
     private final int MAX_ROWS = 10000;
     public final PairTypeParams pairTypeParams;
@@ -236,7 +228,8 @@ public class SyntheticSource {
 
     private Pair pair;
 
-    public SyntheticColumnCombination(float correlation, int seed, PairTypeParams pairTypeParams) {
+    public BivariateNormalColumnCombination(
+        float correlation, int seed, PairTypeParams pairTypeParams) {
       this.correlation = correlation;
       this.seed = seed;
       this.pairTypeParams = pairTypeParams;
@@ -254,6 +247,16 @@ public class SyntheticSource {
         this.pair = generateColumns(MAX_ROWS, seed, correlation, pairTypeParams);
       }
       return pair.y;
+    }
+
+    @Override
+    public float getCorrelation() {
+      return correlation;
+    }
+
+    @Override
+    public String getKeyDistribution() {
+      return pairTypeParams.keyDistribution.toString();
     }
   }
 }

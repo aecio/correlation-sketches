@@ -3,7 +3,7 @@ package corrsketches.benchmark;
 import static corrsketches.benchmark.ComputePairwiseJoinCorrelations.*;
 
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.benchmark.datasource.SyntheticSource;
+import corrsketches.benchmark.datasource.MultinomialSyntheticSource;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.CliTool;
@@ -80,7 +80,9 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
 
     // Set up data source
     System.out.println("\n> Computing column statistics for all column combinations...");
-    List<ColumnCombination> combinations = SyntheticSource.createColumnCombinations(samples);
+    //    List<ColumnCombination> combinations = SyntheticSource.createColumnCombinations(samples);
+    List<ColumnCombination> combinations =
+        MultinomialSyntheticSource.createColumnCombinations(samples);
 
     // Initialize the output filename
     String datasetName = "sbn";

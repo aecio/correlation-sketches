@@ -12,6 +12,21 @@ public class Stats {
   public static final GaussianDistribution NORMAL = new GaussianDistribution(0, 1);
 
   /**
+   * Computes the covariance between the two input vectors.
+   *
+   * @return cov(x, y)
+   */
+  public static double cov(double[] x, double[] y) {
+    final double meanX = mean(x);
+    final double meanY = mean(y);
+    double sumXY = 0.0;
+    for (int i = 0; i < x.length; i++) {
+      sumXY += (x[i] - meanX) * (y[i] - meanY);
+    }
+    return sumXY / (x.length - 1);
+  }
+
+  /**
    * Computes the mean of the given input vector.
    *
    * @return sum(x)/n
@@ -300,6 +315,15 @@ public class Stats {
       xn[i] = xn[i] + TINY * mean * rng.nextGaussian();
     }
     return xn;
+  }
+
+  public static double[] toProbabilities(double[] data) {
+    final double sum = Math.nextUp(sum(data));
+    double[] probabilities = new double[data.length];
+    for (int i = 0; i < data.length; i++) {
+      probabilities[i] = data[i] / sum;
+    }
+    return probabilities;
   }
 
   public enum TiesMethod {
