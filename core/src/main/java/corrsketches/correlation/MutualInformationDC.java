@@ -6,12 +6,14 @@ import static smile.math.special.Gamma.digamma;
 
 import corrsketches.statistics.NearestNeighbors1D;
 import corrsketches.statistics.NearestNeighbors1D.NearestNeighbor;
+import corrsketches.statistics.Stats;
 import corrsketches.util.Sorting;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Implements computation of mutual information between continuous and discrete variables as
@@ -22,6 +24,8 @@ import java.util.List;
  * implementation provided by the paper authors.
  */
 public class MutualInformationDC {
+
+  private static final long DEFAULT_SEED = 9;
 
   public static double mi(int[] d, double[] c) {
     return miNonNegative(d, c, 3);
@@ -36,12 +40,16 @@ public class MutualInformationDC {
   }
 
   static double miNonNegative(final int[] d, final double[] c, final int k) {
-    return max(0, miRaw(d, c, k));
+    return max(0, miRaw(d, c, k, new Random(DEFAULT_SEED)));
   }
 
   static double miRaw(
       final int[] discrete, final double[] continuous, final int k, final double base) {
     return miRaw(discrete, continuous, k) / log(base);
+  }
+
+  static double miRaw(final int[] discrete, final double[] continuous, final int k) {
+    return miRaw(discrete, continuous, k, null);
   }
 
   /**
@@ -52,13 +60,26 @@ public class MutualInformationDC {
    * @param discrete a vector of discrete values represented as integers
    * @param continuous a vector of continuous variables
    * @param k the number k-nearest neighbors
+   * @param rng (Optional) if not null, this random number generator is used to add small Gaussian
+   *     noise for the continuous variable. This avoids estimation errors when the continuous
+   *     variable contains tied values.
    * @return the mutual information estimate.
    */
-  static double miRaw(final int[] discrete, final double[] continuous, final int k) {
+  static double miRaw(
+      final int[] discrete, final double[] continuous, final int k, final Random rng) {
 
     // Make copy to avoid mutating original data
     final int[] d = Arrays.copyOf(discrete, discrete.length);
     final double[] c = Arrays.copyOf(continuous, continuous.length);
+
+    if (rng != null) {
+      // Add random gaussian noise to the continuous variable. This is done to avoid problems
+      // with tied values as suggested in Kraskov's original paper that proposes the KSG method.
+      double cm = Math.max(1, Stats.mean(c));
+      for (int i = 0; i < c.length; i++) {
+        c[i] = c[i] + rng.nextGaussian() * cm * 1e-10;
+      }
+    }
 
     // Sort the data by the continuous variable 'c'
     sort(c, d);

@@ -19,6 +19,7 @@ import corrsketches.statistics.DistanceFunction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import smile.math.Math;
 import smile.sort.HeapSelect;
 
 /**
@@ -97,7 +98,7 @@ public class KDTree {
     }
 
     // If the max spread is 0, make this a leaf node
-    if (maxRadius == 0) {
+    if (Math.isZero(maxRadius, 1e-10)) {
       node.lower = node.upper = null;
       return node;
     }
