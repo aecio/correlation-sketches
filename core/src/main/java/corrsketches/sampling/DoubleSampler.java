@@ -31,4 +31,8 @@ public interface DoubleSampler extends RepeatedValueHandler {
   default ColumnType getOutputType(ColumnType columnValueType) {
     return columnValueType;
   }
+
+  default boolean acceptsInputColumnType(ColumnType inputDataType) {
+    return true;
+  }
 }

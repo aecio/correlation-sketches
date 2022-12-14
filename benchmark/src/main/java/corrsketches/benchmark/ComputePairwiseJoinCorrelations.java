@@ -75,8 +75,15 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       description = "Number of CPU core to use. Default is to use all cores available.")
   int cpuCores = -1;
 
-  @Option(names = "--aggregations", description = "Run performance experiments")
-  String aggregateFunctions = "FIRST";
+  @Option(
+      names = "--right-aggregations",
+      description = "Aggregation functions for the RIGHT table separated by comma (,), or \"all\"")
+  String rightAggregateFunctions = "FIRST";
+
+  @Option(
+      names = "--left-aggregations",
+      description = "Aggregation functions for the LEFT table separated by comma (,), or \"all\"")
+  String leftAggregateFunctions = "NONE";
 
   public static void main(String[] args) {
     CliTool.run(args, new ComputePairwiseJoinCorrelations());
@@ -92,8 +99,12 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     List<SketchParams> sketchParamsList = SketchParams.parse(this.sketchParams);
     System.out.println("> SketchParams: " + this.sketchParams);
 
-    List<AggregateFunction> aggregations = parseAggregations(this.aggregateFunctions);
-    System.out.println("> Using aggregate functions: " + aggregations);
+    final List<AggregateFunction> leftAggregations = parseAggregations(this.leftAggregateFunctions);
+    System.out.println("> LEFT aggregate functions: " + leftAggregations);
+
+    final List<AggregateFunction> rightAggregations =
+        parseAggregations(this.rightAggregateFunctions);
+    System.out.println("> RIGHT aggregate functions: " + rightAggregations);
 
     // Set up data source
     System.out.println("\n> Computing column statistics for all column combinations...");
@@ -127,7 +138,6 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     } else if (benchmarkType == BenchmarkType.CORR_STATS) {
       bench = new CorrelationStatsBenchmark();
     } else if (benchmarkType == BenchmarkType.MI) {
-      aggregations = Arrays.asList(AggregateFunction.MOST_FREQUENT);
       bench = new MutualInformationBenchmark();
     } else {
       throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
@@ -155,7 +165,6 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     final int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
 
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-    List<AggregateFunction> finalAggregations = aggregations;
     Runnable task =
         () ->
             stream
@@ -163,7 +172,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
                 .map(
                     (DBColumnCombination columnPair) -> {
                       List<String> results =
-                          bench.run(columnPair, sketchParamsList, finalAggregations);
+                          bench.run(
+                              columnPair, sketchParamsList, leftAggregations, rightAggregations);
                       reportProgress(processed, total);
                       return toCSV(results);
                     })

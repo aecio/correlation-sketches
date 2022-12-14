@@ -63,7 +63,7 @@ public class MultinomialSampler {
     if (n <= 0) {
       return 0;
     }
-    //    return binomialSampler.binomialSWT(n, p);
-    return binomialSampler.sampleNaive(n, p);
+    return binomialSampler.binomialSWT(n, p);
+    //    return binomialSampler.sampleNaive(n, p);
   }
 }

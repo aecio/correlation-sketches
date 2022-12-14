@@ -11,7 +11,6 @@ import java.io.FileWriter;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -39,15 +38,15 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
   String sketchParams = null;
 
   @Option(names = "--num-samples", description = "The number of column combinations to generate.")
-  private int samples = 1000;
+  int samples = 1000;
 
   @Option(names = "--total-tasks", description = "The to number of tasks to split the computation.")
-  private int totalTasks = -1;
+  int totalTasks = -1;
 
   @Option(
       names = "--task-id",
       description = "The id of this task, a number in the range [0, <total-tasks> - 1]")
-  private int taskId = -1;
+  int taskId = -1;
 
   @Option(
       names = "--cpu-cores",
@@ -55,9 +54,14 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
   int cpuCores = -1;
 
   @Option(
-      names = "--aggregations",
-      description = "Aggregation functions separated by comma (,), or \"all\"")
-  String aggregateFunctions = "FIRST";
+      names = "--right-aggregations",
+      description = "Aggregation functions for the RIGHT table separated by comma (,), or \"all\"")
+  String rightAggregateFunctions = "FIRST";
+
+  @Option(
+      names = "--left-aggregations",
+      description = "Aggregation functions for the LEFT table separated by comma (,), or \"all\"")
+  String leftAggregateFunctions = "NONE";
 
   public static void main(String[] args) {
     CliTool.run(args, new SyntheticPairwiseMutualInfoBenchmark());
@@ -73,8 +77,11 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     List<SketchParams> sketchParamsList = SketchParams.parse(this.sketchParams);
     System.out.println("> SketchParams: " + this.sketchParams);
 
-    List<AggregateFunction> aggregations = parseAggregations(this.aggregateFunctions);
-    System.out.println("> Using aggregate functions: " + aggregations);
+    List<AggregateFunction> leftAggregations = parseAggregations(this.leftAggregateFunctions);
+    System.out.println("> LEFT aggregate functions: " + leftAggregations);
+
+    List<AggregateFunction> rightAggregations = parseAggregations(this.rightAggregateFunctions);
+    System.out.println("> RIGHT aggregate functions: " + rightAggregations);
 
     BenchmarkType benchmarkType = BenchmarkType.MI;
 
@@ -111,7 +118,6 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     //    } else {
     //      throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
     //    }
-    aggregations = Arrays.asList(AggregateFunction.FIRST);
     bench = new MutualInformationBenchmark();
 
     // Initialize CSV output file and start writing headers
@@ -136,7 +142,6 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     final int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
 
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-    List<AggregateFunction> finalAggregations = aggregations;
     Runnable task =
         () ->
             stream
@@ -144,7 +149,8 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
                 .map(
                     (ColumnCombination combination) -> {
                       List<String> results =
-                          bench.run(combination, sketchParamsList, finalAggregations);
+                          bench.run(
+                              combination, sketchParamsList, leftAggregations, rightAggregations);
                       reportProgress(processed, total);
                       return toCSV(results);
                     })

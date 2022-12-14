@@ -33,8 +33,10 @@ public class CorrelationStatsBenchmark implements Benchmark {
   public List<String> run(
       ColumnCombination combination,
       List<SketchParams> sketchParams,
-      List<AggregateFunction> functions) {
-    return computeStatistics(combination.getX(), combination.getY(), sketchParams, functions);
+      List<AggregateFunction> leftAggregations, // TODO: currently not used
+      List<AggregateFunction> rightAggregations) {
+    return computeStatistics(
+        combination.getX(), combination.getY(), sketchParams, rightAggregations);
   }
 
   @Override

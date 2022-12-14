@@ -3,8 +3,9 @@ package corrsketches.benchmark;
 import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.data.Offset.offset;
 
+import corrsketches.Column;
 import corrsketches.benchmark.distributions.MultinomialSampler;
-import corrsketches.correlation.PearsonCorrelation;
+import corrsketches.correlation.*;
 import corrsketches.statistics.Stats;
 import corrsketches.statistics.Variance;
 import java.util.Random;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.RepetitionInfo;
 
 public class MultinomialSamplerTest {
 
-  @RepeatedTest(500)
+  @RepeatedTest(100)
   public void shouldDrawSamplesFromMultinomialDistribution() {
     // given
     double delta = 15;
@@ -22,7 +23,7 @@ public class MultinomialSamplerTest {
     // double delta = 0.2;
     // int n = 15;
     double p = 0.55;
-    double q = 0.45;
+    double q = 0.44;
     int length = 10000;
 
     // when
@@ -49,7 +50,7 @@ public class MultinomialSamplerTest {
         .isEqualTo(expectedCorrPQ, offset(deltaCorr));
   }
 
-  @RepeatedTest(500)
+  @RepeatedTest(100)
   public void shouldDrawSamplesFromMultinomialDistributionWithRandomParameters(
       RepetitionInfo repetitionInfo) {
     // given
@@ -57,10 +58,11 @@ public class MultinomialSamplerTest {
     double[] probs =
         Stats.toProbabilities(new double[] {rng.nextDouble(), rng.nextDouble(), rng.nextDouble()});
     int n = 10 + rng.nextInt(1000);
+    //    int n = 512;
     double p = probs[0];
     double q = probs[1];
     int length = 10000;
-    double delta = n / 10;
+    double delta = n / 10d;
 
     // when
     // var sampler = new SimpleMultinomialSampler(ThreadLocalRandom.current(), probs);
@@ -87,6 +89,20 @@ public class MultinomialSamplerTest {
     double deltaCorr = 0.05;
     assertThat(PearsonCorrelation.coefficient(data[0], data[1]))
         .isEqualTo(expectedCorrPQ, offset(deltaCorr));
+
+    double expectedMiPQ = -0.5 * Math.log(1.0 - Math.pow(expectedCorrPQ, 2));
+    double deltaMi = 0.285;
+    assertThat(MutualInformationMixedKSG.mi(data[0], data[1]))
+        .isEqualTo(expectedMiPQ, offset(deltaMi));
+    assertThat(MutualInformationMixedKSG.miWithNoise(data[0], data[1]))
+        .isEqualTo(expectedMiPQ, offset(deltaMi));
+    assertThat(MutualInformationDC.mi(Column.castToIntArray(data[0]), data[1]))
+        .isEqualTo(expectedMiPQ, offset(deltaMi));
+    // // The MI estimator for categorical data tends to overestimate the true value
+    // assertThat(MutualInformation.ofCategorical(
+    //        Column.castToIntArray(data[0]),
+    //        Column.castToIntArray(data[1])).value
+    // ).isEqualTo(expectedMiPQ, offset(deltaMi));
   }
 
   //  @RepeatedTest(500)

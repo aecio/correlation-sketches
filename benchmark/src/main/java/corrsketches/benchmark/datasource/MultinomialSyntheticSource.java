@@ -111,7 +111,8 @@ public class MultinomialSyntheticSource {
     double p, q;
     float r;
     do {
-      r = Math.round(rng.nextDouble() * 1000.0) / 1000f;
+      final double mi = rng.nextDouble() * 3.5;
+      r = (float) Math.sqrt(1. - Math.exp(-2 * mi));
       q = 0.15 + (rng.nextDouble() * 0.85); // [0.25, 0.75)
       final double b = q / (1.0 - q);
       final double a = Math.pow(r, 2) / b;

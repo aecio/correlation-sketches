@@ -101,12 +101,12 @@ public class KMV extends AbstractMinValueSketch<KMV> {
         //  (i.e., vh.aggregator.values()), and provide bounds for its max size and for \sum_i(n)
         //  where i is each key in the sketch.
 
+        final int key = vh.keyHash;
+        DoubleList aggregatorValues = vh.aggregator.values();
         // compute how many samples should be used from each sampler
         // final double prob = vh.count() / (double) kMinItems;
         final double prob = vh.count() / (double) seenItems;
-        final int n = (int) Math.max(1, Math.floor(prob * maxK));
-        final int key = vh.keyHash;
-        DoubleList aggregatorValues = vh.aggregator.values();
+        int n = (int) Math.max(1, Math.floor(prob * maxK));
         //         System.out.printf("prob[%d] = %.4f\n", key, prob);
         // System.out.println("------");
         // System.out.println("key = " + key);
@@ -116,6 +116,9 @@ public class KMV extends AbstractMinValueSketch<KMV> {
         // System.out.println("prob = " + prob);
         // System.out.println("maxK = " + maxK);
         // System.out.println("n = " + n);
+        if (n > aggregatorValues.size()) {
+          n = aggregatorValues.size();
+        }
         for (int i = 0; i < n; i++) {
           keyList.add(key);
           valuesList.add(aggregatorValues.getDouble(i));

@@ -26,6 +26,7 @@ dependencies {
     implementation group: 'tech.tablesaw', name: 'tablesaw-core', version: tablesawVersion
     implementation group: 'net.tlabs-data', name: "tablesaw_${tablesawVersion}-parquet", version: "${tablesawParquetVersion}"
     implementation group: 'io.github.vida-nyu', name: 'kvdb4j', version: '0.1.0'
+    implementation libraries.smile
     // CLI parsing
     implementation libraries.picocli
     annotationProcessor libraries.picocli_codegen

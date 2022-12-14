@@ -23,8 +23,10 @@ public class CorrelationPerformanceBenchmark implements Benchmark {
   public List<String> run(
       ColumnCombination combination,
       List<SketchParams> sketchParams,
-      List<AggregateFunction> functions) {
-    return measurePerformance(combination.getX(), combination.getY(), sketchParams, functions);
+      List<AggregateFunction> leftAggregations, // TODO: currently not used
+      List<AggregateFunction> rightAggregations) {
+    return measurePerformance(
+        combination.getX(), combination.getY(), sketchParams, rightAggregations);
   }
 
   @Override

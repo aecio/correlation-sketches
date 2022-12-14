@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
@@ -32,7 +33,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   public List<String> run(
       ColumnCombination combination,
       List<SketchParams> sketchParams,
-      List<AggregateFunction> functions) {
+      List<AggregateFunction> leftAggregations,
+      List<AggregateFunction> rightAggregations) {
 
     Result result = new Result();
 
@@ -44,14 +46,16 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       result.key_dist = ((SyntheticColumnCombination) combination).getKeyDistribution();
     }
 
-    List<Result> groundTruthResults = computeFullJoinStatistics(x, y, functions, result);
+    List<Result> groundTruthResults =
+        computeFullJoinStatistics(x, y, leftAggregations, rightAggregations, result);
 
     List<String> results = new ArrayList<>();
     for (Result r : groundTruthResults) {
       // we don't need to report column pairs that have no intersection at all
       if (Double.isFinite(r.interxy_actual) && r.interxy_actual >= 2) {
         for (SketchParams params : sketchParams) {
-          results.add(toCsvLine(computeSketchStatistics(r.clone(), x, y, params, r.aggregate)));
+          results.add(
+              toCsvLine(computeSketchStatistics(r.clone(), x, y, params, r.left_agg, r.right_agg)));
         }
       }
     }
@@ -60,26 +64,45 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   private static List<Result> computeFullJoinStatistics(
-      ColumnPair x, ColumnPair y, List<AggregateFunction> functions, Result result) {
+      ColumnPair x,
+      ColumnPair y,
+      List<AggregateFunction> leftAggregations,
+      List<AggregateFunction> rightAggregations,
+      Result result) {
 
     HashSet<String> xKeys = new HashSet<>(x.keyValues);
     HashSet<String> yKeys = new HashSet<>(y.keyValues);
     result.cardx_actual = xKeys.size();
     result.cardy_actual = yKeys.size();
     result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
+    result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
 
     // No need compute any statistics when there is no intersection
     if (result.interxy_actual < MINIMUM_INTERSECTION) {
       return Collections.emptyList();
     }
 
-    //    result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
     //    result.jcx_actual = result.interxy_actual / (double) result.cardx_actual;
     //    result.jcy_actual = result.interxy_actual / (double) result.cardy_actual;
     //    result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
 
     // correlation ground-truth after join-aggregations
-    return computeMutualInfoAfterFullJoin(x, y, functions, result);
+    List<AggregateFunction> rightAggs =
+        rightAggregations.stream()
+            .filter(
+                agg ->
+                    agg == AggregateFunction.NONE
+                        || agg.get().acceptsInputColumnType(y.columnValueType))
+            .collect(Collectors.toList());
+
+    return leftAggregations.stream()
+        .filter(
+            leftAgg ->
+                leftAgg == AggregateFunction.NONE
+                    || leftAgg.get().acceptsInputColumnType(x.columnValueType))
+        .flatMap(
+            leftAgg -> computeMutualInfoAfterFullJoin(x, y, leftAgg, rightAggs, result).stream())
+        .collect(Collectors.toList());
   }
 
   public static CorrelationSketch createCorrelationSketch(
@@ -95,11 +118,12 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       ColumnPair x,
       ColumnPair y,
       SketchParams sketchParams,
-      AggregateFunction function) {
+      AggregateFunction leftAggregateFn,
+      AggregateFunction rightAggregateFn) {
 
     // create correlation sketches for the data
-    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, AggregateFunction.NONE);
-    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, function);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, leftAggregateFn);
+    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, rightAggregateFn);
 
     ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
     ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
@@ -136,12 +160,16 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   public static List<Result> computeMutualInfoAfterFullJoin(
-      ColumnPair columnA, ColumnPair columnB, List<AggregateFunction> functions, Result result) {
+      ColumnPair columnA,
+      ColumnPair columnB,
+      AggregateFunction leftAggregation,
+      List<AggregateFunction> rightAggregations,
+      Result result) {
 
     List<Aggregation> joins =
-        CategoricalJoinAggregation.leftJoinAggregate(columnA, columnB, functions);
+        CategoricalJoinAggregation.leftJoinAggregate(columnA, columnB, rightAggregations);
 
-    List<Result> results = new ArrayList<>(functions.size());
+    List<Result> results = new ArrayList<>(rightAggregations.size());
 
     for (Aggregation join : joins) {
 
@@ -151,7 +179,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       }
 
       Result r = result.clone();
-      r.aggregate = join.aggregate;
+      r.left_agg = leftAggregation;
+      r.right_agg = join.aggregate;
       r.join_stats = join.joinStats;
       r.xtype = join.a.type.toString();
       r.ytype = join.b.type.toString();
@@ -199,6 +228,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public int join_size_sketch;
     public int join_size_actual;
     public int interxy_actual;
+    public int unionxy_actual;
     public int cardx_actual;
     public int cardy_actual;
     // data types
@@ -207,7 +237,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
     public String parameters;
     public String columnId;
-    public AggregateFunction aggregate;
+    public AggregateFunction right_agg;
+    public AggregateFunction left_agg;
 
     public float true_corr = Float.NaN;
     public String key_dist;

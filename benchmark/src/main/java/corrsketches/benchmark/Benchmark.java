@@ -16,7 +16,8 @@ public interface Benchmark {
   List<String> run(
       ColumnCombination combination,
       List<SketchParams> sketchParams,
-      List<AggregateFunction> functions);
+      List<AggregateFunction> leftAggregations,
+      List<AggregateFunction> rightAggregations);
 
   abstract class BaseBenchmark<T> implements Benchmark {
 

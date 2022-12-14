@@ -16,4 +16,6 @@ public interface RepeatedValueHandler {
   DoubleList values();
 
   ColumnType getOutputType(ColumnType columnValueType);
+
+  boolean acceptsInputColumnType(ColumnType inputDataType);
 }

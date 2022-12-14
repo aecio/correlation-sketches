@@ -98,6 +98,11 @@ public enum AggregateFunction {
     public ColumnType getOutputType(ColumnType columnValueType) {
       return ColumnType.NUMERICAL;
     }
+
+    @Override
+    public boolean acceptsInputColumnType(ColumnType inputDataType) {
+      return inputDataType == ColumnType.NUMERICAL;
+    }
   }
 
   /**
@@ -106,6 +111,11 @@ public enum AggregateFunction {
   public abstract static class SameTypeAggregator extends BaseAggregator {
     public ColumnType getOutputType(ColumnType columnValueType) {
       return columnValueType;
+    }
+
+    @Override
+    public boolean acceptsInputColumnType(ColumnType inputDataType) {
+      return true;
     }
   }
 
@@ -206,6 +216,11 @@ public enum AggregateFunction {
         }
       }
       return maxItem;
+    }
+
+    @Override
+    public boolean acceptsInputColumnType(ColumnType inputDataType) {
+      return inputDataType == ColumnType.CATEGORICAL;
     }
   }
 }
