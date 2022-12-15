@@ -147,7 +147,9 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
     // Initialize CSV output file and start writing headers
     Files.createDirectories(Paths.get(outputPath));
-    FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
+    String outputFileName = Paths.get(outputPath, filename).toString();
+    System.out.println("Writing output to file: " + outputFileName);
+    FileWriter resultsFile = new FileWriter(outputFileName);
     resultsFile.write(bench.csvHeader() + "\n");
 
     // If necessary, filter combinations leaving only the ones that should be computed by this task
