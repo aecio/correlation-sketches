@@ -64,7 +64,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       description = "The maximum number of columns to consider for creating combinations.")
   private int maxSamples = 5000;
 
-  @Option(names = "--total-tasks", description = "The to number of tasks to split the computation.")
+  @Option(names = "--total-tasks", description = "The total number of tasks to split the computation.")
   private int totalTasks = -1;
 
   @Option(
@@ -93,8 +93,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
 
   @Override
   public void execute() throws Exception {
-    if (totalTasks > 0 && taskId < 0) {
-      System.out.printf("taskId=[%d] must be a number from 0 to %d (total-tasks)\n", totalTasks);
+    if (totalTasks > 0 && (taskId < 0 || taskId >= totalTasks)) {
+      System.out.printf("taskId=[%d] must be a number from 0 to %d (total-tasks)\n", totalTasks-1);
       System.exit(1);
     }
 
@@ -148,12 +148,12 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     // Initialize CSV output file and start writing headers
     Files.createDirectories(Paths.get(outputPath));
     String outputFileName = Paths.get(outputPath, filename).toString();
-    System.out.println("Writing output to file: " + outputFileName);
+    System.out.println("> Writing output to file: " + outputFileName);
     FileWriter resultsFile = new FileWriter(outputFileName);
     resultsFile.write(bench.csvHeader() + "\n");
 
     // If necessary, filter combinations leaving only the ones that should be computed by this task
-    System.out.println("Total number of column combinations: " + combinations.size());
+    System.out.println("> Total number of column combinations: " + combinations.size());
     if (totalTasks > 1) {
       combinations =
           IntStream.range(0, combinations.size())
@@ -161,7 +161,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
               .mapToObj(combinations::get)
               .collect(Collectors.toList());
       Collections.shuffle(combinations, new Random(SEED));
-      System.out.println("Column combinations for this task: " + combinations.size());
+      System.out.println("> Column combinations for this task: " + combinations.size());
     }
 
     final Stream<DBColumnCombination> stream = combinations.stream();
