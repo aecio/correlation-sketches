@@ -33,6 +33,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     MI
   }
 
+  static final long SEED = 9;
+
   @Option(
       names = "--input-path",
       required = true,
@@ -156,6 +158,7 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
               .filter(i -> i % totalTasks == taskId)
               .mapToObj(combinations::get)
               .collect(Collectors.toList());
+      Collections.shuffle(combinations, new Random(SEED));
       System.out.println("Column combinations for this task: " + combinations.size());
     }
 
