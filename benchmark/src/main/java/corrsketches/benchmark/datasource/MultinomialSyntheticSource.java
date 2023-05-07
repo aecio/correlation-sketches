@@ -21,12 +21,14 @@ public class MultinomialSyntheticSource {
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
     List<ColumnCombination> combinations = new ArrayList<>();
     for (int i = 0; i < numberOfColumns; i++) {
-      MultinomialParameters parameters = createMultinomialParameters(rng);
-      for (var dataPairType : PairDataType.values()) {
-        for (var keyDist : KeyDistribution.values()) {
-          combinations.add(
-              new MultinomialColumnCombination(
-                  rng.nextInt(), parameters, new PairTypeParams(keyDist, dataPairType)));
+      for (int n : Arrays.asList(256, 512, 768, 1024)) {
+        MultinomialParameters parameters = createMultinomialParameters(rng, n);
+        for (var dataPairType : PairDataType.values()) {
+          for (var keyDist : KeyDistribution.values()) {
+            combinations.add(
+                new MultinomialColumnCombination(
+                    rng.nextInt(), parameters, new PairTypeParams(keyDist, dataPairType)));
+          }
         }
       }
     }
@@ -40,7 +42,7 @@ public class MultinomialSyntheticSource {
     double[][] sampled = sampleMultinomial(maxRows, parameters, rng);
     double[] X = sampled[0];
     double[] Y = sampled[1];
-    String[] K = generateJoinKeys(maxRows, params.keyDistribution, Y, rng);
+    String[] K = generateJoinKeys(maxRows, params.keyDistribution, Y);
 
     String datasetId =
         String.format(
@@ -58,7 +60,7 @@ public class MultinomialSyntheticSource {
   }
 
   private static String[] generateJoinKeys(
-      int length, KeyDistribution distribution, double[] feature, RandomGenerator rng) {
+      int length, KeyDistribution distribution, double[] feature) {
     final int[] keys;
     if (distribution == KeyDistribution.UNIQUE) {
       keys = sequentialKeys(length);
@@ -106,8 +108,7 @@ public class MultinomialSyntheticSource {
     return multinomialSampler.sample(sampleSize);
   }
 
-  private static MultinomialParameters createMultinomialParameters(Random rng) {
-    int n = 512;
+  private static MultinomialParameters createMultinomialParameters(Random rng, int n) {
     double p, q;
     float r;
     do {
@@ -136,9 +137,11 @@ public class MultinomialSyntheticSource {
       } else if (pairType == PairDataType.NUMERICAL) {
         typeX = ColumnType.NUMERICAL;
         typeY = ColumnType.NUMERICAL;
-      } else {
+      } else if (pairType == PairDataType.MIXED) {
         typeX = ColumnType.CATEGORICAL;
         typeY = ColumnType.NUMERICAL;
+      } else {
+        throw new UnsupportedOperationException("Invalid pair data type");
       }
     }
   }
@@ -165,7 +168,7 @@ public class MultinomialSyntheticSource {
     }
   }
 
-  static class MultinomialParameters {
+  public static class MultinomialParameters {
     public final double p;
     public final double q;
     public final int n;
@@ -202,6 +205,7 @@ public class MultinomialSyntheticSource {
       this.pairTypeParams = pairTypeParams;
     }
 
+    @Override
     public ColumnPair getX() {
       if (this.pair == null) {
         this.pair =
@@ -210,6 +214,7 @@ public class MultinomialSyntheticSource {
       return pair.x;
     }
 
+    @Override
     public ColumnPair getY() {
       if (this.pair == null) {
         this.pair =
@@ -226,6 +231,10 @@ public class MultinomialSyntheticSource {
     @Override
     public String getKeyDistribution() {
       return pairTypeParams.keyDistribution.toString();
+    }
+
+    public MultinomialParameters getParameters() {
+      return multinomialParameters;
     }
   }
 }

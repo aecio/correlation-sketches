@@ -47,7 +47,7 @@ public class SPPKF extends AbstractMinValueSketch<SPPKF> {
 
     heapData = new ValueHash[maxK];
     heap = new HeapSelect<>(heapData);
-    actualSize = Math.min(maxK, hashedKeys.length);
+    actualSize = Math.min(maxK, hashedKeys.length); // hashedKeys may be smaller than k
 
     Int2IntOpenHashMap keyCounts = new Int2IntOpenHashMap();
     for (int i = 0; i < hashedKeys.length; i++) {

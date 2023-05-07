@@ -9,6 +9,7 @@ import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
+import corrsketches.benchmark.datasource.MultinomialSyntheticSource.MultinomialColumnCombination;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
@@ -44,6 +45,9 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     if (combination instanceof SyntheticColumnCombination) {
       result.true_corr = ((SyntheticColumnCombination) combination).getCorrelation();
       result.key_dist = ((SyntheticColumnCombination) combination).getKeyDistribution();
+      if (combination instanceof MultinomialColumnCombination) {
+        result.multinomial_n = ((MultinomialColumnCombination) combination).getParameters().n;
+      }
     }
 
     List<Result> groundTruthResults =
@@ -242,6 +246,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
     public float true_corr = Float.NaN;
     public String key_dist;
+    public int multinomial_n;
 
     @JsonUnwrapped public JoinStats join_stats;
 
