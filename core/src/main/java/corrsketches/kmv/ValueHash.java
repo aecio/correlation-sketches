@@ -3,7 +3,7 @@ package corrsketches.kmv;
 import corrsketches.aggregations.RepeatedValueHandler;
 import java.util.Comparator;
 
-public class ValueHash {
+public class ValueHash implements Comparable<ValueHash> {
 
   public static final Comparator<ValueHash> COMPARATOR_ASC = new UnitHashComparatorAscending();
 
@@ -62,6 +62,11 @@ public class ValueHash {
         + ", aggregator="
         + aggregator
         + '}';
+  }
+
+  @Override
+  public int compareTo(ValueHash o) {
+    return Double.compare(this.unitHash, o.unitHash);
   }
 
   private static class UnitHashComparatorAscending implements Comparator<ValueHash> {

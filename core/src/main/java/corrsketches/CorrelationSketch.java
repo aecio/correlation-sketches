@@ -4,10 +4,7 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation;
 import corrsketches.correlation.CorrelationType;
 import corrsketches.correlation.Estimate;
-import corrsketches.kmv.AbstractMinValueSketch;
-import corrsketches.kmv.GKMV;
-import corrsketches.kmv.KMV;
-import corrsketches.kmv.ValueHash;
+import corrsketches.kmv.*;
 import corrsketches.sampling.Samplers;
 import corrsketches.util.QuickSort;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
@@ -52,7 +49,7 @@ public class CorrelationSketch {
         } else {
           sketchBuilder.aggregate(builder.aggregateFunction);
         }
-      } else {
+      } else if (builder.sketchType == SketchType.GKMV) {
         GKMV.Builder gkmvBuilder = new GKMV.Builder();
         sketchBuilder = gkmvBuilder;
         gkmvBuilder.threshold(builder.budget);
@@ -61,6 +58,28 @@ public class CorrelationSketch {
         } else {
           sketchBuilder.aggregate(builder.aggregateFunction);
         }
+      } else if (builder.sketchType == SketchType.SPPKF) {
+        SPPKF.Builder sppkfBuilder = new SPPKF.Builder();
+        sketchBuilder = sppkfBuilder;
+        int kmin = (int) builder.budget;
+        sppkfBuilder.maxSize(kmin);
+        if (builder.aggregateFunction == AggregateFunction.NONE) {
+          sppkfBuilder.aggregate(Samplers.reservoir(kmin));
+        } else {
+          sketchBuilder.aggregate(builder.aggregateFunction);
+        }
+      } else if (builder.sketchType == SketchType.PRISK) {
+        PRISK.Builder priskBuilder = new PRISK.Builder();
+        sketchBuilder = priskBuilder;
+        int kmin = (int) builder.budget;
+        priskBuilder.maxSize(kmin);
+        if (builder.aggregateFunction == AggregateFunction.NONE) {
+          priskBuilder.aggregate(Samplers.reservoir(kmin));
+        } else {
+          sketchBuilder.aggregate(builder.aggregateFunction);
+        }
+      } else {
+        throw new IllegalArgumentException("Unsupported sketch type: " + builder.sketchType);
       }
       this.minValueSketch = sketchBuilder.build();
     }

@@ -43,6 +43,17 @@ public class Hashes {
   }
 
   /**
+   * Computes the 32-bits murmur3 hash functions of the two int values given as parameters.
+   *
+   * @param v1 the first value to be hashed
+   * @param v2 the second value to be hashed
+   * @return the hash of the given values
+   */
+  public static int hashIntTuple(int v1, int v2) {
+    return MURMUR3.newHasher().putInt(v1).putInt(v2).hash().asInt();
+  }
+
+  /**
    * Transforms an integer into a double in the rage [0, 1] using the golden ratio multiplicative
    * hash function.
    */

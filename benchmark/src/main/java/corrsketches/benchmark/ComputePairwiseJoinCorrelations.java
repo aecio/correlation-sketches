@@ -64,7 +64,9 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       description = "The maximum number of columns to consider for creating combinations.")
   private int maxSamples = 5000;
 
-  @Option(names = "--total-tasks", description = "The total number of tasks to split the computation.")
+  @Option(
+      names = "--total-tasks",
+      description = "The total number of tasks to split the computation.")
   private int totalTasks = -1;
 
   @Option(
@@ -94,7 +96,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
   @Override
   public void execute() throws Exception {
     if (totalTasks > 0 && (taskId < 0 || taskId >= totalTasks)) {
-      System.out.printf("taskId=[%d] must be a number from 0 to %d (total-tasks)\n", totalTasks-1);
+      System.out.printf(
+          "taskId=[%d] must be a number from 0 to %d (total-tasks)\n", totalTasks - 1);
       System.exit(1);
     }
 

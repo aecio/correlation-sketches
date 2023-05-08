@@ -1,6 +1,8 @@
 package corrsketches;
 
 public enum SketchType {
+  SPPKF, // Sampling with probability proportional to key frequency
+  PRISK,
   KMV,
   GKMV;
 
