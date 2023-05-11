@@ -20,7 +20,11 @@ import org.apache.commons.math3.distribution.ZipfDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
 
-public class SyntheticSource {
+public class BivariateNormalSyntheticSource {
+
+  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, int seed) {
+    return createColumnCombinations(numberOfColumns, new Random(seed));
+  }
 
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
     double[] corrs = RandomArrays.randDoubleUniform(numberOfColumns, rng);

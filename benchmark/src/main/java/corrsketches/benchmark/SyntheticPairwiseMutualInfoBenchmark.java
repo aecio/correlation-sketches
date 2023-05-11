@@ -3,6 +3,7 @@ package corrsketches.benchmark;
 import static corrsketches.benchmark.ComputePairwiseJoinCorrelations.*;
 
 import corrsketches.aggregations.AggregateFunction;
+import corrsketches.benchmark.datasource.BivariateNormalSyntheticSource;
 import corrsketches.benchmark.datasource.MultinomialSyntheticSource;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
@@ -54,6 +55,11 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
   int cpuCores = -1;
 
   @Option(
+          names = "--seed",
+          description = "A seed for the random number generator.")
+  int randomSeed = 1234;
+
+  @Option(
       names = "--right-aggregations",
       description = "Aggregation functions for the RIGHT table separated by comma (,), or \"all\"")
   String rightAggregateFunctions = "FIRST";
@@ -62,6 +68,11 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
       names = "--left-aggregations",
       description = "Aggregation functions for the LEFT table separated by comma (,), or \"all\"")
   String leftAggregateFunctions = "NONE";
+
+  @Option(
+          names = "--distribution",
+          description = "The distribution used to generate the data. Options: 1. \"SBN\" for Bivariate Normal. 2. \"MNL\" for Multinomial (default)")
+  String distribution = "MNL";
 
   public static void main(String[] args) {
     CliTool.run(args, new SyntheticPairwiseMutualInfoBenchmark());
@@ -87,12 +98,17 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
 
     // Set up data source
     System.out.println("\n> Computing column statistics for all column combinations...");
-    //    List<ColumnCombination> combinations = SyntheticSource.createColumnCombinations(samples);
-    List<ColumnCombination> combinations =
-        MultinomialSyntheticSource.createColumnCombinations(samples);
+    List<ColumnCombination> combinations;
+    if ("MNL".equals(distribution)) {
+      combinations = MultinomialSyntheticSource.createColumnCombinations(samples, randomSeed);
+    } else if ("SBN".equals(distribution)) {
+      combinations = BivariateNormalSyntheticSource.createColumnCombinations(samples, randomSeed);
+    } else {
+      throw new IllegalArgumentException("Unsupported distributions: " + distribution);
+    }
 
     // Initialize the output filename
-    String datasetName = "sbn";
+    String datasetName = distribution.toLowerCase();
     String filename;
     if (totalTasks <= 0) {
       filename =
@@ -107,18 +123,7 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     }
 
     // Set up the benchmark type
-    final Benchmark bench;
-    //    if (benchmarkType == BenchmarkType.CORR_PERF) {
-    //      bench = new CorrelationPerformanceBenchmark();
-    //    } else if (benchmarkType == BenchmarkType.CORR_STATS) {
-    //      bench = new CorrelationStatsBenchmark();
-    //    } else if (benchmarkType == BenchmarkType.MI) {
-    //      aggregations = Arrays.asList(AggregateFunction.MOST_FREQUENT);
-    //      bench = new MutualInformationBenchmark();
-    //    } else {
-    //      throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
-    //    }
-    bench = new MutualInformationBenchmark();
+    final Benchmark bench = new MutualInformationBenchmark();
 
     // Initialize CSV output file and start writing headers
     Files.createDirectories(Paths.get(outputPath));

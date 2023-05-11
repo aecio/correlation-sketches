@@ -15,8 +15,8 @@ import org.apache.commons.math3.random.Well19937c;
 
 public class MultinomialSyntheticSource {
 
-  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns) {
-    return createColumnCombinations(numberOfColumns, new Random(1234));
+  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, int seed) {
+    return createColumnCombinations(numberOfColumns, new Random(seed));
   }
 
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
