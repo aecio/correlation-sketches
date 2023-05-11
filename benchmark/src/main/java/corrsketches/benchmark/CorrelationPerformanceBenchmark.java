@@ -5,6 +5,7 @@ import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.pairwise.ColumnCombination;
+import corrsketches.benchmark.pairwise.TablePair;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.BootstrapedPearson;
@@ -25,8 +26,8 @@ public class CorrelationPerformanceBenchmark implements Benchmark {
       List<SketchParams> sketchParams,
       List<AggregateFunction> leftAggregations, // TODO: currently not used
       List<AggregateFunction> rightAggregations) {
-    return measurePerformance(
-        combination.getX(), combination.getY(), sketchParams, rightAggregations);
+    TablePair tablePair = combination.getTablePair();
+    return measurePerformance(tablePair.getX(), tablePair.getY(), sketchParams, rightAggregations);
   }
 
   @Override

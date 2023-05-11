@@ -7,6 +7,7 @@ import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.CreateColumnStore;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.pairwise.ColumnCombination;
+import corrsketches.benchmark.pairwise.TablePair;
 import corrsketches.benchmark.utils.ReservoirSampler;
 import edu.nyu.engineering.vida.kvdb4j.api.StringObjectKVDB;
 import java.io.IOException;
@@ -89,28 +90,16 @@ public class DBSource {
     private final String xid;
     private final String yid;
 
-    private ColumnPair x;
-    private ColumnPair y;
-
     public DBColumnCombination(String xid, String yid) {
       this.xid = xid;
       this.yid = yid;
     }
 
     @Override
-    public ColumnPair getX() {
-      if (x == null) {
-        x = getColumnPair(cache, columnStore, xid);
-      }
-      return x;
-    }
-
-    @Override
-    public ColumnPair getY() {
-      if (y == null) {
-        y = getColumnPair(cache, columnStore, yid);
-      }
-      return y;
+    public TablePair getTablePair() {
+      ColumnPair x = getColumnPair(cache, columnStore, xid);
+      ColumnPair y = getColumnPair(cache, columnStore, yid);
+      return new TablePair(x, y);
     }
   }
 }

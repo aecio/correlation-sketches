@@ -12,6 +12,7 @@ import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.datasource.MultinomialSyntheticSource.MultinomialColumnCombination;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
+import corrsketches.benchmark.pairwise.TablePair;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.MutualInformation.MI;
@@ -39,8 +40,9 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
     Result result = new Result();
 
-    ColumnPair x = combination.getX();
-    ColumnPair y = combination.getY();
+    TablePair tablePair = combination.getTablePair();
+    ColumnPair x = tablePair.getX();
+    ColumnPair y = tablePair.getY();
 
     if (combination instanceof SyntheticColumnCombination) {
       result.true_corr = ((SyntheticColumnCombination) combination).getCorrelation();

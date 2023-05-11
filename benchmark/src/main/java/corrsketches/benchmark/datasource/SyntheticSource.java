@@ -8,6 +8,7 @@ import corrsketches.ColumnType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
+import corrsketches.benchmark.pairwise.TablePair;
 import corrsketches.statistics.Stats;
 import corrsketches.util.RandomArrays;
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ public class SyntheticSource {
     return combinations;
   }
 
-  private static Pair generateColumns(int maxRows, int seed, float rho, PairTypeParams params) {
+  private static TablePair generateColumns(int maxRows, int seed, float rho, PairTypeParams params) {
     // RandomGenerator rng = new JDKRandomGenerator(seed);
     RandomGenerator rng = new Well19937c(seed);
     String[] K = generateRandomKeys(maxRows, params.keyDistribution, rng);
@@ -76,7 +77,7 @@ public class SyntheticSource {
     ColumnPair xcp = new ColumnPair(datasetId, keyName, keyValues, columnNameX, params.typeX, X);
     ColumnPair ycp = new ColumnPair(datasetId, keyName, keyValues, columnNameY, params.typeY, Y);
 
-    return new Pair(xcp, ycp);
+    return new TablePair(xcp, ycp);
   }
 
   private static String[] generateRandomKeys(
@@ -208,17 +209,6 @@ public class SyntheticSource {
     ZIPF_1_5
   }
 
-  private static class Pair {
-
-    public final ColumnPair y;
-    public final ColumnPair x;
-
-    public Pair(ColumnPair x, ColumnPair y) {
-      this.x = x;
-      this.y = y;
-    }
-  }
-
   public static class BivariateNormalColumnCombination implements SyntheticColumnCombination {
 
     private final int MAX_ROWS = 10000;
@@ -226,27 +216,11 @@ public class SyntheticSource {
     public final float correlation;
     public final int seed;
 
-    private Pair pair;
-
     public BivariateNormalColumnCombination(
         float correlation, int seed, PairTypeParams pairTypeParams) {
       this.correlation = correlation;
       this.seed = seed;
       this.pairTypeParams = pairTypeParams;
-    }
-
-    public ColumnPair getX() {
-      if (this.pair == null) {
-        this.pair = generateColumns(MAX_ROWS, seed, correlation, pairTypeParams);
-      }
-      return pair.x;
-    }
-
-    public ColumnPair getY() {
-      if (this.pair == null) {
-        this.pair = generateColumns(MAX_ROWS, seed, correlation, pairTypeParams);
-      }
-      return pair.y;
     }
 
     @Override
@@ -257,6 +231,11 @@ public class SyntheticSource {
     @Override
     public String getKeyDistribution() {
       return pairTypeParams.keyDistribution.toString();
+    }
+
+    @Override
+    public TablePair getTablePair() {
+      return generateColumns(MAX_ROWS, seed, correlation, pairTypeParams);
     }
   }
 }

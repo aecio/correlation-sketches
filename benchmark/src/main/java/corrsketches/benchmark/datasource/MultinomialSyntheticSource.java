@@ -4,6 +4,7 @@ import corrsketches.ColumnType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.distributions.MultinomialSampler;
 import corrsketches.benchmark.pairwise.ColumnCombination;
+import corrsketches.benchmark.pairwise.TablePair;
 import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,7 +36,7 @@ public class MultinomialSyntheticSource {
     return combinations;
   }
 
-  private static Pair generateColumns(
+  private static TablePair generateColumns(
       int maxRows, int seed, float rho, MultinomialParameters parameters, PairTypeParams params) {
     // RandomGenerator rng = new JDKRandomGenerator(seed);
     RandomGenerator rng = new Well19937c(seed);
@@ -56,7 +57,7 @@ public class MultinomialSyntheticSource {
     ColumnPair xcp = new ColumnPair(datasetId, keyName, keyValues, columnNameX, params.typeX, X);
     ColumnPair ycp = new ColumnPair(datasetId, keyName, keyValues, columnNameY, params.typeY, Y);
 
-    return new Pair(xcp, ycp);
+    return new TablePair(xcp, ycp);
   }
 
   private static String[] generateJoinKeys(
@@ -195,7 +196,6 @@ public class MultinomialSyntheticSource {
     public final float correlation;
     public final int seed;
     public MultinomialParameters multinomialParameters;
-    private Pair pair;
 
     public MultinomialColumnCombination(
         int seed, MultinomialParameters multinomialParameters, PairTypeParams pairTypeParams) {
@@ -203,24 +203,6 @@ public class MultinomialSyntheticSource {
       this.multinomialParameters = multinomialParameters;
       this.correlation = multinomialParameters.getCorrelation();
       this.pairTypeParams = pairTypeParams;
-    }
-
-    @Override
-    public ColumnPair getX() {
-      if (this.pair == null) {
-        this.pair =
-            generateColumns(MAX_ROWS, seed, correlation, multinomialParameters, pairTypeParams);
-      }
-      return pair.x;
-    }
-
-    @Override
-    public ColumnPair getY() {
-      if (this.pair == null) {
-        this.pair =
-            generateColumns(MAX_ROWS, seed, correlation, multinomialParameters, pairTypeParams);
-      }
-      return pair.y;
     }
 
     @Override
@@ -235,6 +217,11 @@ public class MultinomialSyntheticSource {
 
     public MultinomialParameters getParameters() {
       return multinomialParameters;
+    }
+
+    @Override
+    public TablePair getTablePair() {
+      return generateColumns(MAX_ROWS, seed, correlation, multinomialParameters, pairTypeParams);
     }
   }
 }
