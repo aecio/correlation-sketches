@@ -1,6 +1,7 @@
 package corrsketches.kmv;
 
-import corrsketches.kmv.AbstractMinValueSketch.Samples;
+import corrsketches.aggregations.AggregateFunction;
+import corrsketches.sampling.Samplers;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
@@ -143,7 +144,7 @@ public class GKMV extends AbstractMinValueSketch<GKMV> {
     return "GKMV{" + "maxT=" + maxT + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
   }
 
-  public static class Builder extends AbstractMinValueSketch.Builder<GKMV> {
+  public static class Builder extends AbstractMinValueSketch.Builder<Builder> {
 
     private double threshold = DEFAULT_THRESHOLD;
 
@@ -158,6 +159,11 @@ public class GKMV extends AbstractMinValueSketch<GKMV> {
 
     @Override
     public GKMV build() {
+      if (this.aggregateFunction == AggregateFunction.NONE) {
+        repeatedValueHandlerProvider = Samplers.bernoulli(threshold);
+      } else {
+        repeatedValueHandlerProvider = this.aggregateFunction.getProvider();
+      }
       return new GKMV(this);
     }
   }

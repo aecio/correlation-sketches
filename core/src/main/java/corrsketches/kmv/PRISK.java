@@ -1,13 +1,14 @@
 package corrsketches.kmv;
 
+import corrsketches.aggregations.AggregateFunction;
+import corrsketches.sampling.Samplers;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.doubles.DoubleComparators;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.List;
-import java.util.TreeSet;
+
 import smile.sort.HeapSelect;
 
 public class PRISK extends AbstractMinValueSketch<PRISK> {
@@ -71,6 +72,9 @@ public class PRISK extends AbstractMinValueSketch<PRISK> {
 
   public void update(int hash, double value, double weight) {
     final double hu = Hashes.grm(hash) / weight;
+//    System.out.printf(
+//        "hash:%d  value:%.3f  weight:%.3f  hu:%.3f  whu:%.3f\n",
+//        hash, value, weight, Hashes.grm(hash), hu);
     if (kMinValues.size() < maxK) {
 
       ValueHash vh = createOrUpdateValueHash(hash, value, hu);
@@ -149,7 +153,7 @@ public class PRISK extends AbstractMinValueSketch<PRISK> {
         // final double prob = vh.count() / (double) kMinItems;
         final double prob = vh.count() / (double) seenItems;
         int n = (int) Math.max(1, Math.floor(prob * maxK));
-        //         System.out.printf("prob[%d] = %.4f\n", key, prob);
+        // System.out.printf("prob[%d] = %.4f\n", key, prob);
         // System.out.println("------");
         // System.out.println("key = " + key);
         // System.out.println("seenItems = " + seenItems);
@@ -172,70 +176,35 @@ public class PRISK extends AbstractMinValueSketch<PRISK> {
     return new Samples(keys, values, uniqueKeys);
   }
 
-  /** Estimates the size of union of the given KMV synopsis */
   @Override
   public double unionSize(PRISK other) {
-    int k = computeK(this, other);
-    double kthValue = kthValueOfUnion(this.kMinValues, other.kMinValues);
-    return (k - 1) / kthValue;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
-  /** Estimates the Jaccard similarity using the p = K_e / k estimator from Beyer et. al. (2007) */
   @Override
   public double jaccard(PRISK other) {
-    int k = computeK(this, other);
-    int intersection = intersectionSize(this.kMinValues, other.kMinValues);
-    return intersection / (double) k;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
-  /** Estimates intersection between the sets represented by this synopsis and the other. */
   @Override
   public double intersectionSize(PRISK other) {
-    int k = computeK(this, other);
-    // p is an unbiased estimate of the jaccard similarity
-    double p = intersectionSize(this.kMinValues, other.kMinValues) / (double) k;
-    // the k-th unit hash value of the union
-    double kthValue = kthValueOfUnion(this.kMinValues, other.kMinValues);
-    double u = (k - 1) / kthValue;
-    // estimation of intersection size
-    return p * u;
-  }
-
-  private static double kthValueOfUnion(TreeSet<ValueHash> x, TreeSet<ValueHash> y) {
-    TreeSet<ValueHash> union = new TreeSet<>(ValueHash.COMPARATOR_ASC);
-    union.addAll(x);
-    union.addAll(y);
-
-    int maxUnionSize = x.size() + y.size();
-    DoubleArrayList values = new DoubleArrayList(maxUnionSize);
-    for (ValueHash v : union) {
-      values.add(v.unitHash);
-    }
-    values.sort(DoubleComparators.NATURAL_COMPARATOR);
-
-    int k = Math.min(x.size(), y.size());
-    return values.getDouble(k - 1);
-  }
-
-  private static int computeK(PRISK x, PRISK y) {
-    int xSize = x.kMinValues.size();
-    int ySize = y.kMinValues.size();
-    int k = Math.min(xSize, ySize);
-    if (k < 1) {
-      throw new IllegalStateException(
-          String.format(
-              "Can not compute estimates on empty synopsis. x.size=[%d] y.size=[%d]",
-              xSize, ySize));
-    }
-    return k;
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
   @Override
   public String toString() {
-    return "KMV{" + "maxK=" + maxK + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
+    return getClass().getName()
+        + "{"
+        + "maxK="
+        + maxK
+        + ", kMinValues="
+        + kMinValues
+        + ", kthValue="
+        + kthValue
+        + '}';
   }
 
-  public static class Builder extends AbstractMinValueSketch.Builder<PRISK> {
+  public static class Builder extends AbstractMinValueSketch.Builder<Builder> {
 
     private int maxSize = DEFAULT_K;
 
@@ -254,6 +223,11 @@ public class PRISK extends AbstractMinValueSketch<PRISK> {
 
     @Override
     public PRISK build() {
+      if (aggregateFunction == AggregateFunction.NONE) {
+        this.repeatedValueHandlerProvider = Samplers.reservoir(maxSize);
+      } else {
+        this.repeatedValueHandlerProvider = aggregateFunction.getProvider();
+      }
       return new PRISK(this);
     }
   }

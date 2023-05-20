@@ -1,5 +1,7 @@
 package corrsketches.kmv;
 
+import corrsketches.aggregations.AggregateFunction;
+import corrsketches.sampling.Samplers;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
@@ -193,7 +195,7 @@ public class KMV extends AbstractMinValueSketch<KMV> {
     return "KMV{" + "maxK=" + maxK + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
   }
 
-  public static class Builder extends AbstractMinValueSketch.Builder<KMV> {
+  public static class Builder extends AbstractMinValueSketch.Builder<Builder> {
 
     private int maxSize = DEFAULT_K;
 
@@ -212,6 +214,11 @@ public class KMV extends AbstractMinValueSketch<KMV> {
 
     @Override
     public KMV build() {
+      if (this.aggregateFunction == AggregateFunction.NONE) {
+        repeatedValueHandlerProvider = Samplers.reservoir(maxSize);
+      } else {
+        repeatedValueHandlerProvider = this.aggregateFunction.getProvider();
+      }
       return new KMV(this);
     }
   }

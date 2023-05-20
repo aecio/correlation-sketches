@@ -40,47 +40,17 @@ public class CorrelationSketch {
       // build sketch with given parameters
       AbstractMinValueSketch.Builder<?> sketchBuilder;
       if (builder.sketchType == SketchType.KMV) {
-        KMV.Builder kmvBuilder = new KMV.Builder();
-        sketchBuilder = kmvBuilder;
-        int kmin = (int) builder.budget;
-        kmvBuilder.maxSize(kmin);
-        if (builder.aggregateFunction == AggregateFunction.NONE) {
-          kmvBuilder.aggregate(Samplers.reservoir(kmin));
-        } else {
-          sketchBuilder.aggregate(builder.aggregateFunction);
-        }
+        sketchBuilder = new KMV.Builder().maxSize((int) builder.budget);
       } else if (builder.sketchType == SketchType.GKMV) {
-        GKMV.Builder gkmvBuilder = new GKMV.Builder();
-        sketchBuilder = gkmvBuilder;
-        gkmvBuilder.threshold(builder.budget);
-        if (builder.aggregateFunction == AggregateFunction.NONE) {
-          gkmvBuilder.aggregate(Samplers.bernoulli(builder.budget));
-        } else {
-          sketchBuilder.aggregate(builder.aggregateFunction);
-        }
+        sketchBuilder = new GKMV.Builder().threshold(builder.budget);
       } else if (builder.sketchType == SketchType.SPPKF) {
-        SPPKF.Builder sppkfBuilder = new SPPKF.Builder();
-        sketchBuilder = sppkfBuilder;
-        int kmin = (int) builder.budget;
-        sppkfBuilder.maxSize(kmin);
-        if (builder.aggregateFunction == AggregateFunction.NONE) {
-          sppkfBuilder.aggregate(Samplers.reservoir(kmin));
-        } else {
-          sketchBuilder.aggregate(builder.aggregateFunction);
-        }
+        sketchBuilder = new SPPKF.Builder().maxSize((int) builder.budget);
       } else if (builder.sketchType == SketchType.PRISK) {
-        PRISK.Builder priskBuilder = new PRISK.Builder();
-        sketchBuilder = priskBuilder;
-        int kmin = (int) builder.budget;
-        priskBuilder.maxSize(kmin);
-        if (builder.aggregateFunction == AggregateFunction.NONE) {
-          priskBuilder.aggregate(Samplers.reservoir(kmin));
-        } else {
-          sketchBuilder.aggregate(builder.aggregateFunction);
-        }
+        sketchBuilder = new PRISK.Builder().maxSize((int) builder.budget);
       } else {
         throw new IllegalArgumentException("Unsupported sketch type: " + builder.sketchType);
       }
+      sketchBuilder.aggregate(builder.aggregateFunction);
       this.minValueSketch = sketchBuilder.build();
     }
   }

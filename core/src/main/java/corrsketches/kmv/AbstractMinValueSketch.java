@@ -2,7 +2,6 @@ package corrsketches.kmv;
 
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.aggregations.RepeatedValueHandlerProvider;
-import corrsketches.sampling.SamplerProvider;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.HashSet;
@@ -14,12 +13,17 @@ public abstract class AbstractMinValueSketch<T> {
   protected final TreeSet<ValueHash> kMinValues;
   protected final Int2ObjectOpenHashMap<ValueHash> valueHashMap;
   protected final RepeatedValueHandlerProvider aggregatorProvider;
+  protected final AggregateFunction aggregateFunction;
   protected double kthValue = Double.MIN_VALUE;
   protected int kMinItems;
   protected int seenItems;
 
   public AbstractMinValueSketch(Builder<?> builder) {
-    this.aggregatorProvider = builder.aggregateFunction;
+    if (builder.repeatedValueHandlerProvider == null) {
+      throw new IllegalArgumentException("The repeatedValueHandlerProvider cannot be null");
+    }
+    this.aggregatorProvider = builder.repeatedValueHandlerProvider;
+    this.aggregateFunction = builder.aggregateFunction;
     this.kMinValues = new TreeSet<>(ValueHash.COMPARATOR_ASC);
     if (builder.expectedSize() < 1) {
       this.valueHashMap = new Int2ObjectOpenHashMap<>();
@@ -46,9 +50,11 @@ public abstract class AbstractMinValueSketch<T> {
     if (keys.size() != values.length) {
       throw new IllegalArgumentException("keys and values must have equal size.");
     }
-    for (int i = 0; i < values.length; i++) {
-      this.update(keys.get(i), values[i]);
+    int[] hashedKeys = new int[keys.size()];
+    for (int i = 0; i < hashedKeys.length; i++) {
+      hashedKeys[i] = Hashes.murmur3_32(keys.get(i));
     }
+    this.updateAll(hashedKeys, values);
   }
 
   /** Updates this synopsis with the given pre-computed key hashes and their associated values */
@@ -138,33 +144,28 @@ public abstract class AbstractMinValueSketch<T> {
     }
   }
 
-  public abstract static class Builder<T extends AbstractMinValueSketch<T>> {
+  public abstract static class Builder<T extends Builder<T>> {
 
-    protected RepeatedValueHandlerProvider aggregateFunction =
-        AggregateFunction.FIRST.getProvider();
+    protected AggregateFunction aggregateFunction = AggregateFunction.FIRST;
+    protected RepeatedValueHandlerProvider repeatedValueHandlerProvider;
 
     protected int expectedSize() {
       return -1;
     }
 
-    public Builder<T> aggregate(AggregateFunction aggregateFunction) {
-      this.aggregateFunction = aggregateFunction.getProvider();
-      return this;
-    }
-
-    public Builder<T> aggregate(SamplerProvider sampler) {
-      this.aggregateFunction = sampler;
-      return this;
+    public T aggregate(AggregateFunction aggregateFunction) {
+      this.aggregateFunction = aggregateFunction;
+      return (T) this;
     }
 
     /** Creates an empty min-values sketch. */
-    public abstract T build();
+    public abstract <S extends AbstractMinValueSketch> S build();
 
     /**
      * Creates a min-values sketch using the given key values and their associated numeric values.
      */
-    public T buildFromKeys(List<String> keys, double[] values) {
-      final T sketch = build();
+    public <S extends AbstractMinValueSketch> S buildFromKeys(List<String> keys, double[] values) {
+      final S sketch = build();
       sketch.updateAll(keys, values);
       return sketch;
     }
@@ -173,8 +174,8 @@ public abstract class AbstractMinValueSketch<T> {
      * Creates a min-values sketch from the given array of pre-computed hashed keys and their
      * associated values.
      */
-    public T buildFromHashedKeys(int[] hashedKeys, double[] values) {
-      final T sketch = build();
+    public <S extends AbstractMinValueSketch> S buildFromHashedKeys(int[] hashedKeys, double[] values) {
+      final S sketch = build();
       sketch.updateAll(hashedKeys, values);
       return sketch;
     }

@@ -17,7 +17,7 @@ public enum AggregateFunction {
   MEAN(Mean::new),
   COUNT(Count::new),
   MOST_FREQUENT(MostFrequent::new),
-  NONE(null);
+  NONE(NoneAggregator::new);
 
   private final AggregatorProvider provider;
 
@@ -155,6 +155,13 @@ public enum AggregateFunction {
     @Override
     public void update(double current) {
       super.previous = current;
+    }
+  }
+
+  public static class NoneAggregator extends SameTypeAggregator {
+    @Override
+    public void update(double current) {
+      throw new IllegalStateException("update() shouldn't be called when NONE aggregator is used.");
     }
   }
 
