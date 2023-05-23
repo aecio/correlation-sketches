@@ -54,9 +54,7 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
       description = "Number of CPU core to use. Default is to use all cores available.")
   int cpuCores = -1;
 
-  @Option(
-          names = "--seed",
-          description = "A seed for the random number generator.")
+  @Option(names = "--seed", description = "A seed for the random number generator.")
   int randomSeed = 1234;
 
   @Option(
@@ -70,8 +68,11 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
   String leftAggregateFunctions = "NONE";
 
   @Option(
-          names = "--distribution",
-          description = "The distribution used to generate the data. Options: 1. \"SBN\" for Bivariate Normal. 2. \"MNL\" for Multinomial (default)")
+      names = "--distribution",
+      description =
+          "The distribution used to generate the data. Options: "
+              + "1. \"SBN\" for Bivariate Normal. "
+              + "2. \"MNL\" for Multinomial (default)")
   String distribution = "MNL";
 
   public static void main(String[] args) {
@@ -100,8 +101,10 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     System.out.println("\n> Computing column statistics for all column combinations...");
     List<ColumnCombination> combinations;
     if ("MNL".equals(distribution)) {
+      System.out.println("  (Using Multinomial distribution)");
       combinations = MultinomialSyntheticSource.createColumnCombinations(samples, randomSeed);
     } else if ("SBN".equals(distribution)) {
+      System.out.println("  (Using Bivariate Normal distribution)");
       combinations = BivariateNormalSyntheticSource.createColumnCombinations(samples, randomSeed);
     } else {
       throw new IllegalArgumentException("Unsupported distributions: " + distribution);
@@ -131,7 +134,7 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     resultsFile.write(bench.csvHeader() + "\n");
 
     // If necessary, filter combinations leaving only the ones that should be computed by this task
-    System.out.println("Total number of column combinations: " + combinations.size());
+    System.out.println("\n> Total number of column combinations: " + combinations.size());
     if (totalTasks > 1) {
       combinations =
           IntStream.range(0, combinations.size())
@@ -145,7 +148,7 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     final int total = combinations.size();
     final AtomicInteger processed = new AtomicInteger(0);
     final int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
-
+    System.out.println("\n> Running...");
     ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
     Runnable task =
         () ->

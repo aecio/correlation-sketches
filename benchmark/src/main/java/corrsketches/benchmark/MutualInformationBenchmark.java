@@ -53,7 +53,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     }
 
     List<Result> groundTruthResults =
-        computeFullJoinStatistics(x, y, leftAggregations, rightAggregations, result);
+        computeFullJoinStatistics(y, x, leftAggregations, rightAggregations, result);
 
     List<String> results = new ArrayList<>();
     for (Result r : groundTruthResults) {
@@ -61,7 +61,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       if (Double.isFinite(r.interxy_actual) && r.interxy_actual >= 2) {
         for (SketchParams params : sketchParams) {
           results.add(
-              toCsvLine(computeSketchStatistics(r.clone(), x, y, params, r.left_agg, r.right_agg)));
+              toCsvLine(computeSketchStatistics(r.clone(), y, x, params, r.left_agg, r.right_agg)));
         }
       }
     }
@@ -70,8 +70,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   }
 
   private static List<Result> computeFullJoinStatistics(
-      ColumnPair x,
       ColumnPair y,
+      ColumnPair x,
       List<AggregateFunction> leftAggregations,
       List<AggregateFunction> rightAggregations,
       Result result) {
@@ -88,26 +88,16 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       return Collections.emptyList();
     }
 
-    //    result.jcx_actual = result.interxy_actual / (double) result.cardx_actual;
-    //    result.jcy_actual = result.interxy_actual / (double) result.cardy_actual;
-    //    result.jsxy_actual = result.interxy_actual / (double) result.unionxy_actual;
-
     // correlation ground-truth after join-aggregations
     List<AggregateFunction> rightAggs =
         rightAggregations.stream()
-            .filter(
-                agg ->
-                    agg == AggregateFunction.NONE
-                        || agg.get().acceptsInputColumnType(y.columnValueType))
+            .filter(agg -> agg.get().acceptsInputColumnType(x.columnValueType))
             .collect(Collectors.toList());
 
     return leftAggregations.stream()
-        .filter(
-            leftAgg ->
-                leftAgg == AggregateFunction.NONE
-                    || leftAgg.get().acceptsInputColumnType(x.columnValueType))
+        .filter(leftAgg -> leftAgg.get().acceptsInputColumnType(y.columnValueType))
         .flatMap(
-            leftAgg -> computeMutualInfoAfterFullJoin(x, y, leftAgg, rightAggs, result).stream())
+            leftAgg -> computeMutualInfoAfterFullJoin(y, x, leftAgg, rightAggs, result).stream())
         .collect(Collectors.toList());
   }
 
@@ -121,15 +111,15 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
   public static Result computeSketchStatistics(
       Result result,
-      ColumnPair x,
       ColumnPair y,
+      ColumnPair x,
       SketchParams sketchParams,
       AggregateFunction leftAggregateFn,
       AggregateFunction rightAggregateFn) {
 
     // create correlation sketches for the data
-    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, leftAggregateFn);
-    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, rightAggregateFn);
+    CorrelationSketch sketchY = createCorrelationSketch(y, sketchParams, leftAggregateFn);
+    CorrelationSketch sketchX = createCorrelationSketch(x, sketchParams, rightAggregateFn);
 
     ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
     ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
@@ -146,8 +136,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     result.parameters = sketchParams.toString();
     result.columnId =
         String.format(
-            "X(%s,%s,%s) Y(%s,%s,%s)",
-            x.keyName, x.columnName, x.datasetId, y.keyName, y.columnName, y.datasetId);
+            "Y(%s,%s,%s), X(%s,%s,%s)",
+            y.keyName, y.columnName, y.datasetId, x.keyName, x.columnName, x.datasetId);
 
     return result;
   }
@@ -188,10 +178,10 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.left_agg = leftAggregation;
       r.right_agg = join.aggregate;
       r.join_stats = join.joinStats;
-      r.xtype = join.a.type.toString();
-      r.ytype = join.b.type.toString();
+      r.ytype = join.a.type.toString();
+      r.xtype = join.b.type.toString();
 
-      MI mi = MutualInformationDiffEntMixed.INSTANCE.of(join.a, join.b);
+      MI mi = MutualInformationDiffEntMixed.INSTANCE.of(join.b, join.a);
       r.mi_actual = mi.value;
       r.nmi_sqrt_actual = mi.nmiSqrt();
       r.nmi_max_actual = mi.nmiMax();

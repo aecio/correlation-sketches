@@ -43,7 +43,7 @@ public class MultinomialSyntheticSource {
     double[][] sampled = sampleMultinomial(maxRows, parameters, rng);
     double[] X = sampled[0];
     double[] Y = sampled[1];
-    String[] K = generateJoinKeys(maxRows, params.keyDistribution, Y);
+    String[] K = generateJoinKeys(maxRows, params.keyDistribution, X);
 
     String datasetId =
         String.format(

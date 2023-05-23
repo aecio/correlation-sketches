@@ -46,7 +46,8 @@ public class BivariateNormalSyntheticSource {
     return combinations;
   }
 
-  private static TablePair generateColumns(int maxRows, int seed, float rho, PairTypeParams params) {
+  private static TablePair generateColumns(
+      int maxRows, int seed, float rho, PairTypeParams params) {
     // RandomGenerator rng = new JDKRandomGenerator(seed);
     RandomGenerator rng = new Well19937c(seed);
     String[] K = generateRandomKeys(maxRows, params.keyDistribution, rng);
