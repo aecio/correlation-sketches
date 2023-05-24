@@ -2,7 +2,7 @@ package corrsketches.benchmark;
 
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
+import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.pairwise.TablePair;
@@ -89,27 +89,27 @@ public class CorrelationPerformanceBenchmark implements Benchmark {
         && join.keys.length >= CorrelationStatsBenchmark.minimumIntersection) {
 
       time0 = System.nanoTime();
-      PearsonCorrelation.estimate(join.x.values, join.y.values);
+      PearsonCorrelation.estimate(join.left.values, join.right.values);
       result.rp_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      QnCorrelation.estimate(join.x.values, join.y.values);
+      QnCorrelation.estimate(join.left.values, join.right.values);
       result.rqn_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      SpearmanCorrelation.estimate(join.x.values, join.y.values);
+      SpearmanCorrelation.estimate(join.left.values, join.right.values);
       result.rs_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      RinCorrelation.estimate(join.x.values, join.y.values);
+      RinCorrelation.estimate(join.left.values, join.right.values);
       result.rrin_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      BootstrapedPearson.estimate(join.x.values, join.y.values);
+      BootstrapedPearson.estimate(join.left.values, join.right.values);
       result.rpm1_time = System.nanoTime() - time0;
 
       time0 = System.nanoTime();
-      BootstrapedPearson.simpleEstimate(join.x.values, join.y.values);
+      BootstrapedPearson.simpleEstimate(join.left.values, join.right.values);
       result.rpm1s_time = System.nanoTime() - time0;
     }
 

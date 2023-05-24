@@ -7,8 +7,8 @@ import corrsketches.Column;
 import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.Builder;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.SketchType;
+import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.correlation.CorrelationType;
@@ -122,12 +122,12 @@ public class MutualInformationSketchTest {
         Table.create(
             "Sketch intersection table",
             IntColumn.create("PK", sketchJoin.keys),
-            DoubleColumn.create("agg(X)", sketchJoin.x.values).asIntColumn(),
-            DoubleColumn.create("agg(Y)", sketchJoin.y.values).asIntColumn());
+            DoubleColumn.create("agg(X)", sketchJoin.left.values).asIntColumn(),
+            DoubleColumn.create("agg(Y)", sketchJoin.right.values).asIntColumn());
     System.out.println(df);
     System.out.printf(
         "MI(agg(X), agg(Y)) = %.4f\n",
-        MutualInformation.estimateMi(sketchJoin.x.values, sketchJoin.y.values).value);
+        MutualInformation.estimateMi(sketchJoin.left.values, sketchJoin.right.values).value);
 
     double delta = 0.1;
     assertThat(xsk.correlationTo(ysk).value).isCloseTo(0.1808106406067122, byLessThan(delta));

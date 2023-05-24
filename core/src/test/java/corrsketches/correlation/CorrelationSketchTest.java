@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import corrsketches.*;
 import corrsketches.CorrelationSketch.Builder;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
 import corrsketches.MinhashCorrelationSketch;
 import corrsketches.SketchType;
+import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.util.RandomArrays;
 import corrsketches.util.RandomArrays.CI;
@@ -298,18 +298,18 @@ public class CorrelationSketchTest {
 
     final var join = xsi.join(ysi);
     assertEquals(3, join.keys.length);
-    assertEquals(3, join.x.values.length);
-    assertEquals(3, join.y.values.length);
+    assertEquals(3, join.left.values.length);
+    assertEquals(3, join.right.values.length);
 
-    assertEquals(ColumnType.NUMERICAL, join.y.type);
-    assertEquals(1, join.y.values[0]);
-    assertEquals(1, join.y.values[1]);
-    assertEquals(1, join.y.values[2]);
+    assertEquals(ColumnType.NUMERICAL, join.right.type);
+    assertEquals(1, join.right.values[0]);
+    assertEquals(1, join.right.values[1]);
+    assertEquals(1, join.right.values[2]);
 
-    assertEquals(ColumnType.NUMERICAL, join.x.type);
-    assertThat(join.x.values).containsOnlyOnce(1);
-    assertThat(join.x.values).containsOnlyOnce(2);
-    assertThat(join.x.values).containsOnlyOnce(3);
+    assertEquals(ColumnType.NUMERICAL, join.left.type);
+    assertThat(join.left.values).containsOnlyOnce(1);
+    assertThat(join.left.values).containsOnlyOnce(2);
+    assertThat(join.left.values).containsOnlyOnce(3);
   }
 
   @Test
@@ -348,16 +348,16 @@ public class CorrelationSketchTest {
     // when
     final var join = xsi.join(ysi);
     // then
-    assertEquals(3, join.x.values.length);
-    assertEquals(3, join.y.values.length);
-    assertEquals(ColumnType.CATEGORICAL, join.x.type);
-    assertEquals(2, join.x.values[0]);
-    assertEquals(2, join.x.values[1]);
-    assertEquals(2, join.x.values[2]);
-    assertEquals(ColumnType.CATEGORICAL, join.y.type);
-    assertThat(join.y.values).containsOnlyOnce(1);
-    assertThat(join.y.values).containsOnlyOnce(2);
-    assertThat(join.y.values).containsOnlyOnce(3);
+    assertEquals(3, join.left.values.length);
+    assertEquals(3, join.right.values.length);
+    assertEquals(ColumnType.CATEGORICAL, join.left.type);
+    assertEquals(2, join.left.values[0]);
+    assertEquals(2, join.left.values[1]);
+    assertEquals(2, join.left.values[2]);
+    assertEquals(ColumnType.CATEGORICAL, join.right.type);
+    assertThat(join.right.values).containsOnlyOnce(1);
+    assertThat(join.right.values).containsOnlyOnce(2);
+    assertThat(join.right.values).containsOnlyOnce(3);
   }
 
   @Test

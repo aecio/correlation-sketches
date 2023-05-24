@@ -2,7 +2,7 @@ package corrsketches.benchmark;
 
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
+import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
 import corrsketches.benchmark.PerfResult.ComputingTime;
@@ -159,7 +159,7 @@ public class CorrelationStatsBenchmark implements Benchmark {
     result.corr_est_sample_size = join.keys.length;
 
     // correlation estimates
-    Estimate estimate = PearsonCorrelation.estimate(join.x.values, join.y.values);
+    Estimate estimate = PearsonCorrelation.estimate(join.left.values, join.right.values);
     result.corr_rp_est = estimate.value;
     result.corr_rp_delta = result.corr_rp_actual - result.corr_rp_est;
 
@@ -176,19 +176,19 @@ public class CorrelationStatsBenchmark implements Benchmark {
     //          PearsonCorrelation.isSignificant(result.corr_rp_est, sampleSize, alpha);
     //    }
 
-    Estimate qncorr = QnCorrelation.estimate(join.x.values, join.y.values);
+    Estimate qncorr = QnCorrelation.estimate(join.left.values, join.right.values);
     result.corr_rqn_est = qncorr.value;
     result.corr_rqn_delta = result.corr_rqn_actual - result.corr_rqn_est;
 
-    Estimate corrSpearman = SpearmanCorrelation.estimate(join.x.values, join.y.values);
+    Estimate corrSpearman = SpearmanCorrelation.estimate(join.left.values, join.right.values);
     result.corr_rs_est = corrSpearman.value;
     result.corr_rs_delta = result.corr_rs_actual - result.corr_rs_est;
 
-    Estimate corrRin = RinCorrelation.estimate(join.x.values, join.y.values);
+    Estimate corrRin = RinCorrelation.estimate(join.left.values, join.right.values);
     result.corr_rin_est = corrRin.value;
     result.corr_rin_delta = result.corr_rin_actual - result.corr_rin_est;
 
-    BootstrapEstimate corrPm1 = BootstrapedPearson.estimate(join.x.values, join.y.values);
+    BootstrapEstimate corrPm1 = BootstrapedPearson.estimate(join.left.values, join.right.values);
     result.corr_pm1_mean = corrPm1.corrBsMean;
     result.corr_pm1_mean_delta = result.corr_rp_actual - result.corr_pm1_mean;
 
@@ -199,23 +199,23 @@ public class CorrelationStatsBenchmark implements Benchmark {
     result.corr_pm1_ub = corrPm1.upperBound;
 
     // Kurtosis of variables after the join
-    result.kurtx_g2 = Kurtosis.g2(join.x.values);
-    result.kurtx_G2 = Kurtosis.G2(join.x.values);
-    result.kurtx_k5 = Kurtosis.k5(join.x.values);
-    result.kurty_g2 = Kurtosis.G2(join.y.values);
-    result.kurty_G2 = Kurtosis.G2(join.y.values);
-    result.kurty_k5 = Kurtosis.k5(join.y.values);
+    result.kurtx_g2 = Kurtosis.g2(join.left.values);
+    result.kurtx_G2 = Kurtosis.G2(join.left.values);
+    result.kurtx_k5 = Kurtosis.k5(join.left.values);
+    result.kurty_g2 = Kurtosis.G2(join.right.values);
+    result.kurty_G2 = Kurtosis.G2(join.right.values);
+    result.kurty_k5 = Kurtosis.k5(join.right.values);
 
-    final Extent extentX = Stats.extent(join.x.values);
+    final Extent extentX = Stats.extent(join.left.values);
     result.x_min_sample = extentX.min;
     result.x_max_sample = extentX.max;
 
-    final Extent extentY = Stats.extent(join.y.values);
+    final Extent extentY = Stats.extent(join.right.values);
     result.y_min_sample = extentY.min;
     result.y_max_sample = extentY.max;
 
-    double[] unitRangeX = Stats.unitize(join.x.values, result.x_min, result.x_max);
-    double[] unitRangeY = Stats.unitize(join.y.values, result.y_min, result.y_max);
+    double[] unitRangeX = Stats.unitize(join.left.values, result.x_min, result.x_max);
+    double[] unitRangeY = Stats.unitize(join.right.values, result.y_min, result.y_max);
     result.x_sample_mean = Stats.mean(unitRangeX);
     result.y_sample_mean = Stats.mean(unitRangeY);
     result.x_sample_var = Variance.uvar(unitRangeX);

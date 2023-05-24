@@ -1,14 +1,12 @@
 package corrsketches;
 
+import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.correlation.Correlation;
 import corrsketches.correlation.CorrelationType;
 import corrsketches.correlation.Estimate;
 import corrsketches.kmv.*;
-import corrsketches.sampling.Samplers;
 import corrsketches.util.QuickSort;
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
@@ -156,115 +154,18 @@ public class CorrelationSketch {
 
     public Estimate correlationTo(ImmutableCorrelationSketch other, Correlation estimator) {
       final Join join = join(other);
-      return estimator.of(join.x, join.y);
+      return estimator.of(join.left, join.right);
     }
 
     public Join join(ImmutableCorrelationSketch other) {
-      if (this.uniqueKeys && other.uniqueKeys) {
-        return joinOneToOne(other);
-      }
-      return this.innerJoin(other);
-    }
-
-    /**
-     * Computes inner join between the two tables assuming that the keys of both sketches are
-     * pre-sorted in increasing order.
-     */
-    public Join innerJoin(ImmutableCorrelationSketch other) {
-      final int initialCapacity = Math.max(this.keys.length, other.keys.length);
-      IntArrayList k = new IntArrayList(initialCapacity);
-      DoubleArrayList x = new DoubleArrayList(initialCapacity);
-      DoubleArrayList y = new DoubleArrayList(initialCapacity);
-      int xidx = 0;
-      int yidx = 0;
-      int i, j;
-      while (xidx < this.keys.length && yidx < other.keys.length) {
-        if (this.keys[xidx] < other.keys[yidx]) {
-          xidx++;
-        } else if (this.keys[xidx] > other.keys[yidx]) {
-          yidx++;
-        } else {
-          // keys are equal, iterate over all pairs of indexes containing this key
-          i = xidx;
-          j = yidx;
-          while (i < this.keys.length && this.keys[i] == this.keys[xidx]) {
-            j = yidx;
-            while (j < other.keys.length && other.keys[j] == other.keys[yidx]) {
-              k.add(this.keys[i]);
-              x.add(this.values[i]);
-              y.add(other.values[j]);
-              j++;
-            }
-            i++;
-          }
-          xidx = i;
-          yidx = j;
-        }
-      }
-      return new Join(
-          k.toIntArray(),
-          Column.of(x.toDoubleArray(), this.valuesType),
-          Column.of(y.toDoubleArray(), other.valuesType));
-    }
-
-    /**
-     * Joins the tables assuming that the keys of both sketches are unique (primary-keys) and
-     * pre-sorted in increasing order.
-     */
-    public Join joinOneToOne(ImmutableCorrelationSketch other) {
-      final int capacity = Math.max(this.keys.length, other.keys.length);
-      IntArrayList k = new IntArrayList(capacity);
-      DoubleArrayList x = new DoubleArrayList(capacity);
-      DoubleArrayList y = new DoubleArrayList(capacity);
-      int xidx = 0;
-      int yidx = 0;
-      while (xidx < this.keys.length && yidx < other.keys.length) {
-        if (this.keys[xidx] < other.keys[yidx]) {
-          xidx++;
-        } else if (this.keys[xidx] > other.keys[yidx]) {
-          yidx++;
-        } else {
-          // keys are equal
-          k.add(this.keys[xidx]);
-          x.add(this.values[xidx]);
-          y.add(other.values[yidx]);
-          xidx++;
-          yidx++;
-        }
-      }
-      return new Join(
-          k.toIntArray(),
-          Column.of(x.toDoubleArray(), this.valuesType),
-          Column.of(y.toDoubleArray(), other.valuesType));
+      Table left = new Table(this.keys, Column.of(this.values, this.valuesType), this.uniqueKeys);
+      Table right =
+          new Table(other.keys, Column.of(other.values, other.valuesType), this.uniqueKeys);
+      return Table.join(left, right);
     }
 
     public ColumnType valuesType() {
       return valuesType;
-    }
-
-    public static class Join {
-
-      public final int[] keys;
-      public final Column x;
-      public final Column y;
-
-      Join(int[] keys, Column x, Column y) {
-        this.keys = keys;
-        this.x = x;
-        this.y = y;
-      }
-
-      @Override
-      public String toString() {
-        return "Join{\n"
-            + "  keys="
-            + Arrays.toString(keys)
-            + ",\n  x="
-            + x
-            + ",\n  y="
-            + y
-            + "\n}";
-      }
     }
   }
 

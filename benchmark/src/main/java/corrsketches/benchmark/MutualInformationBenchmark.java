@@ -3,7 +3,7 @@ package corrsketches.benchmark;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.CorrelationSketch.ImmutableCorrelationSketch.Join;
+import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
@@ -124,13 +124,11 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     ImmutableCorrelationSketch iSketchX = sketchX.toImmutable();
     ImmutableCorrelationSketch iSketchY = sketchY.toImmutable();
 
-    Join join = iSketchX.join(iSketchY);
-
     // Some datasets have large column sizes, but all values can be empty strings (missing data),
     // so we need to check whether the actual cardinality and sketch sizes are large enough.
-    if (result.interxy_actual >= MINIMUM_INTERSECTION && join.keys.length >= MINIMUM_INTERSECTION) {
+    if (result.interxy_actual >= MINIMUM_INTERSECTION) {
       // computes statistics on joined data (e.g., correlations)
-      estimateMutualInfoFromSketchJoin(result, join);
+      estimateMutualInfoFromSketchJoin(result, iSketchY, iSketchX);
     }
 
     result.parameters = sketchParams.toString();
@@ -142,8 +140,10 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return result;
   }
 
-  private static void estimateMutualInfoFromSketchJoin(Result result, Join join) {
-    MI mi = MutualInformationDiffEntMixed.INSTANCE.of(join.x, join.y);
+  private static void estimateMutualInfoFromSketchJoin(
+      Result result, ImmutableCorrelationSketch iSketchY, ImmutableCorrelationSketch iSketchX) {
+    Join join = iSketchY.join(iSketchX);
+    MI mi = MutualInformationDiffEntMixed.INSTANCE.of(join.right, join.left);
     result.mi_est = mi.value;
     result.join_size_sketch = mi.sampleSize;
     result.nmi_sqrt_est = mi.nmiSqrt();
