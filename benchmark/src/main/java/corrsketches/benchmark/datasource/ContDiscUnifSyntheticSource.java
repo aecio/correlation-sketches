@@ -2,7 +2,6 @@ package corrsketches.benchmark.datasource;
 
 import corrsketches.ColumnType;
 import corrsketches.benchmark.ColumnPair;
-import corrsketches.benchmark.distributions.MultinomialSampler;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
 import corrsketches.benchmark.pairwise.TablePair;
@@ -10,10 +9,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.random.Well19937c;
 
-public class MultinomialSyntheticSource {
+public class ContDiscUnifSyntheticSource {
 
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, int seed) {
     return createColumnCombinations(numberOfColumns, new Random(seed));
@@ -22,12 +19,12 @@ public class MultinomialSyntheticSource {
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
     List<ColumnCombination> combinations = new ArrayList<>();
     for (int i = 0; i < numberOfColumns; i++) {
-      for (int n : Arrays.asList(128, 256, 512, 768, 1024)) {
-        MultinomialParameters parameters = createMultinomialParameters(rng, n);
+      for (int m : Arrays.asList(5, 50, 500)) {
+        Parameters parameters = new Parameters(m);
         for (var dataPairType : PairDataType.values()) {
           for (var keyDist : KeyDistribution.values()) {
             combinations.add(
-                new MultinomialColumnCombination(
+                new ContUnifDiscUnifColumnCombination(
                     rng.nextInt(), parameters, new PairTypeParams(keyDist, dataPairType)));
           }
         }
@@ -37,18 +34,19 @@ public class MultinomialSyntheticSource {
   }
 
   private static TablePair generateColumns(
-      int maxRows, int seed, float rho, MultinomialParameters parameters, PairTypeParams params) {
-    // RandomGenerator rng = new JDKRandomGenerator(seed);
-    RandomGenerator rng = new Well19937c(seed);
-    double[][] sampled = sampleMultinomial(maxRows, parameters, rng);
+      int maxRows, int seed, Parameters parameters, PairTypeParams params) {
+    //    RandomGenerator rng = new JDKRandomGenerator(seed);
+    //    Random rng = new Well19937c(seed);
+    Random rng = new Random(seed);
+    double[][] sampled = sampleDistribution(maxRows, parameters, rng);
     double[] X = sampled[0];
     double[] Y = sampled[1];
     String[] K = generateJoinKeys(maxRows, params.keyDistribution, X);
 
     String datasetId =
         String.format(
-            "sbn_r=%.5f_xtype=%s_ytype=%s_keydist=%s",
-            rho, params.typeX, params.typeY, params.keyDistribution);
+            "cdunif_m=%d_xtype=%s_ytype=%s_keydist=%s",
+            parameters.m, params.typeX, params.typeY, params.keyDistribution);
     String keyName = "K" + seed;
     List<String> keyValues = Arrays.asList(K);
     String columnNameX = "X" + seed;
@@ -94,34 +92,25 @@ public class MultinomialSyntheticSource {
   }
 
   /**
-   * Samples data points from a multinomial distribution with the given correlation.
+   * Samples two random variables X and Y from the following distribution: X is a discrete random
+   * variable and Y is a continuous random variable. X is uniformly distributed over integers {0, 1,
+   * ..., m − 1} and Y is uniformly distributed over the range [X, X + 2] for a given X.
    *
    * @param sampleSize the number of samples to generate
-   * @param parameters the parameters for the Multinomial distribution
+   * @param parameters the parameters m for the distribution
    * @param rng the random number generator
    * @return a matrix of dimensions (2, sampleSize) containing samples of the
    */
-  private static double[][] sampleMultinomial(
-      int sampleSize, MultinomialParameters parameters, RandomGenerator rng) {
-    double[] probabilities = parameters.getProbabilities();
-    var multinomialSampler =
-        new MultinomialSampler(new Random(rng.nextInt()), parameters.n, probabilities);
-    return multinomialSampler.sample(sampleSize);
-  }
-
-  private static MultinomialParameters createMultinomialParameters(Random rng, int n) {
-    double p, q;
-    float r;
-    do {
-      final double mi = rng.nextDouble() * 3.5;
-      r = (float) Math.sqrt(1. - Math.exp(-2 * mi));
-      q = 0.15 + (rng.nextDouble() * 0.85); // [0.25, 0.75)
-      final double b = q / (1.0 - q);
-      final double a = Math.pow(r, 2) / b;
-      p = a / (a + 1.0);
-    } while (p < 0.15 || p > 0.85);
-    //    System.out.printf("p = %.5f  q = %.5f  n = %d  r = %.5f\n", p, q, n, r);
-    return new MultinomialParameters(n, p, q);
+  private static double[][] sampleDistribution(int sampleSize, Parameters parameters, Random rng) {
+    final int m = parameters.m;
+    final double[][] data = new double[2][sampleSize];
+    for (int i = 0; i < sampleSize; i++) {
+      final double x = rng.nextInt(m);
+      final double y = x + rng.nextDouble() * 2;
+      data[0][i] = x;
+      data[1][i] = y;
+    }
+    return data;
   }
 
   public static class PairTypeParams {
@@ -158,52 +147,31 @@ public class MultinomialSyntheticSource {
     SAME_AS_X,
   }
 
-  public static class MultinomialParameters {
-    public final double p;
-    public final double q;
-    public final int n;
+  public static class Parameters {
+    public final int m;
 
-    public MultinomialParameters(int n, double p, double q) {
-      this.n = n;
-      this.p = p;
-      this.q = q;
-    }
-
-    public double[] getProbabilities() {
-      return new double[] {p, q, 1. - (p + q)};
-    }
-
-    public float getCorrelation() {
-      return (float) (-p * q / (Math.sqrt(p * (1 - p)) * (Math.sqrt(q * (1 - q)))));
+    public Parameters(int m) {
+      this.m = m;
     }
   }
 
-  public static class MultinomialColumnCombination implements SyntheticColumnCombination {
+  public static class ContUnifDiscUnifColumnCombination implements SyntheticColumnCombination {
 
     private final int MAX_ROWS = 10000;
     public final PairTypeParams pairTypeParams;
-    public final float correlation;
     public final int seed;
-    public MultinomialParameters multinomialParameters;
+    public Parameters parameters;
 
-    public MultinomialColumnCombination(
-        int seed, MultinomialParameters multinomialParameters, PairTypeParams pairTypeParams) {
+    public ContUnifDiscUnifColumnCombination(
+        int seed, Parameters parameters, PairTypeParams pairTypeParams) {
       this.seed = seed;
-      this.multinomialParameters = multinomialParameters;
-      this.correlation = multinomialParameters.getCorrelation();
+      this.parameters = parameters;
       this.pairTypeParams = pairTypeParams;
     }
 
-    public float getCorrelation() {
-      return correlation;
-    }
-
     public float getMutualInformation() {
-      float r2 = correlation * correlation;
-      if (r2 >= 1.0) {
-        r2 = Math.nextDown(1);
-      }
-      return (float) (-0.5 * Math.log(1.0 - r2));
+      final double m = parameters.m;
+      return (float) (Math.log(m) - (m - 1) * Math.log(2) / m);
     }
 
     @Override
@@ -211,13 +179,13 @@ public class MultinomialSyntheticSource {
       return pairTypeParams.keyDistribution.toString();
     }
 
-    public MultinomialParameters getParameters() {
-      return multinomialParameters;
+    public Parameters getParameters() {
+      return parameters;
     }
 
     @Override
     public TablePair getTablePair() {
-      return generateColumns(MAX_ROWS, seed, correlation, multinomialParameters, pairTypeParams);
+      return generateColumns(MAX_ROWS, seed, parameters, pairTypeParams);
     }
   }
 }

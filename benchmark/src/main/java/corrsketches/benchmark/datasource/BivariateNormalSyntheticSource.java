@@ -228,7 +228,6 @@ public class BivariateNormalSyntheticSource {
       this.pairTypeParams = pairTypeParams;
     }
 
-    @Override
     public float getCorrelation() {
       return correlation;
     }

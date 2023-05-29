@@ -9,6 +9,7 @@ import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
+import corrsketches.benchmark.datasource.ContDiscUnifSyntheticSource.ContUnifDiscUnifColumnCombination;
 import corrsketches.benchmark.datasource.MultinomialSyntheticSource.MultinomialColumnCombination;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
@@ -45,10 +46,15 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     ColumnPair y = tablePair.getY();
 
     if (combination instanceof SyntheticColumnCombination) {
-      result.true_corr = ((SyntheticColumnCombination) combination).getCorrelation();
       result.key_dist = ((SyntheticColumnCombination) combination).getKeyDistribution();
       if (combination instanceof MultinomialColumnCombination) {
+        result.true_corr = ((MultinomialColumnCombination) combination).getCorrelation();
+        result.true_mi = ((MultinomialColumnCombination) combination).getMutualInformation();
         result.multinomial_n = ((MultinomialColumnCombination) combination).getParameters().n;
+      }
+      if (combination instanceof ContUnifDiscUnifColumnCombination) {
+        result.true_mi = ((ContUnifDiscUnifColumnCombination) combination).getMutualInformation();
+        result.cdunif_m = ((ContUnifDiscUnifColumnCombination) combination).getParameters().m;
       }
     }
 
@@ -236,9 +242,11 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public AggregateFunction right_agg;
     public AggregateFunction left_agg;
 
+    public float true_mi = Float.NaN;
     public float true_corr = Float.NaN;
     public String key_dist;
     public int multinomial_n;
+    public int cdunif_m;
 
     @JsonUnwrapped public JoinStats join_stats;
 

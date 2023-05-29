@@ -4,6 +4,7 @@ import static corrsketches.benchmark.ComputePairwiseJoinCorrelations.*;
 
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.datasource.BivariateNormalSyntheticSource;
+import corrsketches.benchmark.datasource.ContDiscUnifSyntheticSource;
 import corrsketches.benchmark.datasource.MultinomialSyntheticSource;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
@@ -70,9 +71,10 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
   @Option(
       names = "--distribution",
       description =
-          "The distribution used to generate the data. Options: "
-              + "1. \"SBN\" for Bivariate Normal. "
-              + "2. \"MNL\" for Multinomial (default)")
+          "The distribution used to generate the data. Options: \n"
+              + "1. \"SBN\" for Bivariate Normal.\n"
+              + "2. \"MNL\" for Multinomial (default)\n"
+              + "3. \"CDU\" for Continuous-Discrete Uniform\n")
   String distribution = "MNL";
 
   public static void main(String[] args) {
@@ -106,6 +108,9 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     } else if ("SBN".equals(distribution)) {
       System.out.println("  (Using Bivariate Normal distribution)");
       combinations = BivariateNormalSyntheticSource.createColumnCombinations(samples, randomSeed);
+    } else if ("CDU".equals(distribution)) {
+      System.out.println("  (Using Continuous-Discrete Uniform Distributions))");
+      combinations = ContDiscUnifSyntheticSource.createColumnCombinations(samples, randomSeed);
     } else {
       throw new IllegalArgumentException("Unsupported distributions: " + distribution);
     }
