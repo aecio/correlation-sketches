@@ -22,7 +22,7 @@ public class MultinomialSyntheticSource {
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
     List<ColumnCombination> combinations = new ArrayList<>();
     for (int i = 0; i < numberOfColumns; i++) {
-      for (int n : Arrays.asList(128, 256, 512, 768, 1024)) {
+      for (int n : Arrays.asList(16, 64, 256, 512, 1024)) {
         MultinomialParameters parameters = createMultinomialParameters(rng, n);
         for (var dataPairType : PairDataType.values()) {
           for (var keyDist : KeyDistribution.values()) {

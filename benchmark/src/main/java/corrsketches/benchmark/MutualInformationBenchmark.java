@@ -18,6 +18,7 @@ import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.MutualInformation.MI;
 import corrsketches.correlation.MutualInformationDiffEntMixed;
+import corrsketches.correlation.SpearmanCorrelation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -159,6 +160,13 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     result.ey_est = mi.ey;
     result.mi_nx_est = mi.nx;
     result.mi_ny_est = mi.ny;
+    result.corr_sp_est = SpearmanCorrelation.spearman(join.left.values, join.right.values);
+    result.mi_lb_est =
+        -0.5
+            * (1.0
+                - 0.122 * Math.pow(result.corr_sp_est, 2)
+                + 0.053 * Math.pow(result.corr_sp_est, 12))
+            * Math.log((1.0 - Math.pow(result.corr_sp_est, 2)));
   }
 
   public static List<Result> computeMutualInfoAfterFullJoin(
@@ -247,6 +255,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public String key_dist;
     public int multinomial_n;
     public int cdunif_m;
+    public double corr_sp_est;
+    public double mi_lb_est;
 
     @JsonUnwrapped public JoinStats join_stats;
 

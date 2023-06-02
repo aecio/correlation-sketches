@@ -19,14 +19,15 @@ public class ContDiscUnifSyntheticSource {
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
     List<ColumnCombination> combinations = new ArrayList<>();
     for (int i = 0; i < numberOfColumns; i++) {
-      for (int m : Arrays.asList(5, 50, 500)) {
-        Parameters parameters = new Parameters(m);
-        for (var dataPairType : PairDataType.values()) {
-          for (var keyDist : KeyDistribution.values()) {
-            combinations.add(
-                new ContUnifDiscUnifColumnCombination(
-                    rng.nextInt(), parameters, new PairTypeParams(keyDist, dataPairType)));
-          }
+      int low = 2;
+      int high = 1001;
+      final int m = low + (int) (rng.nextDouble() * (high - low));
+      Parameters parameters = new Parameters(m);
+      for (var dataPairType : PairDataType.values()) {
+        for (var keyDist : KeyDistribution.values()) {
+          combinations.add(
+              new ContUnifDiscUnifColumnCombination(
+                  rng.nextInt(), parameters, new PairTypeParams(keyDist, dataPairType)));
         }
       }
     }
