@@ -1,13 +1,16 @@
 package corrsketches.benchmark;
 
+import static corrsketches.benchmark.utils.LogFactorial.logOfFactorial;
 import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.data.Offset.offset;
 
+import com.google.common.math.BigIntegerMath;
 import corrsketches.Column;
 import corrsketches.benchmark.distributions.MultinomialSampler;
 import corrsketches.correlation.*;
 import corrsketches.statistics.Stats;
 import corrsketches.statistics.Variance;
+import java.math.BigDecimal;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.RepeatedTest;
@@ -58,7 +61,6 @@ public class MultinomialSamplerTest {
     double[] probs =
         Stats.toProbabilities(new double[] {rng.nextDouble(), rng.nextDouble(), rng.nextDouble()});
     int n = 10 + rng.nextInt(1000);
-    //    int n = 512;
     double p = probs[0];
     double q = probs[1];
     int length = 10000;
@@ -116,4 +118,57 @@ public class MultinomialSamplerTest {
   // Random(repetitionInfo.getCurrentRepetition())).getBinomial(n, p);
   //    assertThat(getb).isEqualTo(bswt);
   //  }
+
+  public static void main(String[] args) {
+
+    int m = 32; // number of trials
+    double p1 = .03; // event probability p1
+    double p2 = .925; // event probability p2
+
+    double result = calcTrinomialMI(m, p1, p2);
+    System.out.println(result);
+  }
+
+  public static double calcTrinomialMI(int m, double p1, double p2) {
+
+    final double logOfFactorialOfM = logOfFactorial(m);
+
+    double p3 = 1.0 - (p1 + p2);
+    double jointEntropy = 0.0;
+    jointEntropy -= logOfFactorialOfM;
+    jointEntropy -= m * (p1 * Math.log(p1) + p2 * Math.log(p2) + p3 * Math.log(p3));
+    jointEntropy += sum(m, p1);
+    jointEntropy += sum(m, p2);
+    jointEntropy += sum(m, p3);
+
+    double px1 = p1;
+    double px2 = 1.0 - p1;
+    double xEntropy = 0.0;
+    xEntropy -= logOfFactorialOfM;
+    xEntropy -= m * (px1 * Math.log(px1) + px2 * Math.log(px2));
+    xEntropy += sum(m, px1);
+    xEntropy += sum(m, px2);
+
+    double py1 = p2;
+    double py2 = 1.0 - p2;
+    double yEntropy = 0.0;
+    yEntropy -= logOfFactorialOfM;
+    yEntropy -= m * (py1 * Math.log(py1) + py2 * Math.log(py2));
+    yEntropy += sum(m, py1);
+    yEntropy += sum(m, py2);
+
+    return xEntropy + yEntropy - jointEntropy;
+  }
+
+  public static double sum(int m, double p) {
+    double sum = 0.0;
+    for (int i = 0; i <= m; i++) {
+      final BigDecimal comb = new BigDecimal(BigIntegerMath.binomial(m, i));
+      sum +=
+          comb.multiply(
+                  BigDecimal.valueOf(Math.pow(p, i) * Math.pow(1 - p, m - i) * logOfFactorial(i)))
+              .doubleValue();
+    }
+    return sum;
+  }
 }

@@ -1,11 +1,15 @@
 package corrsketches.benchmark.datasource;
 
+import static corrsketches.benchmark.utils.LogFactorial.logOfFactorial;
+
+import com.google.common.math.BigIntegerMath;
 import corrsketches.ColumnType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.distributions.MultinomialSampler;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.pairwise.SyntheticColumnCombination;
 import corrsketches.benchmark.pairwise.TablePair;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -120,7 +124,6 @@ public class MultinomialSyntheticSource {
       final double a = Math.pow(r, 2) / b;
       p = a / (a + 1.0);
     } while (p < 0.15 || p > 0.85);
-    //    System.out.printf("p = %.5f  q = %.5f  n = %d  r = %.5f\n", p, q, n, r);
     return new MultinomialParameters(n, p, q);
   }
 
@@ -176,6 +179,68 @@ public class MultinomialSyntheticSource {
     public float getCorrelation() {
       return (float) (-p * q / (Math.sqrt(p * (1 - p)) * (Math.sqrt(q * (1 - q)))));
     }
+
+    public double getMutualInformation() {
+      return calcTrinomialMI(n, p, q);
+    }
+
+    public static double calcTrinomialMI(int m, double p1, double p2) {
+
+      final double logOfFactorialOfM = logOfFactorial(m);
+
+      double p3 = 1.0 - (p1 + p2);
+      double jointEntropy = 0.0;
+      jointEntropy -= logOfFactorialOfM;
+      jointEntropy -= m * (p1 * Math.log(p1) + p2 * Math.log(p2) + p3 * Math.log(p3));
+      jointEntropy += sum(m, p1);
+      jointEntropy += sum(m, p2);
+      jointEntropy += sum(m, p3);
+
+      double px1 = p1;
+      double px2 = 1.0 - p1;
+      double xEntropy = 0.0;
+      xEntropy -= logOfFactorialOfM;
+      xEntropy -= m * (px1 * Math.log(px1) + px2 * Math.log(px2));
+      xEntropy += sum(m, px1);
+      xEntropy += sum(m, px2);
+
+      double py1 = p2;
+      double py2 = 1.0 - p2;
+      double yEntropy = 0.0;
+      yEntropy -= logOfFactorialOfM;
+      yEntropy -= m * (py1 * Math.log(py1) + py2 * Math.log(py2));
+      yEntropy += sum(m, py1);
+      yEntropy += sum(m, py2);
+
+      return xEntropy + yEntropy - jointEntropy;
+    }
+
+    public static double sum(int m, double p) {
+      double sum = 0.0;
+      for (int i = 0; i <= m; i++) {
+        final BigDecimal comb = new BigDecimal(BigIntegerMath.binomial(m, i));
+        sum +=
+            comb.multiply(
+                    BigDecimal.valueOf(Math.pow(p, i) * Math.pow(1 - p, m - i) * logOfFactorial(i)))
+                .doubleValue();
+      }
+      return sum;
+    }
+
+    /**
+     * Calculate an approximation of the mutual information using the MI formula for the bivariate
+     * normal distribution.
+     *
+     * @return
+     */
+    public double getBivariateMI() {
+      double correlation = getCorrelation();
+      double r2 = correlation * correlation;
+      if (r2 >= 1.0) {
+        r2 = Math.nextDown(1);
+      }
+      return -0.5 * Math.log(1.0 - r2);
+    }
   }
 
   public static class MultinomialColumnCombination implements SyntheticColumnCombination {
@@ -199,11 +264,7 @@ public class MultinomialSyntheticSource {
     }
 
     public float getMutualInformation() {
-      float r2 = correlation * correlation;
-      if (r2 >= 1.0) {
-        r2 = Math.nextDown(1);
-      }
-      return (float) (-0.5 * Math.log(1.0 - r2));
+      return (float) multinomialParameters.getMutualInformation();
     }
 
     @Override
