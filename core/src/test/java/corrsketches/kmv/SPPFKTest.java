@@ -1,13 +1,11 @@
 package corrsketches.kmv;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import corrsketches.aggregations.AggregateFunction;
+import java.util.stream.IntStream;
 import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.stream.IntStream;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class SPPFKTest {
 
@@ -65,9 +63,6 @@ public class SPPFKTest {
     // size must be as requested
     assertThat(sketchKeys.length).isCloseTo(maxSize, Offset.offset(1));
     assertThat(sketchValues.length).isCloseTo(maxSize, Offset.offset(1));
-
-//    System.out.println("sketchKeys = " + Arrays.toString(sketchKeys));
-//    System.out.println("sketchValues = " + Arrays.toString(sketchValues));
 
     // should include keys that repeat very frequently
     int inclusions = 0;

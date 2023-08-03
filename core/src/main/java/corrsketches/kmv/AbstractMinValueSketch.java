@@ -174,7 +174,8 @@ public abstract class AbstractMinValueSketch<T> {
      * Creates a min-values sketch from the given array of pre-computed hashed keys and their
      * associated values.
      */
-    public <S extends AbstractMinValueSketch> S buildFromHashedKeys(int[] hashedKeys, double[] values) {
+    public <S extends AbstractMinValueSketch> S buildFromHashedKeys(
+        int[] hashedKeys, double[] values) {
       final S sketch = build();
       sketch.updateAll(hashedKeys, values);
       return sketch;

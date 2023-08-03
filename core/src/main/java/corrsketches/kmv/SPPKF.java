@@ -7,8 +7,6 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import smile.sort.HeapSelect;
 
-import java.util.Arrays;
-
 /** */
 public class SPPKF extends AbstractMinValueSketch<SPPKF> {
 
@@ -35,8 +33,6 @@ public class SPPKF extends AbstractMinValueSketch<SPPKF> {
 
   @Override
   public void updateAll(int[] hashedKeys, double[] values) {
-//    System.out.println("hashedKeys = " + hashedKeys);
-
     if (super.aggregateFunction == AggregateFunction.NONE) {
       actualSize = Math.min(maxK, hashedKeys.length); // hashedKeys may be smaller than k
       heapData = new ValueHash[maxK];
@@ -78,7 +74,6 @@ public class SPPKF extends AbstractMinValueSketch<SPPKF> {
           aggregatorMap.int2ObjectEntrySet()) {
         aggKeys[idx] = entry.getIntKey();
         aggValues[idx] = entry.getValue().aggregatedValue();
-//        System.out.printf("idx=%d  key=%d  agg=%.3f\n", idx, aggKeys[idx], aggValues[idx]);
         idx++;
       }
 
@@ -96,17 +91,6 @@ public class SPPKF extends AbstractMinValueSketch<SPPKF> {
         heap.add(new ValueHash(key, hu, value, AggregateFunction.NONE.get()));
       }
     }
-////    System.out.println("heapData = " + Arrays.toString(heapData));
-//    for (int i = 0; i < actualSize; i++) {
-//
-//      int hash = heapData[i].keyHash;
-//      double value = heapData[i].value();
-//      double weight = heapData[i].unitHash;
-//      double hu = Hashes.grm(hash);
-////      System.out.printf(
-////          "hash:%d  value:%.3f  weight:%.3f  hu:%.3f  whu:%.3f\n",
-////          hash, value, weight, Hashes.grm(hash), hu);
-//    }
   }
 
   @Override

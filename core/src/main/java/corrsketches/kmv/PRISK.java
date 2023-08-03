@@ -8,7 +8,6 @@ import it.unimi.dsi.fastutil.doubles.DoubleList;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.List;
-
 import smile.sort.HeapSelect;
 
 public class PRISK extends AbstractMinValueSketch<PRISK> {
@@ -72,16 +71,9 @@ public class PRISK extends AbstractMinValueSketch<PRISK> {
 
   public void update(int hash, double value, double weight) {
     final double hu = Hashes.grm(hash) / weight;
-//    System.out.printf(
-//        "hash:%d  value:%.3f  weight:%.3f  hu:%.3f  whu:%.3f\n",
-//        hash, value, weight, Hashes.grm(hash), hu);
     if (kMinValues.size() < maxK) {
-
       ValueHash vh = createOrUpdateValueHash(hash, value, hu);
       kMinValues.add(vh);
-      // if (hu > kthValue) {
-      //   kthValue = hu;
-      // }
       kthValue = 1d;
       kMinItems++;
     } else if (hu <= kthValue) {
@@ -112,12 +104,6 @@ public class PRISK extends AbstractMinValueSketch<PRISK> {
       kMinItems++;
     }
     seenItems++;
-    // System.out.println();
-    // System.out.println("kMin size = " + kMinValues.size());
-    // System.out.println("seenItems = " + seenItems);
-    // System.out.println("kMinItems = " + kMinItems);
-    // System.out.println("    ratio = " + kMinItems / (double) seenItems);
-    // System.out.println("__");
   }
 
   @Override
@@ -141,27 +127,11 @@ public class PRISK extends AbstractMinValueSketch<PRISK> {
       IntArrayList keyList = new IntArrayList();
       DoubleArrayList valuesList = new DoubleArrayList();
       for (ValueHash vh : kMinValues) {
-        // TODO:
-        //  1. Compute probability within the kMinValues or whole data (seenItems)?
-        //  2. Analyze if n can be greater than the number of entries in sampler for each key
-        //  (i.e., vh.aggregator.values()), and provide bounds for its max size and for \sum_i(n)
-        //  where i is each key in the sketch.
-
         final int key = vh.keyHash;
         DoubleList aggregatorValues = vh.aggregator.values();
         // compute how many samples should be used from each sampler
-        // final double prob = vh.count() / (double) kMinItems;
         final double prob = vh.count() / (double) seenItems;
         int n = (int) Math.max(1, Math.floor(prob * maxK));
-        // System.out.printf("prob[%d] = %.4f\n", key, prob);
-        // System.out.println("------");
-        // System.out.println("key = " + key);
-        // System.out.println("seenItems = " + seenItems);
-        // System.out.println("count = " + vh.count());
-        // System.out.println("kMinItems = " + kMinItems);
-        // System.out.println("prob = " + prob);
-        // System.out.println("maxK = " + maxK);
-        // System.out.println("n = " + n);
         if (n > aggregatorValues.size()) {
           n = aggregatorValues.size();
         }
