@@ -41,8 +41,8 @@ public class CorrelationSketch {
         sketchBuilder = new KMV.Builder().maxSize((int) builder.budget);
       } else if (builder.sketchType == SketchType.GKMV) {
         sketchBuilder = new GKMV.Builder().threshold(builder.budget);
-      } else if (builder.sketchType == SketchType.SPPKF) {
-        sketchBuilder = new SPPKF.Builder().maxSize((int) builder.budget);
+      } else if (builder.sketchType == SketchType.TUPSK) {
+        sketchBuilder = new TUPSK.Builder().maxSize((int) builder.budget);
       } else if (builder.sketchType == SketchType.PRISK) {
         sketchBuilder = new PRISK.Builder().maxSize((int) builder.budget);
       } else {

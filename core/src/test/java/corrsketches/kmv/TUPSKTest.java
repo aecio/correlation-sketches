@@ -7,7 +7,7 @@ import java.util.stream.IntStream;
 import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 
-public class SPPFKTest {
+public class TUPSKTest {
 
   @Test
   public void shouldGiveHigherPriorityToItemsThatRepeatFrequentlyAndAggregateValues() {
@@ -17,8 +17,8 @@ public class SPPFKTest {
 
     int maxSize = 3;
     // when
-    SPPKF sk =
-        new SPPKF.Builder()
+    TUPSK sk =
+        new TUPSK.Builder()
             .aggregate(AggregateFunction.SUM)
             .maxSize(maxSize)
             .buildFromHashedKeys(keys, values);
@@ -48,8 +48,8 @@ public class SPPFKTest {
 
     int maxSize = 6;
     // when
-    SPPKF sk =
-        new SPPKF.Builder()
+    TUPSK sk =
+        new TUPSK.Builder()
             .aggregate(AggregateFunction.NONE)
             .maxSize(maxSize)
             .buildFromHashedKeys(keys, values);

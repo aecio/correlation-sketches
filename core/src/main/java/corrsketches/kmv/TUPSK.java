@@ -8,7 +8,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import smile.sort.HeapSelect;
 
 /** */
-public class SPPKF extends AbstractMinValueSketch<SPPKF> {
+public class TUPSK extends AbstractMinValueSketch<TUPSK> {
 
   public static final int DEFAULT_K = 256;
   private final int maxK;
@@ -17,13 +17,13 @@ public class SPPKF extends AbstractMinValueSketch<SPPKF> {
   HeapSelect<ValueHash> heap;
   int actualSize;
 
-  public SPPKF(Builder builder) {
+  public TUPSK(Builder builder) {
     super(builder);
     this.maxK = builder.maxSize;
   }
 
-  public static SPPKF.Builder builder() {
-    return new SPPKF.Builder();
+  public static TUPSK.Builder builder() {
+    return new TUPSK.Builder();
   }
 
   @Override
@@ -107,19 +107,19 @@ public class SPPKF extends AbstractMinValueSketch<SPPKF> {
 
   /** Estimates the size of union of the given KMV synopsis */
   @Override
-  public double unionSize(SPPKF other) {
+  public double unionSize(TUPSK other) {
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
   /** Estimates the Jaccard similarity using the p = K_e / k estimator from Beyer et. al. (2007) */
   @Override
-  public double jaccard(SPPKF other) {
+  public double jaccard(TUPSK other) {
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
   /** Estimates intersection between the sets represented by this synopsis and the other. */
   @Override
-  public double intersectionSize(SPPKF other) {
+  public double intersectionSize(TUPSK other) {
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
@@ -146,9 +146,9 @@ public class SPPKF extends AbstractMinValueSketch<SPPKF> {
     }
 
     @Override
-    public SPPKF build() {
+    public TUPSK build() {
       repeatedValueHandlerProvider = this.aggregateFunction.getProvider();
-      return new SPPKF(this);
+      return new TUPSK(this);
     }
   }
 }
