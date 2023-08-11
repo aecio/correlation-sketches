@@ -4,14 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import corrsketches.util.KDTree;
 import corrsketches.util.KDTree.Neighbor;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import java.util.Random;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
 
 public class KDTreeTest {
 
-  @ParameterizedTest
-  @EnumSource(value = KDTree.Distance.class)
-  public void shouldFindNearestPointsUsingKDTree(KDTree.Distance distance) {
+  @Test
+  public void shouldFindNearestPointsUsingKDTree() {
+
+    KDTree.Distance distance = KDTree.Distance.CHEBYSHEV;
 
     double[] data = new double[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
@@ -57,5 +59,45 @@ public class KDTreeTest {
         assertThat(tree.countInRange(q, r)).isEqualTo((int) (1 + 2 * Math.floor(r)));
       }
     }
+  }
+
+  @RepeatedTest(100)
+  void shouldFindPointsUsingEuclideanDistance() {
+    Random rand = new Random();
+
+    // Generate n random vectors
+    int n = 1000;
+    double[][] vectors = new double[n][2];
+    for (int i = 0; i < n; i++) {
+      vectors[i][0] = rand.nextDouble(); // x-coordinate
+      vectors[i][1] = rand.nextDouble(); // y-coordinate
+    }
+
+    // Create a random query vector
+    double[] queryVector = {rand.nextDouble(), rand.nextDouble()};
+    // Set a random query distance
+    double radius = rand.nextDouble();
+
+    // Count how many example vectors are within the given radius of the query vector using linear
+    // search
+    int pointsWithinEuclideanDistance = 0;
+    int pointsWithinChebyshevDistance = 0;
+    for (int i = 0; i < n; i++) {
+      if (Distance.euclidean(queryVector, vectors[i]) <= radius) {
+        pointsWithinEuclideanDistance++;
+      }
+      if (Distance.chebyshev(queryVector, vectors[i]) <= radius) {
+        pointsWithinChebyshevDistance++;
+      }
+    }
+
+    // Assert that it counts the correct number of points within the given distance
+    KDTree treeEuclidian = new KDTree(vectors, KDTree.Distance.EUCLIDEAN);
+    assertThat(treeEuclidian.countInRange(queryVector, radius))
+        .isEqualTo(pointsWithinEuclideanDistance);
+
+    KDTree treeChebyshev = new KDTree(vectors, KDTree.Distance.CHEBYSHEV);
+    assertThat(treeChebyshev.countInRange(queryVector, radius))
+        .isEqualTo(pointsWithinChebyshevDistance);
   }
 }

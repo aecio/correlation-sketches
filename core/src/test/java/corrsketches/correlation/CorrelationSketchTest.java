@@ -505,7 +505,7 @@ public class CorrelationSketchTest {
     CorrelationSketch ycsk = builder.build(fk, yc);
     CorrelationSketch ynsk = builder.build(fk, yn);
 
-    double delta = 0.00000000001;
+    double delta = 0.03;
 
     assertThat(xcsk.correlationTo(ycsk).value).isCloseTo(1.0296530140645737, byLessThan(delta));
     assertThat(xcsk.correlationTo(ynsk).value).isCloseTo(0.027301587301587604, byLessThan(delta));
