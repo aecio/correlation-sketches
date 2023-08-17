@@ -5,13 +5,13 @@ plugins {
 version '0.1-SNAPSHOT'
 
 dependencies {
-    implementation libraries.guava
-    implementation libraries.fastutil
-    implementation libraries.smile
+    implementation libs.guava
+    implementation libs.fastutil
+    implementation libs.smile
     // testing
-    testImplementation libraries.slf4j_nop
-    testImplementation libraries.assertj_core
-    testImplementation libraries.junit_jupiter_api
-    testImplementation libraries.junit_jupiter_params
-    testRuntimeOnly libraries.junit_jupiter_engine
+    testImplementation libs.slf4j.nop
+    testImplementation libs.assertj.core
+    testImplementation libs.junit.api
+    testImplementation libs.junit.params
+    testRuntimeOnly libs.junit.engine
 }
