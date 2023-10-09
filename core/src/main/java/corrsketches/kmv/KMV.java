@@ -23,10 +23,6 @@ public class KMV extends AbstractMinValueSketch<KMV> {
     this.maxK = builder.maxSize;
   }
 
-  public static KMV.Builder builder() {
-    return new KMV.Builder();
-  }
-
   /** Updates the KMV synopsis with the given hashed key */
   @Override
   public void update(int hash, double value) {
