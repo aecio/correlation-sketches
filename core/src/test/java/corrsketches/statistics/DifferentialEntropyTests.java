@@ -103,4 +103,14 @@ public class DifferentialEntropyTests {
     // within(allowedError));
     assertThat(Entropy.entropy(z)).isCloseTo(expectedEntropy, within(allowedError));
   }
+
+  @Test
+  public void testDifferentialEntropyForSmallVectors() {
+    double[] a = new double[] {1};
+    assertThat(DifferentialEntropy.entropy(a, 3))
+        .isEqualTo(Double.NEGATIVE_INFINITY, within(DELTA));
+    a = new double[] {1, 1, 1};
+    assertThat(DifferentialEntropy.entropy(a, 3))
+        .isEqualTo(Double.NEGATIVE_INFINITY, within(DELTA));
+  }
 }

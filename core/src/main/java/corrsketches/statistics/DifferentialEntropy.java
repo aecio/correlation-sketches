@@ -30,6 +30,9 @@ public class DifferentialEntropy {
    * @return the entropy estimate
    */
   public static double entropy(double[] x, final int k) {
+    if (x.length <= 1) {
+      return Double.NEGATIVE_INFINITY;
+    }
     final double N = x.length;
     double[] distances = computeDistances(x, k);
     for (int i = 0; i < distances.length; i++) {
