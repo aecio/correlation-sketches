@@ -4,7 +4,8 @@ public enum SketchType {
   TUPSK,
   PRISK,
   KMV,
-  GKMV;
+  GKMV,
+  INDSK;
 
   public static SketchOptions parseOptions(SketchType type, String value) {
     final SketchOptions options;

@@ -135,7 +135,12 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     // so we need to check whether the actual cardinality and sketch sizes are large enough.
     if (result.interxy_actual >= MINIMUM_INTERSECTION) {
       // computes statistics on joined data (e.g., correlations)
-      estimateMutualInfoFromSketchJoin(result, iSketchY, iSketchX);
+      Join join = iSketchY.join(iSketchX);
+      result.sketch_size_x = iSketchX.getKeys().length;
+      result.sketch_size_y = iSketchY.getKeys().length;
+      if (join.keys.length >= MINIMUM_INTERSECTION) {
+        estimateMutualInfoFromSketchJoin(result, join);
+      }
     }
 
     result.parameters = sketchParams.toString();
@@ -147,9 +152,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return result;
   }
 
-  private static void estimateMutualInfoFromSketchJoin(
-      Result result, ImmutableCorrelationSketch iSketchY, ImmutableCorrelationSketch iSketchX) {
-    Join join = iSketchY.join(iSketchX);
+  private static void estimateMutualInfoFromSketchJoin(Result result, Join join) {
     MI mi = MutualInformationDiffEntMixed.INSTANCE.of(join.right, join.left);
     result.mi_est = mi.value;
     result.join_size_sketch = mi.sampleSize;
@@ -244,12 +247,15 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     // data types
     public String xtype;
     public String ytype;
+    // size of sketches
+    public int sketch_size_x;
+    public int sketch_size_y;
 
+    // other parameters
     public String parameters;
     public String columnId;
     public AggregateFunction right_agg;
     public AggregateFunction left_agg;
-
     public float true_mi = Float.NaN;
     public float true_corr = Float.NaN;
     public String key_dist;

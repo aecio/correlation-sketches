@@ -45,6 +45,8 @@ public class CorrelationSketch {
         sketchBuilder = new TUPSK.Builder().maxSize((int) builder.budget);
       } else if (builder.sketchType == SketchType.PRISK) {
         sketchBuilder = new PRISK.Builder().maxSize((int) builder.budget);
+      } else if (builder.sketchType == SketchType.INDSK) {
+        sketchBuilder = new IndSK.Builder().maxSize((int) builder.budget);
       } else {
         throw new IllegalArgumentException("Unsupported sketch type: " + builder.sketchType);
       }
