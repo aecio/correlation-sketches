@@ -113,7 +113,7 @@ public class MultinomialSyntheticSource {
     return multinomialSampler.sample(sampleSize);
   }
 
-  private static MultinomialParameters createMultinomialParameters(Random rng, int n) {
+  static MultinomialParameters createMultinomialParameters(Random rng, int n) {
     double p, q;
     float r;
     do {
