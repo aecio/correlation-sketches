@@ -20,12 +20,17 @@ import java.util.List;
 
 public class CorrelationPerformanceBenchmark implements Benchmark {
 
+  private final List<SketchParams> sketchParams;
+  private final List<AggregateFunction> rightAggregations;
+
+  public CorrelationPerformanceBenchmark(
+      List<SketchParams> sketchParams, List<AggregateFunction> rightAggregations) {
+    this.sketchParams = sketchParams;
+    this.rightAggregations = rightAggregations;
+  }
+
   @Override
-  public List<String> run(
-      ColumnCombination combination,
-      List<SketchParams> sketchParams,
-      List<AggregateFunction> leftAggregations, // TODO: currently not used
-      List<AggregateFunction> rightAggregations) {
+  public List<String> computeResults(ColumnCombination combination) {
     TablePair tablePair = combination.getTablePair();
     return measurePerformance(tablePair.getX(), tablePair.getY(), sketchParams, rightAggregations);
   }

@@ -29,13 +29,17 @@ import java.util.List;
 public class CorrelationStatsBenchmark implements Benchmark {
 
   public static final int minimumIntersection = 3; // minimum sample size for correlation is 2
+  private final List<SketchParams> sketchParams;
+  private final List<AggregateFunction> rightAggregations;
+
+  public CorrelationStatsBenchmark(
+      List<SketchParams> sketchParams, List<AggregateFunction> rightAggregations) {
+    this.sketchParams = sketchParams;
+    this.rightAggregations = rightAggregations;
+  }
 
   @Override
-  public List<String> run(
-      ColumnCombination combination,
-      List<SketchParams> sketchParams,
-      List<AggregateFunction> leftAggregations, // TODO: currently not used
-      List<AggregateFunction> rightAggregations) {
+  public List<String> computeResults(ColumnCombination combination) {
     TablePair tablePair = combination.getTablePair();
     return computeStatistics(tablePair.getX(), tablePair.getY(), sketchParams, rightAggregations);
   }

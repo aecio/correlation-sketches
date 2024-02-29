@@ -5,7 +5,6 @@ import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
-import corrsketches.benchmark.Benchmark.BaseBenchmark;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
 import corrsketches.benchmark.MutualInformationBenchmark.Result;
@@ -29,16 +28,22 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
   public static final int MINIMUM_INTERSECTION = 3; // minimum sample size for correlation is 2
 
-  public MutualInformationBenchmark() {
-    super(Result.class);
-  }
+  private final List<SketchParams> sketchParams;
+  private final List<AggregateFunction> leftAggregations;
+  private final List<AggregateFunction> rightAggregations;
 
-  @Override
-  public List<String> run(
-      ColumnCombination combination,
+  public MutualInformationBenchmark(
       List<SketchParams> sketchParams,
       List<AggregateFunction> leftAggregations,
       List<AggregateFunction> rightAggregations) {
+    super(Result.class);
+    this.sketchParams = sketchParams;
+    this.leftAggregations = leftAggregations;
+    this.rightAggregations = rightAggregations;
+  }
+
+  @Override
+  public List<String> computeResults(ColumnCombination combination) {
 
     Result result = new Result();
 

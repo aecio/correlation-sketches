@@ -9,16 +9,8 @@ import corrsketches.benchmark.datasource.MultinomialSyntheticSource;
 import corrsketches.benchmark.pairwise.ColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.CliTool;
-import java.io.FileWriter;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -131,46 +123,11 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
     }
 
     // Set up the benchmark type
-    final Benchmark bench = new MutualInformationBenchmark();
+    final Benchmark bench =
+        new MutualInformationBenchmark(sketchParamsList, leftAggregations, rightAggregations);
 
-    // Initialize CSV output file and start writing headers
-    Files.createDirectories(Paths.get(outputPath));
-    FileWriter resultsFile = new FileWriter(Paths.get(outputPath, filename).toString());
-    resultsFile.write(bench.csvHeader() + "\n");
-
-    // If necessary, filter combinations leaving only the ones that should be computed by this task
-    System.out.println("\n> Total number of column combinations: " + combinations.size());
-    if (totalTasks > 1) {
-      combinations =
-          IntStream.range(0, combinations.size())
-              .filter(i -> i % totalTasks == taskId)
-              .mapToObj(combinations::get)
-              .collect(Collectors.toList());
-      System.out.println("Column combinations for this task: " + combinations.size());
-    }
-
-    final Stream<ColumnCombination> stream = combinations.stream();
-    final int total = combinations.size();
-    final AtomicInteger processed = new AtomicInteger(0);
-    final int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
-    System.out.println("\n> Running...");
-    ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-    Runnable task =
-        () ->
-            stream
-                .parallel()
-                .map(
-                    (ColumnCombination combination) -> {
-                      List<String> results =
-                          bench.run(
-                              combination, sketchParamsList, leftAggregations, rightAggregations);
-                      reportProgress(processed, total);
-                      return toCSV(results);
-                    })
-                .forEach(writeCSV(resultsFile));
-    forkJoinPool.submit(task).get();
-
-    resultsFile.close();
+    BaseBenchmark.runParallel(
+        totalTasks, taskId, cpuCores, combinations, bench, outputPath, filename);
 
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }

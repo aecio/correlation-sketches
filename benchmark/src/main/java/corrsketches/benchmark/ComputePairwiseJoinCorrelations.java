@@ -5,18 +5,9 @@ import corrsketches.benchmark.datasource.DBSource;
 import corrsketches.benchmark.datasource.DBSource.DBColumnCombination;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.CliTool;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -139,56 +130,17 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
     // Set up the benchmark type
     final Benchmark bench;
     if (benchmarkType == BenchmarkType.CORR_PERF) {
-      bench = new CorrelationPerformanceBenchmark();
+      bench = new CorrelationPerformanceBenchmark(sketchParamsList, rightAggregations);
     } else if (benchmarkType == BenchmarkType.CORR_STATS) {
-      bench = new CorrelationStatsBenchmark();
+      bench = new CorrelationStatsBenchmark(sketchParamsList, rightAggregations);
     } else if (benchmarkType == BenchmarkType.MI) {
-      bench = new MutualInformationBenchmark();
+      bench = new MutualInformationBenchmark(sketchParamsList, leftAggregations, rightAggregations);
     } else {
       throw new IllegalArgumentException("Invalid benchmark type: " + benchmarkType);
     }
 
-    // Initialize CSV output file and start writing headers
-    Files.createDirectories(Paths.get(outputPath));
-    String outputFileName = Paths.get(outputPath, filename).toString();
-    System.out.println("> Writing output to file: " + outputFileName);
-    FileWriter resultsFile = new FileWriter(outputFileName);
-    resultsFile.write(bench.csvHeader() + "\n");
-
-    // If necessary, filter combinations leaving only the ones that should be computed by this task
-    System.out.println("> Total number of column combinations: " + combinations.size());
-    if (totalTasks > 1) {
-      combinations =
-          IntStream.range(0, combinations.size())
-              .filter(i -> i % totalTasks == taskId)
-              .mapToObj(combinations::get)
-              .collect(Collectors.toList());
-      Collections.shuffle(combinations, new Random(SEED));
-      System.out.println("> Column combinations for this task: " + combinations.size());
-    }
-
-    final Stream<DBColumnCombination> stream = combinations.stream();
-    final int total = combinations.size();
-    final AtomicInteger processed = new AtomicInteger(0);
-    final int cores = cpuCores > 0 ? cpuCores : Runtime.getRuntime().availableProcessors();
-
-    ForkJoinPool forkJoinPool = new ForkJoinPool(cores);
-    Runnable task =
-        () ->
-            stream
-                .parallel()
-                .map(
-                    (DBColumnCombination columnPair) -> {
-                      List<String> results =
-                          bench.run(
-                              columnPair, sketchParamsList, leftAggregations, rightAggregations);
-                      reportProgress(processed, total);
-                      return toCSV(results);
-                    })
-                .forEach(writeCSV(resultsFile));
-    forkJoinPool.submit(task).get();
-
-    resultsFile.close();
+    BaseBenchmark.runParallel(
+        totalTasks, taskId, cpuCores, combinations, bench, outputPath, filename);
     dbsource.close();
 
     System.out.println(getClass().getSimpleName() + " finished successfully.");
@@ -212,42 +164,5 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
       }
     }
     return aggregateFunctions;
-  }
-
-  static void reportProgress(AtomicInteger processed, int total) {
-    int current = processed.incrementAndGet();
-    if (current % 1000 == 0) {
-      double percent = 100 * current / (double) total;
-      synchronized (System.out) {
-        System.out.printf("Progress: %.3f%%\n", percent);
-      }
-    }
-  }
-
-  protected static String toCSV(List<String> results) {
-    if (results == null || results.isEmpty()) {
-      return "";
-    } else {
-      StringBuilder builder = new StringBuilder();
-      for (String result : results) {
-        builder.append(result);
-      }
-      return builder.toString();
-    }
-  }
-
-  protected static Consumer<String> writeCSV(FileWriter file) {
-    return (String line) -> {
-      if (!line.isEmpty()) {
-        synchronized (file) {
-          try {
-            file.write(line);
-            file.flush();
-          } catch (IOException e) {
-            throw new RuntimeException("Failed to write line to file: " + line);
-          }
-        }
-      }
-    };
   }
 }
