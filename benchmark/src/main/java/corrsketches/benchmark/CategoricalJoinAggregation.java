@@ -74,6 +74,7 @@ public class CategoricalJoinAggregation {
     public int join_1to0 = 0;
     public int join_1to1 = 0;
     public int join_1toN = 0;
+    public long join_time;
   }
 
   public static class Aggregation {

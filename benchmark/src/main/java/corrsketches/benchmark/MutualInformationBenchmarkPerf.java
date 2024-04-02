@@ -1,13 +1,14 @@
 package corrsketches.benchmark;
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import corrsketches.Column;
+import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CategoricalJoinAggregation.Aggregation;
 import corrsketches.benchmark.CategoricalJoinAggregation.JoinStats;
-import corrsketches.benchmark.MutualInformationBenchmark.Result;
 import corrsketches.benchmark.datasource.ContDiscUnifSyntheticSource.ContUnifDiscUnifColumnCombination;
 import corrsketches.benchmark.datasource.MultinomialSyntheticSource.MultinomialColumnCombination;
 import corrsketches.benchmark.pairwise.ColumnCombination;
@@ -16,14 +17,16 @@ import corrsketches.benchmark.pairwise.TablePair;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.*;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
-public class MutualInformationBenchmark extends BaseBenchmark<Result> {
+import static com.google.common.base.Preconditions.checkArgument;
+
+public class MutualInformationBenchmarkPerf
+    extends BaseBenchmark<MutualInformationBenchmarkPerf.Result> {
 
   public static final int MINIMUM_INTERSECTION = 3; // minimum sample size for correlation is 2
 
@@ -31,7 +34,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
   private final List<AggregateFunction> leftAggregations;
   private final List<AggregateFunction> rightAggregations;
 
-  public MutualInformationBenchmark(
+  public MutualInformationBenchmarkPerf(
       List<SketchParams> sketchParams,
       List<AggregateFunction> leftAggregations,
       List<AggregateFunction> rightAggregations) {
@@ -89,10 +92,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
 
     HashSet<String> xKeys = new HashSet<>(x.keyValues);
     HashSet<String> yKeys = new HashSet<>(y.keyValues);
-    result.cardx_actual = xKeys.size();
-    result.cardy_actual = yKeys.size();
     result.interxy_actual = Sets.intersectionSize(xKeys, yKeys);
-    result.unionxy_actual = Sets.unionSize(xKeys, yKeys);
 
     // No need compute any statistics when there is no intersection
     if (result.interxy_actual < MINIMUM_INTERSECTION) {
@@ -108,7 +108,7 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return leftAggregations.stream()
         .filter(leftAgg -> leftAgg.get().acceptsInputColumnType(y.columnValueType))
         .flatMap(
-            leftAgg -> computeMutualInfoAfterFullJoin(y, x, leftAgg, rightAggs, result).stream())
+            leftAgg -> timeMutualInfoAfterFullJoin(y, x, leftAgg, rightAggs, result).stream())
         .collect(Collectors.toList());
   }
 
@@ -139,11 +139,14 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     // so we need to check whether the actual cardinality and sketch sizes are large enough.
     if (result.interxy_actual >= MINIMUM_INTERSECTION) {
       // computes statistics on joined data (e.g., correlations)
+      long time0 = System.nanoTime();
       Join join = iSketchY.join(iSketchX);
+      result.time_join_sketch = System.nanoTime() - time0;
       result.sketch_size_x = iSketchX.getKeys().length;
       result.sketch_size_y = iSketchY.getKeys().length;
       if (join.keys.length >= MINIMUM_INTERSECTION) {
-        estimateMutualInfoFromSketchJoin(result, join);
+        // estimateMutualInfoFromSketchJoin(result, join);
+        timeSketchEstimates(result, join);
       }
     }
 
@@ -156,35 +159,16 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return result;
   }
 
-  private static void estimateMutualInfoFromSketchJoin(Result result, Join join) {
-    MIEstimate mi = MutualInformationDiffEntMixed.INSTANCE.of(join.right, join.left);
-    result.mi_est = mi.value;
-    result.join_size_sketch = mi.sampleSize;
-    result.ex_est = mi.ex;
-    result.ey_est = mi.ey;
-    result.mi_nx_est = mi.nx();
-    result.mi_ny_est = mi.ny();
-    result.nmi_sqrt_est = NMI.sqrt(mi.value, result.ex_est, result.ey_est);
-    result.nmi_max_est = NMI.max(mi.value, result.ex_est, result.ey_est);
-    result.nmi_min_est = NMI.min(mi.value, result.ex_est, result.ey_est);
-    result.corr_sp_est = SpearmanCorrelation.spearman(join.left.values, join.right.values);
-    result.mi_lb_est =
-        -0.5
-            * (1.0
-                - 0.122 * Math.pow(result.corr_sp_est, 2)
-                + 0.053 * Math.pow(result.corr_sp_est, 12))
-            * Math.log((1.0 - Math.pow(result.corr_sp_est, 2)));
-  }
-
-  public static List<Result> computeMutualInfoAfterFullJoin(
+  public static List<Result> timeMutualInfoAfterFullJoin(
       ColumnPair columnA,
       ColumnPair columnB,
       AggregateFunction leftAggregation,
       List<AggregateFunction> rightAggregations,
       Result result) {
 
-    List<Aggregation> joins =
-        CategoricalJoinAggregation.leftJoinAggregate(columnA, columnB, rightAggregations);
+    long time0;
+
+    List<Aggregation> joins = timedLeftJoinAggregate(columnA, columnB, rightAggregations);
 
     List<Result> results = new ArrayList<>(rightAggregations.size());
 
@@ -201,19 +185,9 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.join_stats = join.joinStats;
       r.ytype = join.a.type.toString();
       r.xtype = join.b.type.toString();
+      r.time_join_fulljoin = join.joinStats.join_time;
 
-      MIEstimate mi = MutualInformationDiffEntMixed.INSTANCE.of(join.b, join.a);
-      r.mi_actual = mi.value;
-      r.join_size_actual = mi.sampleSize;
-
-      r.ex_actual = mi.ex;
-      r.ey_actual = mi.ey;
-      r.mi_nx_actual = mi.nx();
-      r.mi_ny_actual = mi.ny();
-
-      r.nmi_sqrt_actual = NMI.sqrt(mi.value, r.ex_actual, r.ey_actual);
-      r.nmi_max_actual  = NMI.max(mi.value, r.ex_actual, r.ey_actual);
-      r.nmi_min_actual  = NMI.min(mi.value, r.ex_actual, r.ey_actual);
+      timeEstimatorsOnFullJoin(join, r);
 
       results.add(r);
     }
@@ -221,42 +195,167 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     return results;
   }
 
+  public static List<Aggregation> timedLeftJoinAggregate(
+          ColumnPair columnA, ColumnPair columnB, List<AggregateFunction> functions) {
+
+    // create index for primary key in column B
+    Map<String, DoubleArrayList> indexB = JoinAggregation.createKeyIndex(columnB);
+
+    List<Aggregation> results = new ArrayList<>(functions.size());
+    long time0;
+
+    for (int fnIdx = 0; fnIdx < functions.size(); fnIdx++) {
+      final AggregateFunction fn = functions.get(fnIdx);
+
+      var joinStats = new JoinStats();
+      time0 = System.nanoTime();
+
+      // Join keys for column A
+      List<String> joinKeysA = new ArrayList<>();
+
+      // numeric values for column A
+      DoubleList joinValuesA = new DoubleArrayList(columnA.keyValues.size());
+
+      // numeric values for each aggregation of column B
+      DoubleList joinValuesB = new DoubleArrayList();
+      // compute aggregation vectors of joined values for each join key
+      for (int i = 0; i < columnA.keyValues.size(); i++) {
+        String keyA = columnA.keyValues.get(i);
+        final double valueA = columnA.columnValues[i];
+        final DoubleArrayList rowsB = indexB.get(keyA);
+        if (rowsB == null || rowsB.isEmpty()) {
+          joinStats.join_1to0++;
+        } else {
+          if (rowsB.size() == 1) {
+            // 1:1 mapping
+            joinStats.join_1to1++;
+          } else {
+            // 1:n mapping
+            joinStats.join_1toN++;
+          }
+          joinKeysA.add(keyA);
+          joinValuesA.add(valueA);
+          // We need to aggregate even for 1:1 mappings, because some
+          // aggregate functions may transform the original value (e.g., COUNT)
+          joinValuesB.add(fn.aggregate(rowsB));
+        }
+      }
+
+      joinStats.join_time = System.nanoTime() - time0;
+      // In a LEFT join, the type of aggregated column B may be different from the type of the input
+      // column B. (As opposed to column A, which is not aggregated, and thus keeps the same type.)
+      ColumnType joinValuesBType = fn.get().getOutputType(columnB.columnValueType);
+      results.add(
+              new Aggregation(
+                      joinKeysA,
+                      Column.of(joinValuesA.toDoubleArray(), columnA.columnValueType),
+                      Column.of(joinValuesB.toDoubleArray(), joinValuesBType),
+                      fn,
+                      joinStats));
+    }
+
+    return results;
+  }
+
+  private static void timeEstimatorsOnFullJoin(Aggregation join, Result result) {
+    Column y = join.a;
+    Column x = join.b;
+    checkArgument(x.values.length == y.values.length, "x and y must have same size");
+    result.join_size_actual = x.values.length;
+
+    long time0;
+    if (x.type == y.type) { // x and y have the same type
+      if (x.type == ColumnType.CATEGORICAL) {
+        // both are categorical
+        time0 = System.nanoTime();
+        MIEstimate mi = MutualInformationMLE.mi(x.valuesAsIntArray(), y.valuesAsIntArray());
+        result.time_miest_fulljoin = System.nanoTime() - time0;
+        result.mi_actual = mi.value;
+      }
+      if (x.type == ColumnType.NUMERICAL) { // both are numerical
+        time0 = System.nanoTime();
+        double mi = MutualInformationMixedKSG.mi(x.values, y.values);
+        result.time_miest_fulljoin = System.nanoTime() - time0;
+        result.mi_actual = mi;
+      }
+    } else { // x and y have different types
+      int[] discrete;
+      double[] continuous;
+      if (x.type == ColumnType.CATEGORICAL) { // and y is NUMERICAL
+        discrete = x.valuesAsIntArray();
+        continuous = y.values;
+      } else if (x.type == ColumnType.NUMERICAL) { // and y is CATEGORICAL
+        continuous = x.values;
+        discrete = y.valuesAsIntArray();
+      } else {
+        throw new IllegalArgumentException("Variables must be either NUMERICAL or CATEGORICAL");
+      }
+
+      time0 = System.nanoTime();
+      double mi = MutualInformationDC.mi(discrete, continuous);
+      result.time_miest_fulljoin = System.nanoTime() - time0;
+      result.mi_actual = mi;
+    }
+  }
+
+  public static void timeSketchEstimates(Result result, Join join) {
+    Column y = join.left;
+    Column x = join.right;
+    checkArgument(x.values.length == y.values.length, "x and y must have same size");
+    result.join_size_sketch = x.values.length;
+    //    result.join_size_sketch = mi.sampleSize;
+
+    long time0;
+    if (x.type == y.type) { // x and y have the same type
+      if (x.type == ColumnType.CATEGORICAL) {
+        // both are categorical
+        time0 = System.nanoTime();
+        MIEstimate mi = MutualInformationMLE.mi(x.valuesAsIntArray(), y.valuesAsIntArray());
+        result.time_miest_sketch = System.nanoTime() - time0;
+        result.mi_est = mi.value;
+      }
+      if (x.type == ColumnType.NUMERICAL) { // both are numerical
+        time0 = System.nanoTime();
+        double mi = MutualInformationMixedKSG.mi(x.values, y.values);
+        result.time_miest_sketch = System.nanoTime() - time0;
+        result.mi_est = mi;
+      }
+    } else { // x and y have different types
+      int[] discrete;
+      double[] continuous;
+      if (x.type == ColumnType.CATEGORICAL) { // and y is NUMERICAL
+        discrete = x.valuesAsIntArray();
+        continuous = y.values;
+      } else if (x.type == ColumnType.NUMERICAL) { // and y is CATEGORICAL
+        continuous = x.values;
+        discrete = y.valuesAsIntArray();
+      } else {
+        throw new IllegalArgumentException("Variables must be either NUMERICAL or CATEGORICAL");
+      }
+
+      time0 = System.nanoTime();
+      double mi = MutualInformationDC.mi(discrete, continuous);
+      result.time_miest_sketch = System.nanoTime() - time0;
+      result.mi_est = mi;
+    }
+  }
+
   public static class Result implements Cloneable {
+    @JsonUnwrapped public JoinStats join_stats;
 
     // mutual information
     public double mi_actual;
     public double mi_est;
-    // normalized mutual information variants
-    public double nmi_sqrt_actual;
-    public double nmi_max_actual;
-    public double nmi_min_actual;
-    public double nmi_sqrt_est;
-    public double nmi_max_est;
-    public double nmi_min_est;
-    // cardinality of data vectors used to compute MI
-    public int mi_nx_actual;
-    public int mi_ny_actual;
-    public int mi_nx_est;
-    public int mi_ny_est;
-    // entropy
-    public double ex_actual;
-    public double ey_actual;
-    public double ex_est;
-    public double ey_est;
     // join statistics
     public int join_size_sketch;
     public int join_size_actual;
     public int interxy_actual;
-    public int unionxy_actual;
-    public int cardx_actual;
-    public int cardy_actual;
     // data types
     public String xtype;
     public String ytype;
     // size of sketches
     public int sketch_size_x;
     public int sketch_size_y;
-
     // other parameters
     public String parameters;
     public String columnId;
@@ -267,10 +366,10 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
     public String key_dist;
     public int multinomial_n;
     public int cdunif_m;
-    public double corr_sp_est;
-    public double mi_lb_est;
-
-    @JsonUnwrapped public JoinStats join_stats;
+    public long time_miest_sketch;
+    public long time_miest_fulljoin;
+    public long time_join_sketch;
+    public long time_join_fulljoin;
 
     @Override
     public Result clone() {

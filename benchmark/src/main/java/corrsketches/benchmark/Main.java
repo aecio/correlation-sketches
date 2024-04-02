@@ -10,6 +10,7 @@ import picocli.CommandLine.Command;
       ComputeBudget.class,
       IndexCorrelationBenchmark.class,
       SyntheticPairwiseMutualInfoBenchmark.class,
+      MutualInfoEstimatorScalability.class,
     })
 public class Main {
 

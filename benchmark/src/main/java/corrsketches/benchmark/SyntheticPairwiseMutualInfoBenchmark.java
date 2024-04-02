@@ -124,7 +124,9 @@ public class SyntheticPairwiseMutualInfoBenchmark extends CliTool implements Ser
 
     // Set up the benchmark type
     final Benchmark bench =
-        new MutualInformationBenchmark(sketchParamsList, leftAggregations, rightAggregations);
+        //        new MutualInformationBenchmark(sketchParamsList, leftAggregations,
+        // rightAggregations);
+        new MutualInformationBenchmarkPerf(sketchParamsList, leftAggregations, rightAggregations);
 
     BaseBenchmark.runParallel(
         totalTasks, taskId, cpuCores, combinations, bench, outputPath, filename);

@@ -3,7 +3,6 @@ package corrsketches.correlation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.byLessThan;
 
-import corrsketches.correlation.MutualInformation.MI;
 import org.junit.jupiter.api.Test;
 
 public class MutualInformationTest {
@@ -29,29 +28,12 @@ public class MutualInformationTest {
     int[] y = new int[] {1, 2, 2, 3, 2, 2, 3, 1, 2, 3, 2};
     int[] x = new int[] {2, 2, 2, 2, 2, 2, 2, 2, 3, 1, 2};
 
-    final MI mi = MutualInformation.ofCategorical(x, y);
+    final MIEstimate mi = MutualInformation.ofCategorical(x, y);
     assertThat(mi.value).isCloseTo(0.1808106406067122, byLessThan(DELTA));
     assertThat(mi.ex).isCloseTo(0.6001660731596457, byLessThan(DELTA));
     assertThat(mi.ey).isCloseTo(0.9949236325717751, byLessThan(DELTA));
     assertThat(mi.nmiMin()).isCloseTo(0.3012676802185986, byLessThan(DELTA));
     assertThat(mi.nmiMax()).isCloseTo(0.18173318502781496, byLessThan(DELTA));
     assertThat(mi.nmiSqrt()).isCloseTo(0.23398789514004176, byLessThan(DELTA));
-  }
-
-  @Test
-  public void shouldComputeCoOccurrenceMatrix() {
-    int[] x = new int[] {1, 2, 3};
-    int[] y = new int[] {1, 2, 3};
-
-    int[][] com = MutualInformation.coOccurrenceMatrix(x, y, x.length);
-    assertThat(com[0][0]).isEqualTo(1);
-    assertThat(com[0][1]).isEqualTo(0);
-    assertThat(com[0][2]).isEqualTo(0);
-    assertThat(com[1][0]).isEqualTo(0);
-    assertThat(com[1][1]).isEqualTo(1);
-    assertThat(com[1][2]).isEqualTo(0);
-    assertThat(com[2][0]).isEqualTo(0);
-    assertThat(com[2][1]).isEqualTo(0);
-    assertThat(com[2][2]).isEqualTo(1);
   }
 }

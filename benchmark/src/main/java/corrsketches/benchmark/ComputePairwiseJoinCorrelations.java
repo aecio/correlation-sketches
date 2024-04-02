@@ -21,7 +21,8 @@ public class ComputePairwiseJoinCorrelations extends CliTool implements Serializ
   enum BenchmarkType {
     CORR_STATS,
     CORR_PERF,
-    MI
+    MI,
+    MI_PERF,
   }
 
   static final long SEED = 9;

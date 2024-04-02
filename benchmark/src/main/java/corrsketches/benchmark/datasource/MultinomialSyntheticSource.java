@@ -20,10 +20,14 @@ import org.apache.commons.math3.random.Well19937c;
 public class MultinomialSyntheticSource {
 
   public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, int seed) {
-    return createColumnCombinations(numberOfColumns, new Random(seed));
+    return createColumnCombinations(numberOfColumns, new Random(seed), 10000);
   }
 
-  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng) {
+  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, int seed, int maxRows) {
+    return createColumnCombinations(numberOfColumns, new Random(seed), maxRows);
+  }
+
+  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng, int maxRows) {
     List<ColumnCombination> combinations = new ArrayList<>();
     for (int i = 0; i < numberOfColumns; i++) {
       for (int n : Arrays.asList(16, 64, 256, 512, 1024)) {
@@ -32,7 +36,7 @@ public class MultinomialSyntheticSource {
           for (var keyDist : KeyDistribution.values()) {
             combinations.add(
                 new MultinomialColumnCombination(
-                    rng.nextInt(), parameters, new PairTypeParams(keyDist, dataPairType)));
+                    rng.nextInt(), parameters, new PairTypeParams(keyDist, dataPairType), maxRows));
           }
         }
       }
@@ -244,19 +248,19 @@ public class MultinomialSyntheticSource {
   }
 
   public static class MultinomialColumnCombination implements SyntheticColumnCombination {
-
-    private final int MAX_ROWS = 10000;
     public final PairTypeParams pairTypeParams;
+    public final int maxRows;
     public final float correlation;
     public final int seed;
     public MultinomialParameters multinomialParameters;
 
     public MultinomialColumnCombination(
-        int seed, MultinomialParameters multinomialParameters, PairTypeParams pairTypeParams) {
+        int seed, MultinomialParameters multinomialParameters, PairTypeParams pairTypeParams, int maxRows) {
       this.seed = seed;
       this.multinomialParameters = multinomialParameters;
       this.correlation = multinomialParameters.getCorrelation();
       this.pairTypeParams = pairTypeParams;
+      this.maxRows = maxRows;
     }
 
     public float getCorrelation() {
@@ -278,7 +282,7 @@ public class MultinomialSyntheticSource {
 
     @Override
     public TablePair getTablePair() {
-      return generateColumns(MAX_ROWS, seed, correlation, multinomialParameters, pairTypeParams);
+      return generateColumns(maxRows, seed, correlation, multinomialParameters, pairTypeParams);
     }
   }
 }
