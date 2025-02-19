@@ -42,6 +42,7 @@ public class MutualInformation {
   public static MIEstimate ofCategorical(int[] x, int[] y) {
     checkArgument(x.length == y.length, "x and y must have same size");
     return MutualInformationMLE.mi(x, y);
-//    return new MI(mi.value, mi.sampleSize, entropyFromProbs(mi.px), entropyFromProbs(mi.py), mi.nx(), mi.ny());
+    //    return new MI(mi.value, mi.sampleSize, entropyFromProbs(mi.px), entropyFromProbs(mi.py),
+    // mi.nx(), mi.ny());
   }
 }

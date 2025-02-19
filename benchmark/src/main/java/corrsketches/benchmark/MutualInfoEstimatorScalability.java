@@ -79,8 +79,9 @@ public class MutualInfoEstimatorScalability extends CliTool implements Serializa
     System.out.println("\n> Computing column statistics for all column combinations...");
 
     List<ColumnCombination> combinations = new ArrayList<>();
-    for(var sizes : asList(5000, 10000, 20000)) {
-      combinations.addAll(MultinomialSyntheticSource.createColumnCombinations(samples, randomSeed, sizes));
+    for (var sizes : asList(5000, 10000, 20000)) {
+      combinations.addAll(
+          MultinomialSyntheticSource.createColumnCombinations(samples, randomSeed, sizes));
     }
 
     // Initialize the output filename
@@ -92,11 +93,11 @@ public class MutualInfoEstimatorScalability extends CliTool implements Serializa
             datasetName, benchmarkType, sketchParams.toLowerCase());
 
     // Set up the benchmark type
-    final Benchmark bench = new MutualInformationBenchmarkPerf(sketchParamsList, leftAggregations, rightAggregations);
+    final Benchmark bench =
+        new MutualInformationBenchmarkPerf(sketchParamsList, leftAggregations, rightAggregations);
     BaseBenchmark.runParallel(
         totalTasks, taskId, cpuCores, combinations, bench, outputPath, filename);
 
     System.out.println(getClass().getSimpleName() + " finished successfully.");
   }
-
 }

@@ -16,7 +16,6 @@ import corrsketches.benchmark.pairwise.TablePair;
 import corrsketches.benchmark.params.SketchParams;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.*;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -212,8 +211,8 @@ public class MutualInformationBenchmark extends BaseBenchmark<Result> {
       r.mi_ny_actual = mi.ny();
 
       r.nmi_sqrt_actual = NMI.sqrt(mi.value, r.ex_actual, r.ey_actual);
-      r.nmi_max_actual  = NMI.max(mi.value, r.ex_actual, r.ey_actual);
-      r.nmi_min_actual  = NMI.min(mi.value, r.ex_actual, r.ey_actual);
+      r.nmi_max_actual = NMI.max(mi.value, r.ex_actual, r.ey_actual);
+      r.nmi_min_actual = NMI.min(mi.value, r.ex_actual, r.ey_actual);
 
       results.add(r);
     }

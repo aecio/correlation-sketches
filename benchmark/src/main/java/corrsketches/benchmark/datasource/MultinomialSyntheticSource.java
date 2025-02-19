@@ -23,11 +23,13 @@ public class MultinomialSyntheticSource {
     return createColumnCombinations(numberOfColumns, new Random(seed), 10000);
   }
 
-  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, int seed, int maxRows) {
+  public static List<ColumnCombination> createColumnCombinations(
+      int numberOfColumns, int seed, int maxRows) {
     return createColumnCombinations(numberOfColumns, new Random(seed), maxRows);
   }
 
-  public static List<ColumnCombination> createColumnCombinations(int numberOfColumns, Random rng, int maxRows) {
+  public static List<ColumnCombination> createColumnCombinations(
+      int numberOfColumns, Random rng, int maxRows) {
     List<ColumnCombination> combinations = new ArrayList<>();
     for (int i = 0; i < numberOfColumns; i++) {
       for (int n : Arrays.asList(16, 64, 256, 512, 1024)) {
@@ -255,7 +257,10 @@ public class MultinomialSyntheticSource {
     public MultinomialParameters multinomialParameters;
 
     public MultinomialColumnCombination(
-        int seed, MultinomialParameters multinomialParameters, PairTypeParams pairTypeParams, int maxRows) {
+        int seed,
+        MultinomialParameters multinomialParameters,
+        PairTypeParams pairTypeParams,
+        int maxRows) {
       this.seed = seed;
       this.multinomialParameters = multinomialParameters;
       this.correlation = multinomialParameters.getCorrelation();

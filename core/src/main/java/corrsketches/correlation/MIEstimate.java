@@ -11,7 +11,7 @@ public final class MIEstimate extends Estimate {
   public final double[] py;
 
   /** entropy of y */
-  public  final double ey;
+  public final double ey;
 
   /** entropy of x */
   public final double ex;
@@ -32,16 +32,12 @@ public final class MIEstimate extends Estimate {
     this.ey = ey;
   }
 
-  /**
-   * @return The cardinality of variable X.
-   */
+  /** @return The cardinality of variable X. */
   public int nx() {
     return px.length;
   }
 
-  /**
-   * @return The cardinality of variable Y.
-   */
+  /** @return The cardinality of variable Y. */
   public int ny() {
     return py.length;
   }

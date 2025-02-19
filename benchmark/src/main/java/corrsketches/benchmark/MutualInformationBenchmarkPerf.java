@@ -1,5 +1,7 @@
 package corrsketches.benchmark;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import corrsketches.Column;
 import corrsketches.ColumnType;
@@ -19,11 +21,8 @@ import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.*;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
-
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class MutualInformationBenchmarkPerf
     extends BaseBenchmark<MutualInformationBenchmarkPerf.Result> {
@@ -107,8 +106,7 @@ public class MutualInformationBenchmarkPerf
 
     return leftAggregations.stream()
         .filter(leftAgg -> leftAgg.get().acceptsInputColumnType(y.columnValueType))
-        .flatMap(
-            leftAgg -> timeMutualInfoAfterFullJoin(y, x, leftAgg, rightAggs, result).stream())
+        .flatMap(leftAgg -> timeMutualInfoAfterFullJoin(y, x, leftAgg, rightAggs, result).stream())
         .collect(Collectors.toList());
   }
 
@@ -196,7 +194,7 @@ public class MutualInformationBenchmarkPerf
   }
 
   public static List<Aggregation> timedLeftJoinAggregate(
-          ColumnPair columnA, ColumnPair columnB, List<AggregateFunction> functions) {
+      ColumnPair columnA, ColumnPair columnB, List<AggregateFunction> functions) {
 
     // create index for primary key in column B
     Map<String, DoubleArrayList> indexB = JoinAggregation.createKeyIndex(columnB);
@@ -246,12 +244,12 @@ public class MutualInformationBenchmarkPerf
       // column B. (As opposed to column A, which is not aggregated, and thus keeps the same type.)
       ColumnType joinValuesBType = fn.get().getOutputType(columnB.columnValueType);
       results.add(
-              new Aggregation(
-                      joinKeysA,
-                      Column.of(joinValuesA.toDoubleArray(), columnA.columnValueType),
-                      Column.of(joinValuesB.toDoubleArray(), joinValuesBType),
-                      fn,
-                      joinStats));
+          new Aggregation(
+              joinKeysA,
+              Column.of(joinValuesA.toDoubleArray(), columnA.columnValueType),
+              Column.of(joinValuesB.toDoubleArray(), joinValuesBType),
+              fn,
+              joinStats));
     }
 
     return results;
