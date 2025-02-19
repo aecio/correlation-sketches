@@ -2,6 +2,7 @@ package corrsketches.correlation;
 
 import static corrsketches.statistics.Stats.*;
 
+import corrsketches.Column;
 import corrsketches.util.RandomArrays;
 import corrsketches.util.Sorting;
 
@@ -96,4 +97,28 @@ public class ChatterjeeCorrelation {
         0,
         x.length);
   }
+
+  public static Correlation<Estimate> INSTANCE =
+      new Correlation<Estimate>() {
+        @Override
+        public Estimate ofCategorical(int[] x, int[] y) {
+          return ChatterjeeCorrelation.estimate(
+              Column.castToDoubleArray(x), Column.castToDoubleArray(y));
+        }
+
+        @Override
+        public Estimate ofCategoricalNumerical(int[] x, double[] y) {
+          return ChatterjeeCorrelation.estimate(Column.castToDoubleArray(x), y);
+        }
+
+        @Override
+        public Estimate ofNumericalCategorical(double[] x, int[] y) {
+          return ChatterjeeCorrelation.estimate(x, Column.castToDoubleArray(y));
+        }
+
+        @Override
+        public Estimate ofNumerical(double[] x, double[] y) {
+          return ChatterjeeCorrelation.estimate(x, y);
+        }
+      };
 }

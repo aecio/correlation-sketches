@@ -12,7 +12,8 @@ public enum CorrelationType {
   MUTUAL_INFORMATION_DIFF_ENT_MIXED,
   NMI_SQRT,
   NMI_MAX,
-  NMI_MIN;
+  NMI_MIN,
+  XICOR;
 
   public Correlation get() {
     return get(this);
@@ -32,6 +33,8 @@ public enum CorrelationType {
         return (NumericalCorrelation) BootstrapedPearson::estimate;
       case QCR:
         return (NumericalCorrelation) QCRCorrelation::estimate;
+      case XICOR:
+        return ChatterjeeCorrelation.INSTANCE;
       case MUTUAL_INFORMATION_BINNING:
         return MutualInformationBinning.INSTANCE;
       case MUTUAL_INFORMATION_DIFF_ENT:

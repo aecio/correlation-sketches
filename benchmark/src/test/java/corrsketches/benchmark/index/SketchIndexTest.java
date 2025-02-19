@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.benchmark.ColumnPair;
-import corrsketches.benchmark.IndexCorrelationBenchmark;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -68,8 +67,7 @@ public class SketchIndexTest {
   @Test
   public void shouldIndexSketchesWithQCRSketchIndexSortedByKey() throws IOException {
     QCRSketchIndex index =
-        new QCRSketchIndex(
-            null, new CorrelationSketch.Builder(), IndexCorrelationBenchmark.SortBy.KEY, false);
+        new QCRSketchIndex(null, new CorrelationSketch.Builder(), SortBy.GR2, false);
     shouldRetrieveCorrelatedColumns(index);
   }
 
@@ -81,15 +79,15 @@ public class SketchIndexTest {
 
     ColumnPair c0 =
         createNumericalColumnPair(
-            Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {1, 2, 3, 4, 5, 6, 7});
+            Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {1, 2, 3, 4, 4, 4, 4});
 
     ColumnPair c1 =
         createNumericalColumnPair(
-            Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {7, 6, 5, 4, 3, 2, 1});
+            Arrays.asList("a", "b", "c", "d", "e", "f", "g"), new double[] {6, 3, 3, 4, 5, 6, 7});
 
     ColumnPair c2 =
         createNumericalColumnPair(
-            Arrays.asList("a", "b", "c", "d", "e"), new double[] {1.1, 2.5, 3.0, 4.4, 4.6});
+            Arrays.asList("a", "b", "c", "d", "e"), new double[] {3, 3, 3.0, 4.0, 5.6});
 
     ColumnPair c3 =
         createNumericalColumnPair(
@@ -122,15 +120,20 @@ public class SketchIndexTest {
     for (int i = 0; i < hits.size(); i++) {
       Hit hit = hits.get(i);
       System.out.printf("\n[%d] ", i + 1);
-      System.out.printf("     id: %s\n", hit.id);
-      System.out.printf("      score: %.3f\n", hit.score);
-      System.out.printf("correlation: %.3f\n", hit.correlation());
+      System.out.printf("      id: %s\n", hit.id);
+      System.out.printf("       score: %.8f\n", hit.score);
+      System.out.printf("rerank-score: %.8f\n", hit.rerankScore);
+      System.out.printf(" correlation: %.8f\n", hit.correlation());
+      System.out.printf(" joinability: %.8f\n", hit.joinability());
     }
 
     assertEquals(6, hits.size());
     assertEquals("c0", hits.get(0).id);
     assertEquals("c1", hits.get(1).id);
     assertEquals("c2", hits.get(2).id);
+    assertEquals("c5", hits.get(3).id);
+    assertEquals("c3", hits.get(4).id);
+    assertEquals("c4", hits.get(5).id);
   }
 
   @Test

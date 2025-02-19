@@ -35,12 +35,25 @@ public class Tables {
     }
   }
 
+  public static List<String> findAllTablesRelative(String basePath) throws IOException {
+    Path base = Paths.get(basePath);
+    try (final var pathStream = Files.walk(base)) {
+      return pathStream
+          .filter(p -> p.toString().endsWith(".csv") || p.toString().endsWith(".parquet"))
+          .filter(Files::isRegularFile)
+          .map(base::relativize)
+          .map(Path::toString)
+          .collect(Collectors.toList());
+    }
+  }
+
   public static Iterator<ColumnPair> readColumnPairs(
       String datasetFilePath, int minRows, Set<ColumnType> columnTypes) {
     try {
       Table table = readTable(datasetFilePath);
       String datasetName = Paths.get(datasetFilePath).getFileName().toString();
-      return readColumnPairs(datasetName, table, minRows, columnTypes);
+      System.out.println("Read table: " + datasetName);
+      return readColumnPairs(datasetFilePath, table, minRows, columnTypes);
     } catch (Exception e) {
       System.out.println("\nFailed to read dataset from file: " + datasetFilePath);
       e.printStackTrace(System.out);
@@ -143,7 +156,7 @@ public class Tables {
         dataset, key.name(), keyValues, column.name(), valueType, columnValues.toDoubleArray());
   }
 
-  private static Table readTable(String datasetFilePath) throws IOException {
+  public static Table readTable(String datasetFilePath) throws IOException {
 
     if (datasetFilePath.endsWith("csv")) {
       // Read CSV files
@@ -153,6 +166,7 @@ public class Tables {
                   .sample(true)
                   .sampleSize(5_000_000)
                   .maxCharsPerColumn(10_000)
+                  .maxNumberOfColumns(1_000_000)
                   .missingValueIndicator("-"));
     } else if (datasetFilePath.endsWith("parquet")) {
       // Read Parquet files

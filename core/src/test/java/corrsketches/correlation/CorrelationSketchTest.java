@@ -55,6 +55,40 @@ public class CorrelationSketchTest {
   }
 
   @Test
+  public void testImmutable() {
+    final Builder builder = CorrelationSketch.builder();
+
+    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
+    Column q = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
+    ImmutableCorrelationSketch qsk = builder.build(pk, q).toImmutable();
+
+    List<String> c4fk = Arrays.asList("a", "b", "c", "d", "e", "x", "y", "z");
+    Column c4 = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+    ImmutableCorrelationSketch c4sk = builder.build(c4fk, c4).toImmutable();
+
+    System.out.println();
+    System.out.println("         union: " + qsk.unionSize(c4sk));
+    System.out.println("  intersection: " + qsk.intersectionSize(c4sk));
+    System.out.println("       jaccard: " + qsk.jaccard(c4sk));
+    System.out.println("cardinality(x): " + qsk.cardinality());
+    System.out.println("cardinality(y): " + c4sk.cardinality());
+    System.out.println("containment(x): " + qsk.containment(c4sk));
+    System.out.println("containment(y): " + c4sk.containment(qsk));
+    System.out.flush();
+    System.err.flush();
+    //    c4sk.setCardinality(5);
+    //    qsk.setCardinality(5);
+    System.out.println();
+    System.out.println("         union: " + qsk.unionSize(c4sk));
+    System.out.println("  intersection: " + qsk.intersectionSize(c4sk));
+    //    System.out.println("       jaccard: " + qsk.jaccard(c4sk));
+    //    System.out.println("cardinality(x): " + qsk.cardinality());
+    //    System.out.println("cardinality(y): " + c4sk.cardinality());
+    //    System.out.println("containment(x): " + qsk.containment(c4sk));
+    //    System.out.println("containment(y): " + c4sk.containment(qsk));
+  }
+
+  @Test
   public void shouldEstimateCorrelationUsingKMVSketch() {
     List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
     Column q = Column.numerical(1.0, 2.0, 3.0, 4.0, 5.0);
