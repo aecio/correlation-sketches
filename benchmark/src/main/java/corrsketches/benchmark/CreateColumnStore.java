@@ -1,6 +1,7 @@
 package corrsketches.benchmark;
 
 import com.google.common.base.Preconditions;
+import corrsketches.ColumnType;
 import corrsketches.SketchType;
 import corrsketches.benchmark.index.SketchIndex;
 import corrsketches.benchmark.utils.CliTool;
@@ -58,6 +59,13 @@ public class CreateColumnStore extends CliTool implements Serializable {
       description = "If should generate query file for synthetic table corpus")
   boolean generateQueryFile = false;
 
+  @Option(
+      names = "--column-type",
+      description =
+          "What data types should be considered for value columns "
+              + "(you can repeat the argument for multiple data types)")
+  ColumnType[] columnTypes = new ColumnType[] {ColumnType.NUMERICAL, ColumnType.CATEGORICAL};
+
   public static void main(String[] args) {
     CliTool.run(args, new CreateColumnStore());
   }
@@ -67,7 +75,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
     Path db = Paths.get(outputPath);
 
     ColumnStore store = createColumnStore(db, dbType);
-    System.out.println("Created DB at " + db.toString());
+    System.out.println("Created DB at " + db);
 
     List<String> allCSVs = Tables.findAllTables(inputPath);
     System.out.println("> Found  " + allCSVs.size() + " CSV files at " + inputPath);
@@ -86,7 +94,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
     Set<Set<String>> allColumns = new HashSet<>();
     for (String csv : allCSVs) {
-      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows);
+      Iterator<ColumnPair> columnPairs = Tables.readColumnPairs(csv, minRows, Set.of(columnTypes));
       if (!columnPairs.hasNext()) {
         continue;
       }
@@ -139,7 +147,7 @@ public class CreateColumnStore extends CliTool implements Serializable {
     return Paths.get(outputPath, "column-metadata.txt");
   }
 
-  static ColumnStoreMetadata readMetadata(String outputPath) throws IOException {
+  public static ColumnStoreMetadata readMetadata(String outputPath) throws IOException {
 
     List<String> lines = Files.readAllLines(getMetadataFilePath(outputPath));
 
@@ -307,8 +315,8 @@ public class CreateColumnStore extends CliTool implements Serializable {
 
   public static class ColumnStoreMetadata {
 
-    final DBType dbType;
-    final Set<Set<String>> columnSets;
+    public final DBType dbType;
+    public final Set<Set<String>> columnSets;
 
     public ColumnStoreMetadata(DBType dbType, Set<Set<String>> columnSets) {
       this.columnSets = columnSets;

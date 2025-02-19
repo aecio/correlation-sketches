@@ -41,6 +41,7 @@ public class JoinAggregation {
               cp.keyName,
               Arrays.asList(aggregatedKeys),
               cp.columnName,
+              functions.get(i).get().getOutputType(cp.columnValueType),
               aggregatedValues[i]));
     }
     return results;
@@ -88,7 +89,7 @@ public class JoinAggregation {
     return results;
   }
 
-  private static Map<String, DoubleArrayList> createKeyIndex(ColumnPair column) {
+  protected static Map<String, DoubleArrayList> createKeyIndex(ColumnPair column) {
     Map<String, DoubleArrayList> index = new HashMap<>();
     for (int i = 0; i < column.keyValues.size(); i++) {
       DoubleArrayList doubles = index.get(column.keyValues.get(i));

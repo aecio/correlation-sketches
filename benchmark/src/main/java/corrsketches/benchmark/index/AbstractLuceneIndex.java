@@ -99,9 +99,22 @@ public abstract class AbstractLuceneIndex {
     }
   }
 
+  protected void storeInt(Document doc, String fieldName, int value) {
+    final BytesRef valuesTypeBytes = intToBytesRef(value);
+    doc.add(new StoredField(fieldName, valuesTypeBytes));
+  }
+
   protected static void storeDoubleArray(Document doc, String fieldName, double[] values) {
     byte[] valuesBytes = toByteArray(values);
     doc.add(new StoredField(fieldName, valuesBytes));
+  }
+
+  protected static int readIntField(Document doc, String fieldName) {
+    BytesRef fieldData = doc.getBinaryValue(fieldName);
+    if (fieldData == null) {
+      throw new IllegalStateException("Index does not contain stored field: " + fieldName);
+    }
+    return bytesRefToInt(fieldData);
   }
 
   protected static double[] readDoubleArrayField(Document doc, String fieldName) {

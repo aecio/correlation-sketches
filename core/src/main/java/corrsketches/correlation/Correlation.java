@@ -1,7 +1,53 @@
 package corrsketches.correlation;
 
-/** An interface for all correlation estimators implemented in this library. */
-public interface Correlation {
+import static com.google.common.base.Preconditions.checkArgument;
 
-  Estimate correlation(double[] x, double[] y);
+import corrsketches.Column;
+import corrsketches.ColumnType;
+
+public interface Correlation<E extends Estimate> {
+
+  default E of(Column x, Column y) {
+    checkArgument(x.values.length == y.values.length, "x and y must have same size");
+    if (x.type == y.type) {
+      // x and y have the same type
+      if (x.type == ColumnType.CATEGORICAL) {
+        // both are categorical
+        return ofCategorical(x.valuesAsIntArray(), y.valuesAsIntArray());
+      }
+      if (x.type == ColumnType.NUMERICAL) {
+        // both are numerical
+        return ofNumerical(x.values, y.values);
+      }
+    } else {
+      // x and y have different types
+      if (x.type == ColumnType.CATEGORICAL) { // and y is NUMERICAL
+        return ofCategoricalNumerical(x.valuesAsIntArray(), y.values);
+      }
+      if (x.type == ColumnType.NUMERICAL) { // and y is CATEGORICAL
+        return ofNumericalCategorical(x.values, y.valuesAsIntArray());
+      }
+    }
+    throw new IllegalStateException("Variable types must be either CATEGORICAL or NUMERICAL");
+  }
+
+  default E ofNumerical(double[] x, double[] y) {
+    throw new UnsupportedOperationException(
+        getClass() + " does not support correlation for numerical variables");
+  }
+
+  default E ofCategorical(int[] x, int[] y) {
+    throw new UnsupportedOperationException(
+        getClass() + " does not support correlation for categorical variables");
+  }
+
+  default E ofNumericalCategorical(final double[] y, final int[] x) {
+    throw new UnsupportedOperationException(
+        getClass() + " does not support correlation for numerical-categorical variables");
+  }
+
+  default E ofCategoricalNumerical(final int[] x, final double[] y) {
+    throw new UnsupportedOperationException(
+        getClass() + " does not support correlation for categorical-numerical variables");
+  }
 }

@@ -1,11 +1,30 @@
 package corrsketches.statistics;
 
+import static java.lang.Math.log;
+import static java.lang.Math.max;
+
 import java.util.Arrays;
+import java.util.Random;
 import smile.stat.distribution.GaussianDistribution;
 
 public class Stats {
 
   public static final GaussianDistribution NORMAL = new GaussianDistribution(0, 1);
+
+  /**
+   * Computes the covariance between the two input vectors.
+   *
+   * @return cov(x, y)
+   */
+  public static double cov(double[] x, double[] y) {
+    final double meanX = mean(x);
+    final double meanY = mean(y);
+    double sumXY = 0.0;
+    for (int i = 0; i < x.length; i++) {
+      sumXY += (x[i] - meanX) * (y[i] - meanY);
+    }
+    return sumXY / (x.length - 1);
+  }
 
   /**
    * Computes the mean of the given input vector.
@@ -232,6 +251,79 @@ public class Stats {
       sum += x[i];
     }
     return sum;
+  }
+
+  /**
+   * Bins the {@code data} using a heuristic to choose the number of categories B. The value of B is
+   * chosen to be equal to max(2, log(U)), where U denotes the number of unique values in the {@code
+   * data} vector.
+   *
+   * <p>This heuristic has been previously used in the paper: Dougherty, J., Kohavi, R. and Sahami,
+   * M., 1995. Supervised and unsupervised discretization of continuous features. In Machine
+   * learning proceedings 1995 (pp. 194-202). Morgan Kaufmann.
+   *
+   * @param data the vector to be binned
+   * @return the binned version of the vector {@code data}
+   */
+  public static int[] binEqualWidth(double[] data) {
+    double[] sorted = Arrays.copyOf(data, data.length);
+    Arrays.sort(data);
+    int unique = 1;
+    double min = sorted[0];
+    double max = sorted[0];
+    for (int i = 1; i < sorted.length; i++) {
+      if (sorted[i - 1] != sorted[i]) {
+        unique++;
+      }
+      if (sorted[i] < min) {
+        min = sorted[i];
+      }
+      if (sorted[i] > max) {
+        max = sorted[i];
+      }
+    }
+    return binEqualWidth(sorted, (int) max(2, log(unique)), min, max);
+  }
+
+  public static int[] binEqualWidth(double[] data, int bins) {
+    Extent extent = extent(data);
+    return binEqualWidth(data, bins, extent.min, extent.max);
+  }
+
+  public static int[] binEqualWidth(double[] data, int bins, double min, double max) {
+    final int[] binned = new int[data.length];
+    for (int i = 0; i < data.length; i++) {
+      binned[i] = (int) (((data[i] - min) / (max - min) * (bins - 1)) + 0.5);
+    }
+    return binned;
+  }
+
+  public static double[] addRandomNoise(double[] x) {
+    return addRandomNoise(x, new Random());
+  }
+
+  public static double[] addRandomNoise(double[] x, long seed) {
+    return addRandomNoise(x, new Random(seed));
+  }
+
+  public static double[] addRandomNoise(double[] x, Random rng) {
+    final double TINY = 1e-20;
+    final double mean = mean(x);
+    //    final double mean = 1;
+    double[] xn = Arrays.copyOf(x, x.length);
+    for (int i = 0; i < xn.length; i++) {
+      xn[i] = xn[i] + TINY * mean * rng.nextGaussian();
+    }
+    return xn;
+  }
+
+  public static double[] toProbabilities(double[] data) {
+    final double sum = Math.nextUp(sum(data));
+    double[] probabilities = new double[data.length];
+    for (int i = 0; i < data.length; i++) {
+      probabilities[i] = data[i] / sum;
+    }
+    return probabilities;
   }
 
   public enum TiesMethod {

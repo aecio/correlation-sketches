@@ -11,7 +11,7 @@ public class KMVTest {
   @Test
   public void shouldEstimateNumberOfDistinctValues() {
 
-    KMV kmv = KMV.builder().maxSize(10).build();
+    KMV kmv = new KMV.Builder().maxSize(10).build();
     double maxError = 0.15;
 
     for (int i = 1; i <= 1000; i++) {
@@ -38,7 +38,7 @@ public class KMVTest {
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
     int k = 4;
-    Builder builder = KMV.builder().maxSize(k);
+    Builder builder = new KMV.Builder().maxSize(k);
 
     // when
     KMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
@@ -61,7 +61,7 @@ public class KMVTest {
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
     int k = 4;
-    Builder builder = KMV.builder().maxSize(k);
+    Builder builder = new KMV.Builder().maxSize(k);
     // when
     KMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
     KMV kmvA2 = builder.buildFromHashedKeys(setA2, values);
@@ -83,7 +83,7 @@ public class KMVTest {
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
     int k = 4;
-    Builder builder = KMV.builder().maxSize(k);
+    Builder builder = new KMV.Builder().maxSize(k);
     // when
     KMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
     KMV kmvA2 = builder.buildFromHashedKeys(setA2, values);
@@ -105,7 +105,7 @@ public class KMVTest {
     int[] setB1 = new int[] {1, 2, 3, 8, 9};
     int[] setC1 = new int[] {6, 7, 8, 9, 0};
     int k = 4;
-    Builder builder = KMV.builder().maxSize(k);
+    Builder builder = new KMV.Builder().maxSize(k);
     // when
     KMV kmvA1 = builder.buildFromHashedKeys(setA1, values);
     KMV kmvA2 = builder.buildFromHashedKeys(setA2, values);

@@ -1,9 +1,12 @@
 package corrsketches.kmv;
 
 import corrsketches.aggregations.AggregateFunction;
+import corrsketches.sampling.Samplers;
 import corrsketches.util.Hashes;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleComparators;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.TreeSet;
 
 /**
@@ -15,22 +18,9 @@ public class KMV extends AbstractMinValueSketch<KMV> {
   public static final int DEFAULT_K = 256;
   private final int maxK;
 
-  @Deprecated
-  public KMV(int k, AggregateFunction function) {
-    super(k, function);
-    if (k < 1) {
-      throw new IllegalArgumentException("Minimum k size is 1, but larger is recommended.");
-    }
-    this.maxK = k;
-  }
-
   public KMV(Builder builder) {
     super(builder);
     this.maxK = builder.maxSize;
-  }
-
-  public static KMV.Builder builder() {
-    return new KMV.Builder();
   }
 
   /** Updates the KMV synopsis with the given hashed key */
@@ -40,17 +30,76 @@ public class KMV extends AbstractMinValueSketch<KMV> {
     if (kMinValues.size() < maxK) {
       ValueHash vh = createOrUpdateValueHash(hash, value, hu);
       kMinValues.add(vh);
-      if (hu > kthValue) {
-        kthValue = hu;
+      kthValue = 1d;
+      kMinItems++;
+    } else if (hu <= kthValue) {
+      // if the key associated with hu has been seen, we need to update existing values;
+      // otherwise, we need to create a new entry and evict the largest key to make room it
+      ValueHash vh = valueHashMap.get(hash);
+      if (vh != null) {
+        // the incoming key is already present in the sketch, just need to update it
+        vh.update(value);
+      } else if (hu < kthValue) {
+        // This is a new unit hash we need to create a new node. Given that there will be
+        // more than k minimum values, we need to evict an existing one from the heap later.
+        vh = new ValueHash(hash, hu, value, aggregatorProvider.create());
+        valueHashMap.put(hash, vh);
+        kMinValues.add(vh);
+
+        // Evict the greatest of the min value
+        ValueHash toBeRemoved = kMinValues.last();
+        kMinValues.remove(toBeRemoved);
+        valueHashMap.remove(toBeRemoved.keyHash);
+        kthValue = kMinValues.last().unitHash;
+
+        // Update item counter of this key
+        // Subtract the number of items of the removed ValueHash from the total number of
+        // items contained in the universe sampling set (items smaller than the kth min value)
+        kMinItems -= toBeRemoved.count;
       }
-    } else if (hu < kthValue) {
-      ValueHash vh = createOrUpdateValueHash(hash, value, hu);
-      kMinValues.add(vh);
-      ValueHash toBeRemoved = kMinValues.last();
-      kMinValues.remove(toBeRemoved);
-      valueHashMap.remove(toBeRemoved.keyHash);
-      kthValue = kMinValues.last().unitHash;
+      kMinItems++;
     }
+    seenItems++;
+  }
+
+  @Override
+  public Samples getSamples() {
+    boolean uniqueKeys = isAggregate();
+    final int[] keys;
+    double[] values;
+    if (uniqueKeys) {
+      // each key is associated with only one value
+      int size = kMinValues.size();
+      keys = new int[size];
+      values = new double[size];
+      int i = 0;
+      for (ValueHash vh : kMinValues) {
+        keys[i] = vh.keyHash;
+        values[i] = vh.value();
+        i++;
+      }
+    } else {
+      // each key is associated with multiple sampled values
+      IntArrayList keyList = new IntArrayList();
+      DoubleArrayList valuesList = new DoubleArrayList();
+      for (ValueHash vh : kMinValues) {
+        final int key = vh.keyHash;
+        DoubleList aggregatorValues = vh.aggregator.values();
+        // compute how many samples should be used from each sampler
+        final double prob = vh.count() / (double) seenItems;
+        int n = (int) Math.max(1, Math.floor(prob * maxK));
+        if (n > aggregatorValues.size()) {
+          n = aggregatorValues.size();
+        }
+        for (int i = 0; i < n; i++) {
+          keyList.add(key);
+          valuesList.add(aggregatorValues.getDouble(i));
+        }
+      }
+      keys = keyList.toIntArray();
+      values = valuesList.toDoubleArray();
+    }
+    return new Samples(keys, values, uniqueKeys);
   }
 
   /** Estimates the size of union of the given KMV synopsis */
@@ -116,7 +165,7 @@ public class KMV extends AbstractMinValueSketch<KMV> {
     return "KMV{" + "maxK=" + maxK + ", kMinValues=" + kMinValues + ", kthValue=" + kthValue + '}';
   }
 
-  public static class Builder extends AbstractMinValueSketch.Builder<KMV> {
+  public static class Builder extends AbstractMinValueSketch.Builder<Builder> {
 
     private int maxSize = DEFAULT_K;
 
@@ -135,6 +184,11 @@ public class KMV extends AbstractMinValueSketch<KMV> {
 
     @Override
     public KMV build() {
+      if (this.aggregateFunction == AggregateFunction.NONE) {
+        repeatedValueHandlerProvider = Samplers.reservoir(maxSize);
+      } else {
+        repeatedValueHandlerProvider = this.aggregateFunction.getProvider();
+      }
       return new KMV(this);
     }
   }

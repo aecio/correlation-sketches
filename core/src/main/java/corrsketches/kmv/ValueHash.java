@@ -1,27 +1,46 @@
 package corrsketches.kmv;
 
-import corrsketches.aggregations.AggregateFunction;
-import corrsketches.aggregations.AggregateFunction.Aggregator;
+import corrsketches.aggregations.RepeatedValueHandler;
 import java.util.Comparator;
 
-public class ValueHash {
+public class ValueHash implements Comparable<ValueHash> {
 
   public static final Comparator<ValueHash> COMPARATOR_ASC = new UnitHashComparatorAscending();
 
-  public final Aggregator aggregator;
+  public final RepeatedValueHandler aggregator;
   public final int keyHash;
   public final double unitHash;
-  public double value;
 
-  public ValueHash(int keyHash, double unitHash, double value, AggregateFunction function) {
+  //  DoubleSampler sampler;
+  int count; // the number of items associate with this join key
+
+  public ValueHash(int keyHash, double unitHash, double value, RepeatedValueHandler function) {
     this.keyHash = keyHash;
     this.unitHash = unitHash;
-    this.aggregator = function.get();
-    this.value = aggregator.first(value);
+    this.aggregator = function;
+    //    if (aggregator != null) {
+    this.aggregator.first(value);
+    //    }
+    this.count = 1;
   }
 
   public void update(double value) {
-    this.value = this.aggregator.update(this.value, value);
+    //    if (aggregator != null) {
+    this.aggregator.update(value);
+    //    }
+    this.count++;
+  }
+
+  public int count() {
+    return this.count;
+  }
+
+  //  public DoubleSampler sampler() {
+  //    return this.sampler;
+  //  }
+
+  public double value() {
+    return aggregator.aggregatedValue();
   }
 
   @Override
@@ -36,7 +55,18 @@ public class ValueHash {
 
   @Override
   public String toString() {
-    return "ValueHash{keyHash=" + keyHash + ", unitHash=" + unitHash + ", value=" + value + '}';
+    return "ValueHash{keyHash="
+        + keyHash
+        + ", unitHash="
+        + unitHash
+        + ", aggregator="
+        + aggregator
+        + '}';
+  }
+
+  @Override
+  public int compareTo(ValueHash o) {
+    return Double.compare(this.unitHash, o.unitHash);
   }
 
   private static class UnitHashComparatorAscending implements Comparator<ValueHash> {

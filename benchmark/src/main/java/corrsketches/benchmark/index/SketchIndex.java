@@ -1,12 +1,13 @@
 package corrsketches.benchmark.index;
 
+import corrsketches.ColumnType;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.SketchType;
 import corrsketches.benchmark.ColumnPair;
 import corrsketches.benchmark.IndexCorrelationBenchmark.SortBy;
 import corrsketches.benchmark.index.Hit.RerankStrategy;
-import corrsketches.correlation.PearsonCorrelation;
+import corrsketches.correlation.CorrelationType;
 import corrsketches.kmv.ValueHash;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public class SketchIndex extends AbstractLuceneIndex {
   protected static final String HASHES_FIELD_NAME = "h";
   protected static final String VALUES_FIELD_NAME = "v";
   protected static final String ID_FIELD_NAME = "i";
+  protected static final String VALUES_TYPE_FIELD_NAME = "t";
 
   protected final CorrelationSketch.Builder builder;
   protected final RerankStrategy reranker;
@@ -66,7 +68,9 @@ public class SketchIndex extends AbstractLuceneIndex {
   public void index(String id, ColumnPair columnPair) throws IOException {
 
     final ImmutableCorrelationSketch sketch =
-        builder.build(columnPair.keyValues, columnPair.columnValues).toImmutable();
+        builder
+            .build(columnPair.keyValues, columnPair.columnValues, columnPair.columnValueType)
+            .toImmutable();
 
     final int[] keys = sketch.getKeys();
     final double[] values = sketch.getValues();
@@ -77,14 +81,15 @@ public class SketchIndex extends AbstractLuceneIndex {
     // store and index sketch data in the document
     indexAndStoreIntArray(doc, HASHES_FIELD_NAME, keys);
     storeDoubleArray(doc, VALUES_FIELD_NAME, values);
+    storeInt(doc, VALUES_TYPE_FIELD_NAME, sketch.valuesType().intValue);
 
     writer.updateDocument(new Term(ID_FIELD_NAME, id), doc);
-    // refresh();
   }
 
   public List<Hit> search(ColumnPair columnPair, int k) throws IOException {
 
-    CorrelationSketch querySketch = builder.build(columnPair.keyValues, columnPair.columnValues);
+    CorrelationSketch querySketch =
+        builder.build(columnPair.keyValues, columnPair.columnValues, columnPair.columnValueType);
     querySketch.setCardinality(columnPair.keyValues.size());
 
     Builder bq = new BooleanQuery.Builder();
@@ -135,7 +140,9 @@ public class SketchIndex extends AbstractLuceneIndex {
     // re-construct sketch data structures from bytes read from the doc
     int[] hashes = readIntArrayField(doc, HASHES_FIELD_NAME);
     double[] values = readDoubleArrayField(doc, VALUES_FIELD_NAME);
-    return new ImmutableCorrelationSketch(hashes, values, PearsonCorrelation::estimate);
+    ColumnType valuesType = ColumnType.valueOf(readIntField(doc, VALUES_TYPE_FIELD_NAME));
+    return new ImmutableCorrelationSketch(
+        hashes, values, valuesType, CorrelationType.PEARSONS.get());
   }
 
   ImmutableCorrelationSketch loadSketch(int docId) throws IOException {
