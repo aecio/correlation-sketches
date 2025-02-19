@@ -21,7 +21,7 @@ public final class MIEstimate extends Estimate {
     this.px = px;
     this.py = py;
     this.ex = Entropy.entropyFromProbs(px);
-    this.ey = Entropy.entropyFromProbs(px);
+    this.ey = Entropy.entropyFromProbs(py);
   }
 
   public MIEstimate(double mi, int sampleSize, double ex, double ey) {
