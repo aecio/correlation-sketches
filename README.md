@@ -1,10 +1,19 @@
 # Correlation Sketches
 
 This repository contains the implementation of multiple methods for correlated dataset search using sketches.
-It includes the code of Correlation Sketches (SIGMOD'21) and QCR indexes (ICDE'22).
-This repository has two main modules:
-- `core` - Contains only the sketch implementations and correlation estimators.
-- `benchmark` - Contains code for running benchmarks that were used in the papers.
+It includes the code for creating correlation sketches, such as CSK (SIGMOD'21) and TUPSK (ICDE'24), and QCR indexes (ICDE'22).
+
+## References
+
+The technical description of these algorithms is available in the following papers.
+Feel free to cite them if you use code from this repository.
+
+> Santos, Aécio, Aline Bessa, Fernando Chirigati, Christopher Musco, and Juliana Freire. "Correlation sketches for approximate join-correlation queries." In Proceedings of the 2021 International Conference on Management of Data, pp. 1531-1544. 2021.
+
+> Santos, Aécio, Aline Bessa, Christopher Musco, and Juliana Freire. "A sketch-based index for correlated dataset search." In 2022 IEEE 38th International Conference on Data Engineering (ICDE), pp. 2928-2941. IEEE, 2022.
+
+> Santos, Aécio, Flip Korn, and Juliana Freire. "Efficiently Estimating Mutual Information Between Attributes Across Tables." In 2022 IEEE 40th International Conference on Data Engineering (ICDE), pp. 193-206. IEEE, 2024.
+
 
 ## API Usage
 
@@ -116,12 +125,17 @@ To see more examples of how to use the API, you can look at the unit test class:
   }
 ```
 
-# Benchmarks
+
+## Benchmarks
+
+This repository has two main modules:
+- `core` - Contains only the sketch implementations and correlation estimators.
+- `benchmark` - Contains code for running benchmarks that were used in the papers.
 
 The code for running the paper experiments is mainly in the submodule `benchmark`. 
 This module depends on the module `core`, which contains the sketch implementations.
 
-## Building and running the code
+### Building and running the code
 
 The project uses Gradle, so you can:
 
