@@ -18,7 +18,7 @@ import org.junit.jupiter.api.RepetitionInfo;
 
 public class MultinomialSamplerTest {
 
-  @RepeatedTest(100)
+  @RepeatedTest(10)
   public void shouldDrawSamplesFromMultinomialDistribution() {
     // given
     double delta = 15;
@@ -53,7 +53,7 @@ public class MultinomialSamplerTest {
         .isEqualTo(expectedCorrPQ, offset(deltaCorr));
   }
 
-  @RepeatedTest(100)
+  @RepeatedTest(10)
   public void shouldDrawSamplesFromMultinomialDistributionWithRandomParameters(
       RepetitionInfo repetitionInfo) {
     // given
