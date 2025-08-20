@@ -3,7 +3,6 @@ package corrsketches.benchmark.index;
 import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.benchmark.ColumnPair;
-import corrsketches.benchmark.IndexCorrelationBenchmark.SortBy;
 import corrsketches.statistics.Stats;
 import corrsketches.util.Hashes;
 import java.io.IOException;

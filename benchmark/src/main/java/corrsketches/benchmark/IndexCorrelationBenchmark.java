@@ -12,12 +12,7 @@ import corrsketches.aggregations.AggregateFunction;
 import corrsketches.benchmark.CreateColumnStore.ColumnStoreMetadata;
 import corrsketches.benchmark.CreateColumnStore.QueryStats;
 import corrsketches.benchmark.JoinAggregation.NumericJoinAggregation;
-import corrsketches.benchmark.index.Hit;
-import corrsketches.benchmark.index.Hit.CorrelationSketchReranker;
-import corrsketches.benchmark.index.Hit.RerankStrategy;
-import corrsketches.benchmark.index.QCRISketchIndex;
-import corrsketches.benchmark.index.QCRSketchIndex;
-import corrsketches.benchmark.index.SketchIndex;
+import corrsketches.benchmark.index.*;
 import corrsketches.benchmark.utils.EvalMetrics;
 import corrsketches.benchmark.utils.Sets;
 import corrsketches.correlation.PearsonCorrelation;
@@ -706,16 +701,6 @@ public class IndexCorrelationBenchmark {
     STD,
   }
 
-  public enum SortBy {
-    KEY(null),
-    CSK(new CorrelationSketchReranker());
-
-    public RerankStrategy reranker;
-
-    SortBy(RerankStrategy reranker) {
-      this.reranker = reranker;
-    }
-  }
   // public static class IndexOptions {
   //
   //   IndexType indexType = IndexType.QCR;

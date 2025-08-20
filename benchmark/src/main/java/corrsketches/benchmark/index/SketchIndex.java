@@ -5,8 +5,8 @@ import corrsketches.CorrelationSketch;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
 import corrsketches.SketchType;
 import corrsketches.benchmark.ColumnPair;
-import corrsketches.benchmark.IndexCorrelationBenchmark.SortBy;
 import corrsketches.benchmark.index.Hit.RerankStrategy;
+import corrsketches.correlation.Correlation;
 import corrsketches.correlation.CorrelationType;
 import corrsketches.kmv.ValueHash;
 import java.io.IOException;
@@ -34,6 +34,7 @@ public class SketchIndex extends AbstractLuceneIndex {
   protected final CorrelationSketch.Builder builder;
   protected final RerankStrategy reranker;
   protected final boolean sort;
+  protected Correlation estimator = CorrelationType.PEARSONS.get();
 
   public SketchIndex() throws IOException {
     this(SketchType.KMV, 256);
@@ -141,8 +142,7 @@ public class SketchIndex extends AbstractLuceneIndex {
     int[] hashes = readIntArrayField(doc, HASHES_FIELD_NAME);
     double[] values = readDoubleArrayField(doc, VALUES_FIELD_NAME);
     ColumnType valuesType = ColumnType.valueOf(readIntField(doc, VALUES_TYPE_FIELD_NAME));
-    return new ImmutableCorrelationSketch(
-        hashes, values, valuesType, CorrelationType.PEARSONS.get());
+    return new ImmutableCorrelationSketch(hashes, values, valuesType, builder.estimator());
   }
 
   ImmutableCorrelationSketch loadSketch(int docId) throws IOException {

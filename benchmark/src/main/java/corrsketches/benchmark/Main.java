@@ -11,6 +11,7 @@ import picocli.CommandLine.Command;
       IndexCorrelationBenchmark.class,
       SyntheticPairwiseMutualInfoBenchmark.class,
       MutualInfoEstimatorScalability.class,
+      IndexTool.class,
     })
 public class Main {
 
