@@ -59,12 +59,6 @@ public class CorrelationSketch {
     }
   }
 
-  //  public CorrelationSketch(ImmutableCorrelationSketch ics) {
-  //    estimator = ics.correlation;
-  //    minValueSketch = new KMV()
-  //    keys = ics.keys;
-  //  }
-
   public static Builder builder() {
     return new Builder();
   }
