@@ -19,9 +19,27 @@ Feel free to cite them if you use code from this repository.
 
 ### Sketches
 
-Correlation Sketches code is implemented in the class `corrsketches.CorrelationSketch`.
-Below is an example of how to create sketches.
-You can also find more tests and usage examples in the unit tests located in the class `corrsketches.correlation.CorrelationSketchTest`.
+This repository implements multiple sampling approaches for building
+correlation sketches:
+- **KMV** - the original uniform sampling approach from SIGMOD'21 paper; this
+  algorithm does not properly handle repeated values in LEFT joins.
+- **TUPSK** - is the sampling approach from ICDE'24 that leads to uniform
+  sampling probability for repeated values in LEFT joins;
+- **INDSK** - is a baseline approach that uses uniform independent sampling;
+- **PRISK** - is a baseline approach based on priority sampling that handles
+  repetitions. It may be better to use TUPSK instead;
+
+The sketches implemented in this repository can be used through the class
+`corrsketches.CorrelationSketch`. Sketches can be created using the Builder
+pattern, commonly used in Java. The example below shows how to create sketches.
+
+To specify the sampling algorithm to be used while creating the sketch, use the
+method `sketchType()`, and aggregation functions with the method
+`aggregateFunction()`. When using TUPSK, make sure to use `AggregateFunction.NONE`
+when no aggregation is needed.
+
+You can also find more usage examples in the unit tests located in the class
+`corrsketches.correlation.CorrelationSketchTest`.
 
 ```java
 List<String> kx = Arrays.asList("a", "a", "b", "b", "c", "d");
@@ -33,7 +51,9 @@ double[] ysum = new double[] {1.0, 2.0, 3.0, 4.0};
 double[] ymean = new double[] {0.5, 1.0, 3.0, 4.0};
 double[] ycount = new double[] {2.0, 2.0, 1.0, 1.0};
 
-final Builder builder = CorrelationSketch.builder().aggregateFunction(AggregateFunction.FIRST);
+final Builder builder = CorrelationSketch.builder()
+        .sketchType(SketchType.KMV, 128)
+        .aggregateFunction(AggregateFunction.FIRST);
 
 CorrelationSketch csySum = builder.build(ky, ysum);
 CorrelationSketch csyMean = builder.build(ky, ymean);
@@ -51,10 +71,10 @@ assertEquals(1.000, csxCount.correlationTo(csyCount).value, delta);
 
 ### QCR Index
 
-The QCR index implementation from the ICDE'21 paper is the class `corrsketches.benchmark.index.QCRSketchIndex`. 
-Using the default constructor of `QCRSketchIndex`, will create an in-memory index and will construct sketches
-using the default configurations. But you can also customize the constructor to store the index and to use 
-different correlation estimators as in the example bellow.
+The QCR index implementation from the ICDE'21 paper is the class `corrsketches.benchmark.index.QCRSketchIndex`.
+Using the default constructor of `QCRSketchIndex`, we can create an in-memory index and construct sketches
+using the default configurations. But you can also customize the constructor to store the index and to use
+different correlation estimators, as in the example below.
 
 To see more examples of how to use the API, you can look at the unit test class: `SketchIndexTest`.
 
@@ -85,7 +105,7 @@ To see more examples of how to use the API, you can look at the unit test class:
       new double[] {1.0, 3.1, 3.2});
 
   
-  // The builder allows to customize the sketching method, correlation estimator, etc.
+  // The builder allows customization of the sketching method, correlation estimator, etc.
   CorrelationSketch.Builder builder = new CorrelationSketch.Builder()
       .aggregateFunction(AggregateFunction.MEAN)
       .estimator(CorrelationType.get((CorrelationType.PEARSONS)));
@@ -132,7 +152,7 @@ This repository has two main modules:
 - `core` - Contains only the sketch implementations and correlation estimators.
 - `benchmark` - Contains code for running benchmarks that were used in the papers.
 
-The code for running the paper experiments is mainly in the submodule `benchmark`. 
+The code for running the paper experiments is mainly in the submodule `benchmark`.
 This module depends on the module `core`, which contains the sketch implementations.
 
 ### Building and running the code
@@ -147,7 +167,7 @@ You can also build a runnable package using:
 
     ./gradlew installDist
 
-To run it, you can run the script `benchmark` that will be generated 
+To run it, you can run the script `benchmark` that will be generated
 at the `benchmark/build/install/benchmark/bin` folder, i.e.,:
 
     ./benchmark/build/install/benchmark/bin/benchmark
@@ -161,5 +181,5 @@ Alternatively, you can build a single jar containing all classes:
 
     ./gradle shadowJar
 
-the JAR file will be created at: `benchmark/build/libs/benchmark-0.1-SNAPSHOT-all.jar`.
-You can any class with a `main()` function using the standard `java -jar` command.
+The JAR file will be created at: `benchmark/build/libs/benchmark-0.1-SNAPSHOT-all.jar`.
+You can run any class with a `main()` function using the standard `java -jar` command.

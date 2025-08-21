@@ -7,7 +7,11 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import smile.sort.HeapSelect;
 
-/** */
+/**
+ * Implements the Tuple-based Sampling (TUSK) approach from the paper: Santos, Aécio, Flip Korn, and
+ * Juliana Freire. "Efficiently estimating mutual information between attributes across tables." In
+ * 2024 IEEE 40th International Conference on Data Engineering (ICDE), pp. 193-206. IEEE, 2024.
+ */
 public class TUPSK extends AbstractMinValueSketch<TUPSK> {
 
   public static final int DEFAULT_K = 256;
@@ -43,6 +47,8 @@ public class TUPSK extends AbstractMinValueSketch<TUPSK> {
         final int key = hashedKeys[i];
         final double value = values[i];
 
+        // When aggregation NONE is used, we hash values based on the
+        // tuple (key, count), where count starts from 1
         int count = keyCounts.getOrDefault(key, 0) + 1;
         keyCounts.put(key, count);
 
@@ -86,6 +92,10 @@ public class TUPSK extends AbstractMinValueSketch<TUPSK> {
         final int key = aggKeys[i];
         final double value = aggValues[i];
 
+        // When values are being aggregated, we still hash using the tuples
+        // (key, count), but now count is always 1 since all values are
+        // being aggregated to a single value. This keeps the hashes consistent
+        // with the case that we do not aggregate the values.
         final int tupleHash = Hashes.hashIntTuple(key, 1);
         final double hu = Hashes.grm(tupleHash);
         heap.add(new ValueHash(key, hu, value, AggregateFunction.NONE.get()));
@@ -105,19 +115,16 @@ public class TUPSK extends AbstractMinValueSketch<TUPSK> {
     return new Samples(keys, values, uniqueKeys);
   }
 
-  /** Estimates the size of union of the given KMV synopsis */
   @Override
   public double unionSize(TUPSK other) {
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
-  /** Estimates the Jaccard similarity using the p = K_e / k estimator from Beyer et. al. (2007) */
   @Override
   public double jaccard(TUPSK other) {
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
-  /** Estimates intersection between the sets represented by this synopsis and the other. */
   @Override
   public double intersectionSize(TUPSK other) {
     throw new UnsupportedOperationException("Not implemented yet");
