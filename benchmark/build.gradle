@@ -8,7 +8,6 @@ version '0.1-SNAPSHOT'
 
 application {
     mainClass = 'corrsketches.benchmark.Main'
-    // applicationDefaultJvmArgs = ["-XX:+HeapDumpOnOutOfMemoryError"]
 }
 
 shadowJar {
@@ -21,15 +20,7 @@ dependencies {
     implementation libs.apache.lucene
     implementation libs.jackson.dataformat.csv
     implementation libs.tablesaw.core
-    implementation(libs.tablesaw.parquet) {
-        exclude group: 'org.mortbay.jetty', module: '*'
-        exclude group: 'javax.servlet.jsp', module: '*'
-        exclude group: 'com.sun.jersey', module: '*'
-        exclude group: 'org.apache.curator', module: '*'
-        exclude group: 'org.apache.zookeeper', module: '*'
-        exclude group: 'org.apache.kerby', module: '*'
-        exclude group: 'com.google.protobuf', module: '*'
-    }
+    implementation(libs.tablesaw.parquet)
     implementation libs.kvdb4j
     implementation libs.smile
     // CLI parsing

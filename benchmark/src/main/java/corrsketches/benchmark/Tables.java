@@ -136,8 +136,7 @@ public class Tables {
           keyValues.add(key.getString(i));
         }
       }
-    } else if (column.type() == tech.tablesaw.api.ColumnType.TEXT
-        || column.type() == tech.tablesaw.api.ColumnType.STRING) {
+    } else if (column.type() == tech.tablesaw.api.ColumnType.STRING) {
       valueType = ColumnType.CATEGORICAL;
       StringColumn values = column.asStringColumn();
       for (int i = 0; i < values.size(); i++) {
@@ -193,10 +192,7 @@ public class Tables {
 
   private static List<CategoricalColumn<String>> getStringColumns(Table df) {
     return df.columns().stream()
-        .filter(
-            e ->
-                e.type() == tech.tablesaw.api.ColumnType.STRING
-                    || e.type() == tech.tablesaw.api.ColumnType.TEXT)
+        .filter(e -> e.type() == tech.tablesaw.api.ColumnType.STRING)
         .map(e -> (CategoricalColumn<String>) e)
         .collect(Collectors.toList());
   }
@@ -206,10 +202,7 @@ public class Tables {
     if (types.contains(ColumnType.CATEGORICAL)) {
       List<CategoricalColumn<String>> categoricalColumns =
           df.columns().stream()
-              .filter(
-                  column ->
-                      column.type() == tech.tablesaw.api.ColumnType.STRING
-                          || column.type() == tech.tablesaw.api.ColumnType.TEXT)
+              .filter(column -> column.type() == tech.tablesaw.api.ColumnType.STRING)
               .map(e -> (CategoricalColumn<String>) e)
               .collect(Collectors.toList());
       System.out.println("String columns: " + categoricalColumns.size());
