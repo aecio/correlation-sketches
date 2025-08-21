@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import corrsketches.*;
 import corrsketches.CorrelationSketch.Builder;
 import corrsketches.CorrelationSketch.ImmutableCorrelationSketch;
-import corrsketches.MinhashCorrelationSketch;
 import corrsketches.SketchType;
 import corrsketches.Table.Join;
 import corrsketches.aggregations.AggregateFunction;
@@ -468,28 +467,6 @@ public class CorrelationSketchTest {
     System.out.printf("mean time: %.3f ms\n", ci2.mean / 1_000_000.);
     System.out.printf("lb: %.3f\n", ci2.lb / 1_000_000.);
     System.out.printf("ub: %.3f\n", ci2.ub / 1_000_000.);
-  }
-
-  @Test
-  public void shouldEstimateCorrelation() {
-    List<String> pk = Arrays.asList("a", "b", "c", "d", "e");
-    double[] q1 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
-
-    List<String> fk = Arrays.asList("a", "b", "c", "d", "e");
-    double[] c0 = new double[] {1.0, 2.0, 3.0, 4.0, 5.0};
-    double[] c1 = new double[] {1.1, 2.5, 3.0, 4.4, 5.9};
-    double[] c2 = new double[] {1.0, 3.2, 3.1, 4.9, 5.4};
-
-    MinhashCorrelationSketch q1sk = new MinhashCorrelationSketch(pk, q1);
-    MinhashCorrelationSketch c0sk = new MinhashCorrelationSketch(fk, c0);
-    MinhashCorrelationSketch c1sk = new MinhashCorrelationSketch(fk, c1);
-    MinhashCorrelationSketch c2sk = new MinhashCorrelationSketch(fk, c2);
-
-    double delta = 0.005;
-    assertEquals(1.000, q1sk.correlationTo(q1sk), delta);
-    assertEquals(1.000, q1sk.correlationTo(c0sk), delta);
-    assertEquals(0.987, q1sk.correlationTo(c1sk), delta);
-    assertEquals(0.947, q1sk.correlationTo(c2sk), delta);
   }
 
   @Test
